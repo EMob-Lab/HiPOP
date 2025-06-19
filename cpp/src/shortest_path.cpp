@@ -117,15 +117,18 @@ namespace hipop
                 {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
-                        std::string neighbor = link->mdownstream;
-                        double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
-
-                        if (dist[neighbor] > new_dist)
+                        if (link->mcosts[mapLabelCost.at(link->mlabel)][cost] < std::numeric_limits<double>::infinity())
                         {
-                            dist[neighbor] = new_dist;
-                            pq.push(QueueItem(new_dist, neighbor));
-                            prev[neighbor] = u;
-                        }
+                            std::string neighbor = link->mdownstream;
+                            double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+
+                            if (dist[neighbor] > new_dist)
+                            {
+                                dist[neighbor] = new_dist;
+                                pq.push(QueueItem(new_dist, neighbor));
+                                prev[neighbor] = u;
+                            }
+                        }   
                     }
                 }
             }
@@ -891,6 +894,7 @@ namespace hipop
         int maxRetry,
         int kPath,
         bool intermodal)
+
     {
         //assert (maxDiffCost >= 0);
         //assert (maxDistInCommon >= 0 and maxDistInCommon <= 1);
