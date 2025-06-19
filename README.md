@@ -6,6 +6,12 @@ High Performance Optimal Path module
 HiPOP is the C++ graph library used by [MnMS](https://github.com/licit-lab/MnMS.git). 
 You must have `CMake` and `make` installed on your computer.
 
+## WARNING
+If you are using MacOS ARM64, install the openmp library using Homebrew:
+```shell
+brew install libomp
+```
+
 ### C++ only
 
 Inside your conda environment go to the cpp folder, and install the code using cmake:

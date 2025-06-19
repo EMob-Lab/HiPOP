@@ -4,7 +4,6 @@ project(HiPOP VERSION 0.0.3)
 
 find_package(OpenMP REQUIRED)
 
-
 # ------------- SRC -------------
 
 set(HIPOP_HEADERS
@@ -21,7 +20,7 @@ add_subdirectory(src)
 
 # ------------- TESTS -------------
 
-option(BUILD_TESTS "Build HiPOP tests" OFF)
+option(BUILD_TESTS "Build HiPOP tests" ON)
 if(BUILD_TESTS)
   message(STATUS "Building Tests")
   include(CTest)
