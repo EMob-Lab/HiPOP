@@ -145,3 +145,6 @@ cpp/examples.zip
 .vscode/settings.json
 .vscode/settings.json
 .vscode/settings.json
+/cpp/examples/src
+python/examples/debug.py
+Testing/Temporary/CTestCostData.txt

@@ -28,3 +28,20 @@ foreach (test ${TestsToRun})
   get_filename_component (TName ${test} NAME_WE)
   add_test (NAME ${TName} COMMAND CommonCxxTests ${TName})
 endforeach ()
+
+# Lier OpenMP
+#target_link_libraries(CommonCxxTests PUBLIC OpenMP::OpenMP_CXX)
+
+# Cas spécifique macOS : forcer les bons flags pour AppleClang
+if(APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+  message(STATUS "Configuring CommonCxxTests for macOS with OpenMP")
+
+  # Nécessaire pour compiler avec OpenMP avec AppleClang
+  target_compile_options(CommonCxxTests PRIVATE -Xpreprocessor -fopenmp)
+
+  # Lier explicitement la bibliothèque OpenMP
+  #target_link_libraries(CommonCxxTests PRIVATE omp)
+
+  # Spécifie où chercher libomp.dylib
+  target_link_directories(CommonCxxTests PRIVATE /opt/homebrew/opt/libomp/lib)
+endif()

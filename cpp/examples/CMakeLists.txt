@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 project(HipopExample)
 
@@ -16,4 +16,4 @@ set_property(TARGET HipopExample PROPERTY CXX_STANDARD 17)
 
 target_link_libraries(HipopExample hipoplib)
 
-
+install(TARGETS HipopExample RUNTIME DESTINATION bin)

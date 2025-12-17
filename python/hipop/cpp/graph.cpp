@@ -29,8 +29,8 @@ void graph(py::module_ &m) {
           .def_readonly("radj", &hipop::Node::mradj)
           .def_readonly("label", &hipop::Node::mlabel)
           .def_readonly("exclude_movements", &hipop::Node::mexclude_movements)
-          .def("get_exits", &hipop::Node::getExits, py::arg("predecessor")="_default")
-          .def("get_entrances", &hipop::Node::getEntrances, py::arg("predecessor")="_default");
+          .def("get_exits", &hipop::Node::getExits, py::arg("predecessor")="_default", py::return_value_policy::reference)
+          .def("get_entrances", &hipop::Node::getEntrances, py::arg("predecessor")="_default", py::return_value_policy::reference);
 
     py::class_<hipop::OrientedGraph>(m, "OrientedGraph")
           .def(py::init<>())
