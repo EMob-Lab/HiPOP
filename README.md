@@ -3,7 +3,7 @@ High Performance Optimal Path module
 
 ## Install Hipop
 
-HiPOP is the C++ graph library used by [MnMS](https://github.com/licit-lab/MnMS.git). 
+HiPOP is the C++ graph library used by [MnMS](https://github.com/EMob-Lab/MnMS.git). 
 You must have `CMake` and `make` installed on your computer.
 
 ## WARNING
