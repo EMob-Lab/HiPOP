@@ -37,15 +37,15 @@ namespace hipop
     /**
      * @brief Create and Add a new Node to the OrientedGraph
      *
-     * @param _id The id of the Node
+     * @param id The id of the Node
      * @param x The x coordinate of the Node
      * @param y The y coordinate of the Node
      * @param label The optional label associated to the Node
      * @param excludeMovements The map of exclude movements with adjacent Nodes
      */
-    void OrientedGraph::AddNode(std::string _id, double x, double y, std::string label, mapsets excludeMovements) {
-        Node *new_node = new Node(_id, x, y, label, excludeMovements);
-        mnodes[_id] = new_node;
+    void OrientedGraph::AddNode(std::string id, double x, double y, std::string label, mapsets excludeMovements) {
+        Node *new_node = new Node(std::move(id), x, y, std::move(label), std::move(excludeMovements));
+        mnodes[new_node->mid] = new_node;
     };
 
 
@@ -62,19 +62,18 @@ namespace hipop
     /**
      * @brief Create and add a new Link to the OrientedGraph
      *
-     * @param _id The id of the Link
-     * @param _up The id of the upstream Node of the Link
-     * @param _down The id of the downstream Node of the Link
+     * @param id The id of the Link
+     * @param up The id of the upstream Node of the Link
+     * @param down The id of the downstream Node of the Link
      * @param length The length of the Link
-     * @param _costs The costs of the Link
+     * @param costs The costs of the Link
      * @param label The optional label of the Link
      */
-    void OrientedGraph::AddLink(std::string _id, std::string _up, std::string _down, double length, mapcosts _costs, std::string label) {
-        Link *new_link = new Link(_id, _up, _down, length, _costs, label);
-        mnodes[_up]->madj.emplace(_down, new_link);
-        mnodes[_down]->mradj.emplace(_up, new_link);
-
-        mlinks.emplace(_id, new_link);
+    void OrientedGraph::AddLink(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label) {
+        Link *new_link = new Link(std::move(id), std::move(up), std::move(down), length, std::move(costs), std::move(label));
+        mnodes[new_link->mupstream]->madj.emplace(new_link->mdownstream, new_link);
+        mnodes[new_link->mdownstream]->mradj.emplace(new_link->mupstream, new_link);
+        mlinks.emplace(new_link->mid, new_link);
     };
 
     /**
@@ -94,11 +93,11 @@ namespace hipop
      *
      * @param _id The Link id to delete
      */
-    void OrientedGraph::DeleteLink(std::string _id) {
+    void OrientedGraph::DeleteLink(const std::string &id) {
 
-        if (mlinks.find(_id) != mlinks.end())
+        if (mlinks.find(id) != mlinks.end())
         {
-            Link* pLink = mlinks[_id];
+            Link* pLink = mlinks[id];
 
             if (mnodes.find(pLink->mupstream) != mnodes.end())
             {
@@ -112,7 +111,7 @@ namespace hipop
                 pDown->mradj.erase(pLink->mupstream);
             }
 
-            mlinks.erase(_id);
+            mlinks.erase(id);
             delete pLink;
             pLink = NULL;
         }
@@ -123,11 +122,11 @@ namespace hipop
      *
      * @param _id The Node id to consider
      */
-    void OrientedGraph::DeleteAllLinksToNode(std::string _id) {
+    void OrientedGraph::DeleteAllLinksToNode(const std::string &id) {
 
-        if (mnodes.find(_id) != mnodes.end())
+        if (mnodes.find(id) != mnodes.end())
         {
-            Node* pNode = mnodes[_id];
+            Node* pNode = mnodes[id];
             for (auto it = pNode->madj.begin(); it!= pNode->madj.end(); it++)
             {
                 DeleteLink(it->second->mid);
@@ -142,8 +141,8 @@ namespace hipop
      * @param lid The id of the Link to update
      * @param _costs The new costs
      */
-    void OrientedGraph::UpdateLinkCosts(std::string lid, mapcosts _costs) {
-        mlinks[lid]->updateCosts(_costs);
+    void OrientedGraph::UpdateLinkCosts(const std::string &lid, mapcosts costs) {
+        mlinks[lid]->updateCosts(std::move(costs));
     }
 
     /**
@@ -151,7 +150,7 @@ namespace hipop
      *
      * @param maplinkcosts The map of the links/costs to update
      */
-    void OrientedGraph::UpdateCosts(std::unordered_map<std::string, mapcosts> maplinkcosts)
+    void OrientedGraph::UpdateCosts(const std::unordered_map<std::string, mapcosts> &maplinkcosts)
     {
         for (auto it = maplinkcosts.begin(); it!= maplinkcosts.end(); it++)
         {
@@ -186,9 +185,9 @@ namespace hipop
      * @param _down the downstream node of the link
      * @return double the length of the link
      */
-    double OrientedGraph::getLength(std::string _up, std::string _down)
+    double OrientedGraph::getLength(const std::string &up, const std::string &down)
     {
-        return mnodes[_up]->madj[_down]->mlength;
+        return mnodes[up]->madj[down]->mlength;
     }
 
     /**
@@ -231,7 +230,7 @@ namespace hipop
      * @param allGraphs Vector of OrientedGraph to merge
      * @return OrientedGraph* The result of the merge
      */
-    OrientedGraph* mergeOrientedGraph(std::vector<const OrientedGraph*> allGraphs){
+    OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &allGraphs) {
         OrientedGraph *newGraph = new OrientedGraph();
 
         for(auto G:allGraphs) {
@@ -268,7 +267,7 @@ namespace hipop
      * @param mapLabelCost The type of cost map to choose on each label
      * @return std::vector<std::string> The list of links with no cost
      */
-    std::vector<std::string> OrientedGraph::GetLinksWithoutCost(std::string cost, const std::unordered_map<std::string, std::string> &mapLabelCost)
+    std::vector<std::string> OrientedGraph::GetLinksWithoutCost(const std::string &cost, const std::unordered_map<std::string, std::string> &mapLabelCost)
     {
         std::vector<std::string> links;
         for(const auto &elem: mlinks)
