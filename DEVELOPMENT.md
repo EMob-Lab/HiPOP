@@ -105,9 +105,9 @@ C++ tests are defined in `cpp/tests`.
 ### Run static analysis of the C++ code
 
 HiPOP uses [clang-tidy](https://clang.llvm.org/extra/clang-tidy/) to catch bugs and performance
-issues beyond what compiler warnings cover. If it is available on your system, nothing extra is
-needed: it runs automatically as part of the "Build and run the C++ test suite" workflow above.
-If necessary, pass the option `-DHIPOP_USE_CLANG_TIDY=OFF` to cmake to disable it.
+issues beyond what compiler warnings cover. To enable it, follow the "Build and run the C++ test suite"
+workflow above, additionally passing `-DHIPOP_USE_CLANG_TIDY=ON` to `cmake`.
+The static analysis checks will then be run as part of the build.
 
 Configuration is in the `.clang-tidy` files (repository root, plus incremental overrides
 in subdirectories where needed).

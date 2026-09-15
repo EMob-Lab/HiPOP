@@ -74,7 +74,7 @@ jobs:
           echo "OpenMP_ROOT=$(brew --prefix libomp)" >> "$GITHUB_ENV"
 
       - name: C++ core library - Configure
-        run: cmake -S . -B build-cpponly -G Ninja -DHIPOP_USE_CLANG_TIDY_MANDATORY=ON
+        run: cmake -S . -B build-cpponly -G Ninja -DHIPOP_USE_CLANG_TIDY=ON
 
       - name: C++ core library - Build & static analysis
         run: cmake --build build-cpponly
