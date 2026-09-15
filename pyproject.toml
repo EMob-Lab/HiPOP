@@ -98,6 +98,7 @@ editable.rebuild = true
 HIPOP_WITH_PYTHON = "ON"
 HIPOP_WITH_TESTS = "OFF"
 HIPOP_WITH_EXAMPLES = "OFF"
+HIPOP_USE_CLANG_TIDY = "OFF"
 
 [[tool.scikit-build.generate]]
 path = "hipop/__init__.py"

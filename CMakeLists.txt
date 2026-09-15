@@ -14,6 +14,7 @@ option(HIPOP_WITH_EXAMPLES "Compile HiPOP examples (for core library)" ON)
 
 # Miscellaneous CMake and compiler settings.
 include(cmake/MainSettings.cmake)
+include(cmake/ClangTidySettings.cmake)
 
 # 3rd-party dependencies.
 find_package(OpenMP REQUIRED)

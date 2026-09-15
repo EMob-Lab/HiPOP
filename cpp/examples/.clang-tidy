@@ -1,0 +1,10 @@
+---
+
+InheritParentConfig: true
+
+Checks:
+
+  # `std::endl` should be avoided in production code since it is potentially sub-efficient
+  # (see https://clang.llvm.org/extra/clang-tidy/checks/performance/avoid-endl.html).
+  # Still, for tests and examples, it improves readibility.
+  - -performance-avoid-endl
