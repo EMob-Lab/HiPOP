@@ -101,8 +101,8 @@ namespace hipop
         std::vector<Link*> getExits(const std::string &predecessor = "_default") {
             std::vector<Link*> res;
             for(const auto &l: madj) {
-                std::string neighbor = l.second->mdownstream;
-                if(mexclude_movements.find(predecessor) == mexclude_movements.end() || mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
+                auto it = mexclude_movements.find(predecessor);
+                if (it == mexclude_movements.end() || it->second.find(l.second->mdownstream) == it->second.end()) {
                     res.push_back(l.second);
                 }
             }

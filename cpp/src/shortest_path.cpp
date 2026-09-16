@@ -73,27 +73,25 @@ namespace hipop
         std::unordered_map<std::string, std::string> prev;
         prev.reserve(G.mnodes.size());
         dist.reserve(G.mnodes.size());
-        double inf = std::numeric_limits<double>::infinity();
         for (const auto &keyVal : G.mnodes)
         {
-            dist[keyVal.first] = inf;
+            dist[keyVal.first] = INFINITY;
         }
         pq.push(make_pair(0, origin));
         dist[origin] = 0;
 
-        path.second = inf;
+        path.second = INFINITY;
         prev[origin] = "";
 
-        if (origin==destination) {
-        path.second = 0;
-        return path;
+        if (origin == destination) {
+            path.second = 0;
+            return path;
         }
 
         while (!pq.empty())
         {
-            QueueItem current = pq.top();
+            auto [ _, u ] = pq.top();
             pq.pop();
-            std::string u = current.second;
 
             if (u == destination)
             {
@@ -114,19 +112,20 @@ namespace hipop
 
             try
             {
-                for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
+                for (const Link *link : G.mnodes.at(u)->getExits(prev[u]))
                 {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
-                        if (link->mcosts[mapLabelCost.at(link->mlabel)][cost] < std::numeric_limits<double>::infinity())
+                        double cost_on_link = link->mcosts.at(mapLabelCost.at(link->mlabel)).at(cost);
+                        if (cost_on_link < INFINITY)
                         {
-                            std::string neighbor = link->mdownstream;
-                            double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+                            const std::string &neighbor = link->mdownstream;
+                            double new_dist = dist[u] + cost_on_link;
 
                             if (dist[neighbor] > new_dist)
                             {
                                 dist[neighbor] = new_dist;
-                                pq.push(QueueItem(new_dist, neighbor));
+                                pq.emplace(new_dist, neighbor);
                                 prev[neighbor] = u;
                             }
                         }
