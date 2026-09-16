@@ -19,37 +19,25 @@ typedef std::unordered_map<std::string, std::unordered_map<std::string, double> 
 
 namespace hipop
 {
+    class Node;
+
     class Link {
     public:
         std::string mid;
-        std::string mupstream;
-        std::string mdownstream;
+        const Node *mup;
+        const Node *mdown;
         mapcosts mcosts;
         std::string mlabel;
         double mlength;
 
-        Link(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "") :
+        Link(std::string id, const Node *up, const Node *down, double length, mapcosts costs, std::string label = "") :
             mid(std::move(id)),
-            mupstream(std::move(up)),
-            mdownstream(std::move(down)),
+            mup(up),
+            mdown(down),
             mcosts(std::move(costs)),
             mlabel(std::move(label)),
             mlength(length)
         {}
-
-        Link(const Link &other) {
-            mid = other.mid.c_str();
-            mlabel = other.mlabel.c_str();
-            mupstream = other.mupstream.c_str();
-            mdownstream = other.mdownstream.c_str();
-            mlength = other.mlength;
-
-            for(const auto &keyVal: other.mcosts) {
-                mcosts[keyVal.first] = keyVal.second;
-            }
-
-
-        }
 
         void updateCosts(mapcosts costs) {
             mcosts = std::move(costs);
@@ -102,7 +90,7 @@ namespace hipop
             std::vector<Link*> res;
             for(const auto &l: madj) {
                 auto it = mexclude_movements.find(predecessor);
-                if (it == mexclude_movements.end() || it->second.find(l.second->mdownstream) == it->second.end()) {
+                if (it == mexclude_movements.end() || it->second.find(l.second->mdown->mid) == it->second.end()) {
                     res.push_back(l.second);
                 }
             }
@@ -112,7 +100,7 @@ namespace hipop
         std::vector<Link*> getEntrances(const std::string &predecessor) {
             std::vector<Link*> res;
             for(const auto &l: mradj) {
-                std::string neighbor = l.second->mupstream;
+                const std::string &neighbor = l.second->mup->mid;
                 if(mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
                     res.push_back(l.second);
                 }
@@ -130,8 +118,7 @@ namespace hipop
 
         void AddNode(std::string id, double x, double y, std::string label = "", mapsets excludeMovements = {});
         void AddNode(Node *n);
-        void AddLink(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "");
-        void AddLink(Link* l);
+        void AddLink(std::string id, const std::string &up, const std::string &down, double length, mapcosts costs, std::string label = "");
         void DeleteLink(const std::string &id);
         void DeleteAllLinksToNode(const std::string &id);
         void UpdateLinkCosts(const std::string &lid, mapcosts costs);

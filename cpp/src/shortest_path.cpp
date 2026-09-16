@@ -117,7 +117,7 @@ namespace hipop
                         double cost_on_link = link->mcosts.at(mapLabelCost.at(link->mlabel)).at(cost);
                         if (cost_on_link < INFINITY)
                         {
-                            const std::string &neighbor = link->mdownstream;
+                            const std::string &neighbor = link->mdown->mid;
                             double new_dist = dist_u + cost_on_link;
 
                             auto neighbor_it = dist.find(neighbor);
@@ -193,7 +193,7 @@ namespace hipop
                 {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
-                        std::string neighbor = link->mdownstream;
+                        std::string neighbor = link->mdown->mid;
                         double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
 
                         if (dist[neighbor] > new_dist)
@@ -260,8 +260,8 @@ namespace hipop
             Link*link = pair.second;
             if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
             {
-                std::string u = link->mupstream;
-                std::string v = link->mdownstream;
+                const std::string &u = link->mup->mid;
+                const std::string &v = link->mdown->mid;
                 dist[nodevMap.at(u)][nodevMap.at(v)] = link->mcosts[mapLabelCost.at(link->mlabel)][cost];
                 prev[nodevMap.at(u)][nodevMap.at(v)] = nodevMap.at(u);
             }
@@ -1268,7 +1268,7 @@ namespace hipop
             {
                 if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
-                    std::string neighbor = link->mdownstream;
+                    const std::string &neighbor = link->mdown->mid;
                     double tentative_score = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
 
                     if (tentative_score < dist[neighbor])
@@ -1391,38 +1391,38 @@ namespace hipop
         }
         for(const auto &keyVal: G.mlinks) {
           doubledG1->AddLink(keyVal.second->mid,
-                          keyVal.second->mupstream,
-                          keyVal.second->mdownstream,
+                          keyVal.second->mup->mid,
+                          keyVal.second->mdown->mid,
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG1->AddLink(keyVal.second->mid + "_TWIN",
-                          keyVal.second->mupstream + "_TWIN",
-                          keyVal.second->mdownstream + "_TWIN",
+                          keyVal.second->mup->mid + "_TWIN",
+                          keyVal.second->mdown->mid + "_TWIN",
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG1->AddLink(keyVal.second->mid + "_TRPL",
-                          keyVal.second->mupstream + "_TRPL",
-                          keyVal.second->mdownstream + "_TRPL",
+                          keyVal.second->mup->mid + "_TRPL",
+                          keyVal.second->mdown->mid + "_TRPL",
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG2->AddLink(keyVal.second->mid,
-                          keyVal.second->mupstream,
-                          keyVal.second->mdownstream,
+                          keyVal.second->mup->mid,
+                          keyVal.second->mdown->mid,
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG2->AddLink(keyVal.second->mid + "_TWIN",
-                          keyVal.second->mupstream + "_TWIN",
-                          keyVal.second->mdownstream + "_TWIN",
+                          keyVal.second->mup->mid + "_TWIN",
+                          keyVal.second->mdown->mid + "_TWIN",
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG2->AddLink(keyVal.second->mid + "_TRPL",
-                          keyVal.second->mupstream + "_TRPL",
-                          keyVal.second->mdownstream + "_TRPL",
+                          keyVal.second->mup->mid + "_TRPL",
+                          keyVal.second->mdown->mid + "_TRPL",
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
@@ -1430,8 +1430,8 @@ namespace hipop
           bool original_to_twin_G1 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
           if (original_to_twin_G1) {
             doubledG1->AddLink(keyVal.second->mid + "_ORIGINAL_TO_TWIN",
-                            keyVal.second->mupstream,
-                            keyVal.second->mdownstream + "_TWIN",
+                            keyVal.second->mup->mid,
+                            keyVal.second->mdown->mid + "_TWIN",
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1440,8 +1440,8 @@ namespace hipop
           bool original_to_twin_G2 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
           if (original_to_twin_G2) {
             doubledG2->AddLink(keyVal.second->mid + "_ORIGINAL_TO_TWIN",
-                            keyVal.second->mupstream,
-                            keyVal.second->mdownstream + "_TWIN",
+                            keyVal.second->mup->mid,
+                            keyVal.second->mdown->mid + "_TWIN",
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1450,8 +1450,8 @@ namespace hipop
           bool twin_to_trpl_G1 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
           if (twin_to_trpl_G1) {
             doubledG1->AddLink(keyVal.second->mid + "_TWIN_TO_TRPL",
-                            keyVal.second->mupstream + "_TWIN",
-                            keyVal.second->mdownstream + "_TRPL",
+                            keyVal.second->mup->mid + "_TWIN",
+                            keyVal.second->mdown->mid + "_TRPL",
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1460,8 +1460,8 @@ namespace hipop
           bool twin_to_trpl_G2 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
           if (twin_to_trpl_G2) {
             doubledG2->AddLink(keyVal.second->mid + "_TWIN_TO_TRPL",
-                            keyVal.second->mupstream + "_TWIN",
-                            keyVal.second->mdownstream + "_TRPL",
+                            keyVal.second->mup->mid + "_TWIN",
+                            keyVal.second->mdown->mid + "_TRPL",
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);

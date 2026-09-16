@@ -31,7 +31,7 @@ int testGraph(int, char**)
     std::vector<hipop::Link*> exits = G->mnodes["b"]->getExits("a");
 
     assertTrue(exits.size()==1, "Exits does not return one link");
-    assertTrue(exits[0]->mdownstream=="d", "Node should be d");
+    assertTrue(exits[0]->mdown->mid=="d", "Node should be d");
 
     return 0;
 }
