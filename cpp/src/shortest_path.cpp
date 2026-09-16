@@ -65,16 +65,31 @@ namespace hipop
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels)
     {
+        struct QueueItem {
+
+            double dist;
+            const Node *node;
+
+            /**
+             * Comparison operator implemented so that:
+             * - the top item in the queue is the one with the smallest dist,
+             * - ... or, in case of ties, the one whose ID comes first in lexicographical order.
+             */
+            bool operator<(const QueueItem &other) const {
+                return dist == other.dist ? node->mid > other.node->mid : dist > other.dist;
+            }
+        };
+
         pathCost path;
 
-        PriorityQueue pq;
+        std::priority_queue<QueueItem> pq;
 
         std::unordered_map<std::string, double> dist;
         std::unordered_map<std::string, std::string> prev;
         prev.reserve(G.mnodes.size());
         dist.reserve(G.mnodes.size());
 
-        pq.push(make_pair(0, origin));
+        pq.emplace(QueueItem{ 0, G.mnodes.at(origin) });
         dist[origin] = 0;
 
         path.second = INFINITY;
@@ -87,14 +102,14 @@ namespace hipop
 
         while (!pq.empty())
         {
-            auto [ _, u ] = pq.top();
-            double dist_u = dist.at(u);
+            const Node *u = pq.top().node;
+            double dist_u = dist.at(u->mid);
             pq.pop();
 
-            if (u == destination)
+            if (u->mid == destination)
             {
-                std::string v = prev[u];
-                path.first.push_back(u);
+                std::string v = prev[u->mid];
+                path.first.push_back(u->mid);
 
                 while (v != origin)
                 {
@@ -110,25 +125,25 @@ namespace hipop
 
             try
             {
-                for (const Link *link : G.mnodes.at(u)->getExits(prev[u]))
+                for (const Link *link : u->getExits(prev[u->mid]))
                 {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
                         double cost_on_link = link->mcosts.at(mapLabelCost.at(link->mlabel)).at(cost);
                         if (cost_on_link < INFINITY)
                         {
-                            const std::string &neighbor = link->mdown->mid;
+                            const Node *neighbor = link->mdown;
                             double new_dist = dist_u + cost_on_link;
 
-                            auto neighbor_it = dist.find(neighbor);
+                            auto neighbor_it = dist.find(neighbor->mid);
                             if (neighbor_it == dist.end()) {
-                                neighbor_it = dist.emplace(neighbor, INFINITY).first;
+                                neighbor_it = dist.emplace(neighbor->mid, INFINITY).first;
                             }
 
                             if (neighbor_it->second > new_dist) {
                                 neighbor_it->second = new_dist;
-                                pq.emplace(new_dist, neighbor);
-                                prev[neighbor] = u;
+                                pq.emplace(QueueItem{ new_dist, neighbor });
+                                prev[neighbor->mid] = u->mid;
                             }
                         }
                     }

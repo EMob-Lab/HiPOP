@@ -86,7 +86,7 @@ namespace hipop
             }
         }
 
-        std::vector<Link*> getExits(const std::string &predecessor = "_default") {
+        std::vector<Link*> getExits(const std::string &predecessor = "_default") const { // TODO Should return `const Link *` if const
             std::vector<Link*> res;
             for(const auto &l: madj) {
                 auto it = mexclude_movements.find(predecessor);
