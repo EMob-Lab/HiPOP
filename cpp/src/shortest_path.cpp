@@ -118,8 +118,7 @@ namespace hipop
 
             try
             {
-                for (const Link *link : u->getExits(u == origin_node ? "" : prev.at(u)->mid))
-                {
+                u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
                         double cost_on_link = link->mcosts.at(mapLabelCost.at(link->mlabel)).at(cost);
@@ -140,7 +139,7 @@ namespace hipop
                             }
                         }
                     }
-                }
+                });
             }
             catch(const std::out_of_range&)
             {
