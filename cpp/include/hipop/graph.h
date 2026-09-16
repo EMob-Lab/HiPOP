@@ -98,14 +98,24 @@ namespace hipop
             }
         }
 
-        std::vector<Link*> getExits(const std::string &predecessor = "_default") {
-            std::vector<Link*> res;
-            for(const auto &l: madj) {
+        /**
+         * TODO document forEachExit
+         */
+        template<typename Callback>
+        void forEachExit(const std::string &predecessor, Callback &&callback) const{
+            for (const auto &l : madj) {
                 auto it = mexclude_movements.find(predecessor);
                 if (it == mexclude_movements.end() || it->second.find(l.second->mdownstream) == it->second.end()) {
-                    res.push_back(l.second);
+                    callback(l.second); // TODO make const
                 }
             }
+        }
+
+        std::vector<Link*> getExits(const std::string &predecessor = "_default") { // TODO remove
+            std::vector<Link*> res;
+            forEachExit(predecessor, [&res](Link* l) {
+                res.emplace_back(l);
+            });
             return res;
         }
 
