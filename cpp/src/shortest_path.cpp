@@ -84,16 +84,17 @@ namespace hipop
 
         std::priority_queue<QueueItem> pq;
 
-        std::unordered_map<std::string, double> dist;
-        std::unordered_map<std::string, std::string> prev;
+        std::unordered_map<const Node *, double> dist;
+        std::unordered_map<const Node *, const Node *> prev;
         prev.reserve(G.mnodes.size());
         dist.reserve(G.mnodes.size());
 
-        pq.emplace(QueueItem{ 0, G.mnodes.at(origin) });
-        dist[origin] = 0;
+        const Node *origin_node = G.mnodes.at(origin);
+        pq.emplace(QueueItem{ 0, origin_node });
+        dist[origin_node] = 0;
 
         path.second = INFINITY;
-        prev[origin] = "";
+        prev[origin_node] = nullptr;
 
         if (origin == destination) {
             path.second = 0;
@@ -103,29 +104,21 @@ namespace hipop
         while (!pq.empty())
         {
             const Node *u = pq.top().node;
-            double dist_u = dist.at(u->mid);
+            double dist_u = dist.at(u);
             pq.pop();
 
-            if (u->mid == destination)
-            {
-                std::string v = prev[u->mid];
-                path.first.push_back(u->mid);
-
-                while (v != origin)
-                {
-                    path.first.push_back(v);
-                    v = prev[v];
+            if (u->mid == destination) {
+                for (const Node *v = u; v != nullptr; v = prev.at(v)) {
+                    path.first.emplace_back(v->mid);
                 }
-
-                path.first.push_back(v);
                 std::reverse(path.first.begin(), path.first.end());
-                path.second = dist_u; // Same as dist.at(destination)
+                path.second = dist_u;
                 return path;
             }
 
             try
             {
-                for (const Link *link : u->getExits(prev[u->mid]))
+                for (const Link *link : u->getExits(u == origin_node ? "" : prev.at(u)->mid))
                 {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
@@ -135,15 +128,15 @@ namespace hipop
                             const Node *neighbor = link->mdown;
                             double new_dist = dist_u + cost_on_link;
 
-                            auto neighbor_it = dist.find(neighbor->mid);
+                            auto neighbor_it = dist.find(neighbor);
                             if (neighbor_it == dist.end()) {
-                                neighbor_it = dist.emplace(neighbor->mid, INFINITY).first;
+                                neighbor_it = dist.emplace(neighbor, INFINITY).first;
                             }
 
                             if (neighbor_it->second > new_dist) {
                                 neighbor_it->second = new_dist;
                                 pq.emplace(QueueItem{ new_dist, neighbor });
-                                prev[neighbor->mid] = u->mid;
+                                prev[neighbor] = u;
                             }
                         }
                     }
