@@ -73,10 +73,7 @@ namespace hipop
         std::unordered_map<std::string, std::string> prev;
         prev.reserve(G.mnodes.size());
         dist.reserve(G.mnodes.size());
-        for (const auto &keyVal : G.mnodes)
-        {
-            dist[keyVal.first] = INFINITY;
-        }
+
         pq.push(make_pair(0, origin));
         dist[origin] = 0;
 
@@ -122,9 +119,13 @@ namespace hipop
                             const std::string &neighbor = link->mdownstream;
                             double new_dist = dist[u] + cost_on_link;
 
-                            if (dist[neighbor] > new_dist)
-                            {
-                                dist[neighbor] = new_dist;
+                            auto neighbor_it = dist.find(neighbor);
+                            if (neighbor_it == dist.end()) {
+                                neighbor_it = dist.emplace(neighbor, INFINITY).first;
+                            }
+
+                            if (neighbor_it->second > new_dist) {
+                                neighbor_it->second = new_dist;
                                 pq.emplace(new_dist, neighbor);
                                 prev[neighbor] = u;
                             }
