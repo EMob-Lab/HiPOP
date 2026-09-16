@@ -88,6 +88,7 @@ namespace hipop
         while (!pq.empty())
         {
             auto [ _, u ] = pq.top();
+            double dist_u = dist.at(u);
             pq.pop();
 
             if (u == destination)
@@ -103,7 +104,7 @@ namespace hipop
 
                 path.first.push_back(v);
                 std::reverse(path.first.begin(), path.first.end());
-                path.second = dist[destination];
+                path.second = dist_u; // Same as dist.at(destination)
                 return path;
             }
 
@@ -117,7 +118,7 @@ namespace hipop
                         if (cost_on_link < INFINITY)
                         {
                             const std::string &neighbor = link->mdownstream;
-                            double new_dist = dist[u] + cost_on_link;
+                            double new_dist = dist_u + cost_on_link;
 
                             auto neighbor_it = dist.find(neighbor);
                             if (neighbor_it == dist.end()) {
