@@ -90,8 +90,7 @@ namespace hipop
 
         while (!pq.empty())
         {
-            QueueItem current = pq.top();
-            const std::string &u = current.second;
+            auto [ _, u ] = pq.top();
             pq.pop();
 
             if (u == destination)
@@ -113,7 +112,8 @@ namespace hipop
 
             try
             {
-                G.mnodes.at(u)->forEachExit(prev[u], [&](const Link *link) {
+                for (const Link *link : G.mnodes.at(u)->getExits(prev[u]))
+                {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
                         double cost_on_link = link->mcosts.at(mapLabelCost.at(link->mlabel)).at(cost);
@@ -130,7 +130,7 @@ namespace hipop
                             }
                         }
                     }
-                });
+                }
             }
             catch(const std::out_of_range&)
             {
