@@ -42,7 +42,7 @@ namespace hipop
         /**
          * Read the cost value associated to the current link, assuming the given mapLabelCost and cost type.
          *
-         * @return 0 as default cost value if not explicitely set.
+         * @return 0 as default cost value if not explicitly set.
          */
         double getCost(const std::unordered_map<std::string, std::string> &mapLabelCost, const std::string &cost) const {
             auto it1 = mcosts.find(mapLabelCost.at(mlabel));
