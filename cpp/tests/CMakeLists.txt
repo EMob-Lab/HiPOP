@@ -4,6 +4,7 @@ set(Tests
     testGraphMerge.cpp
     testDijkstra1.cpp
     testDijkstra2.cpp
+    testDijkstra3.cpp
     testKShortestPath.cpp
     testYenKShortestPath.cpp
     testManhattan.cpp
