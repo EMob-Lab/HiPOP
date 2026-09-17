@@ -121,7 +121,7 @@ namespace hipop
                 u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
-                        double cost_on_link = link->mcosts.at(mapLabelCost.at(link->mlabel)).at(cost);
+                        double cost_on_link = link->getCost(mapLabelCost, cost);
                         if (cost_on_link < INFINITY)
                         {
                             const Node *neighbor = link->mdown;

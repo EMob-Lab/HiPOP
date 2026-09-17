@@ -39,6 +39,23 @@ namespace hipop
             mlength(length)
         {}
 
+        /**
+         * Read the cost value associated to the current link, assuming the given mapLabelCost and cost type.
+         *
+         * @return 0 as default cost value if not explicitely set.
+         */
+        double getCost(const std::unordered_map<std::string, std::string> &mapLabelCost, const std::string &cost) const {
+            auto it1 = mcosts.find(mapLabelCost.at(mlabel));
+            if (it1 == mcosts.end()) {
+                return 0;
+            }
+            auto it2 = it1->second.find(cost);
+            if (it2 == it1->second.end()) {
+                return 0;
+            }
+            return it2->second;
+        }
+
         void updateCosts(mapcosts costs) {
             mcosts = std::move(costs);
         }
