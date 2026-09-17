@@ -116,37 +116,28 @@ namespace hipop
                 return path;
             }
 
-            try
-            {
-                u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
-                    if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
+                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
+                {
+                    double cost_on_link = link->getCost(mapLabelCost, cost);
+                    if (cost_on_link < INFINITY)
                     {
-                        double cost_on_link = link->getCost(mapLabelCost, cost);
-                        if (cost_on_link < INFINITY)
-                        {
-                            const Node *neighbor = link->mdown;
-                            double new_dist = dist_u + cost_on_link;
+                        const Node *neighbor = link->mdown;
+                        double new_dist = dist_u + cost_on_link;
 
-                            auto neighbor_it = dist.find(neighbor);
-                            if (neighbor_it == dist.end()) {
-                                neighbor_it = dist.emplace(neighbor, INFINITY).first;
-                            }
+                        auto neighbor_it = dist.find(neighbor);
+                        if (neighbor_it == dist.end()) {
+                            neighbor_it = dist.emplace(neighbor, INFINITY).first;
+                        }
 
-                            if (neighbor_it->second > new_dist) {
-                                neighbor_it->second = new_dist;
-                                pq.emplace(QueueItem{ new_dist, neighbor });
-                                prev[neighbor] = u;
-                            }
+                        if (neighbor_it->second > new_dist) {
+                            neighbor_it->second = new_dist;
+                            pq.emplace(QueueItem{ new_dist, neighbor });
+                            prev[neighbor] = u;
                         }
                     }
-                });
-            }
-            catch(const std::out_of_range&)
-            {
-                std::cerr <<  "The node " << u << " does not belong to the graph \n";
-            }
-
-
+                }
+            });
         }
         return path;
     }
