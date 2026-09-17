@@ -80,34 +80,37 @@ namespace hipop
             }
         };
 
-        pathCost path;
+        const Node *origin_node = G.mnodes.at(origin);
+        const Node *destination_node = G.mnodes.at(destination);
 
-        std::priority_queue<QueueItem> pq;
+        // Return a 0-node path with zero cost if origin and destination are identical.
+        // Remark: it would be more consistent with the general case to return 1-node path
+        // made of the single origin + destination node.
+        // Still, for compliance with legacy behavior, we return a 0-node path.
+        if (origin_node == destination_node) {
+            pathCost emptyPath;
+            emptyPath.second = 0;
+            return emptyPath;
+        }
 
         std::unordered_map<const Node *, double> dist;
         std::unordered_map<const Node *, const Node *> prev;
-        prev.reserve(G.mnodes.size());
         dist.reserve(G.mnodes.size());
-
-        const Node *origin_node = G.mnodes.at(origin);
-        pq.emplace(QueueItem{ 0, origin_node });
+        prev.reserve(G.mnodes.size());
         dist[origin_node] = 0;
-
-        path.second = INFINITY;
         prev[origin_node] = nullptr;
 
-        if (origin == destination) {
-            path.second = 0;
-            return path;
-        }
+        std::priority_queue<QueueItem> pq;
+        pq.emplace(QueueItem{ 0, origin_node });
 
-        while (!pq.empty())
-        {
+        while (!pq.empty()) {
+
             const Node *u = pq.top().node;
             double dist_u = dist.at(u);
             pq.pop();
 
-            if (u->mid == destination) {
+            if (u == destination_node) {
+                pathCost path;
                 for (const Node *v = u; v != nullptr; v = prev.at(v)) {
                     path.first.emplace_back(v->mid);
                 }
@@ -139,7 +142,12 @@ namespace hipop
                 }
             });
         }
-        return path;
+
+        // No path from origin to destination was found: return a 0-node path with infinite cost in this case.
+        // Remark: to make it more expicit, it would be better to return an optional<pathCost> instead.
+        pathCost invalidPath;
+        invalidPath.second = INFINITY;
+        return invalidPath;
     }
 
     /**
