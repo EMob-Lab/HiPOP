@@ -226,16 +226,6 @@ namespace hipop
         return mnodes[up]->madj[down]->mlength;
     }
 
-    /**
-     * @brief Make a deep copy of an OrientedGraph
-     *
-     * @param G The graph to copy
-     * @return OrientedGraph* The copy
-     */
-    OrientedGraph* copyGraph(const OrientedGraph &G) { // TODO Remove (because trivial with copy constructor)
-        return new OrientedGraph(G);
-    }
-
 
     /**
      * @brief Merge multiple OrientedGraph together into one
