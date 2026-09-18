@@ -11,10 +11,10 @@
 
 #pragma once
 
-typedef std::set<std::string> setstring;
-typedef std::vector<std::string> vecstring;
-typedef std::unordered_map<std::string, std::set<std::string> > mapsets;
-typedef std::unordered_map<std::string, std::unordered_map<std::string, double> > mapcosts;
+using setstring = std::set<std::string>;
+using vecstring = std::vector<std::string>;
+using mapsets = std::unordered_map<std::string, std::set<std::string>>;
+using mapcosts = std::unordered_map<std::string, std::unordered_map<std::string, double>>;
 
 
 namespace hipop
@@ -146,7 +146,7 @@ namespace hipop
             return mlinks[id];
         }
 
-        OrientedGraph() {};
+        OrientedGraph() = default;
         OrientedGraph(const OrientedGraph &other) {
             for(const auto &keyVal: other.mnodes) {
                 Node *newNode = new Node(*keyVal.second);
