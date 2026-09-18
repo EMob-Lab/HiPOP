@@ -15,22 +15,64 @@
 
 namespace hipop
 {
-    /**
-     * @brief Destroy the Oriented Graph:: Oriented Graph object
-     *
-     */
-    OrientedGraph::~OrientedGraph() {
-        for (const auto &iter : mlinks) {
-            delete iter.second;
-        }
-
-        for (const auto &iter : mnodes) {
-            delete iter.second;
-        }
-
-        mnodes.clear();
-        mlinks.clear();
+    OrientedGraph::OrientedGraph(const OrientedGraph &other) {
+        AddAllNodesAndLinks(other);
     }
+
+
+    OrientedGraph &OrientedGraph::operator=(const OrientedGraph &other) {
+        if (this != &other) {
+
+            // FIXME: duplicated code with destructor. Could be improved with smart pointers...
+            for (const auto &it : mlinks) {
+                delete it.second;
+            }
+            for (const auto &it : mnodes) {
+                delete it.second;
+            }
+
+            mlinks.clear();
+            mnodes.clear();
+            AddAllNodesAndLinks(other);
+        }
+        return *this;
+    }
+
+
+    OrientedGraph::~OrientedGraph() {
+        for (const auto &it : mlinks) {
+            delete it.second;
+        }
+        for (const auto &it : mnodes) {
+            delete it.second;
+        }
+    }
+
+
+    void OrientedGraph::AddAllNodesAndLinks(const OrientedGraph &other) {
+        for (const auto &it : other.mnodes) {
+            const Node *otherNode = it.second;
+            AddNode(
+                otherNode->mid,
+                otherNode->mposition[0],
+                otherNode->mposition[1],
+                otherNode->mlabel,
+                otherNode->mexclude_movements
+            );
+        }
+        for (const auto &it : other.mlinks) {
+            const Link *otherLink = it.second;
+            AddLink(
+                otherLink->mid,
+                otherLink->mupstream,
+                otherLink->mdownstream,
+                otherLink->mlength,
+                otherLink->mcosts,
+                otherLink->mlabel
+            );
+        }
+    }
+
 
     /**
      * @brief Create and Add a new Node to the OrientedGraph
@@ -190,31 +232,8 @@ namespace hipop
      * @param G The graph to copy
      * @return OrientedGraph* The copy
      */
-    OrientedGraph* copyGraph(const OrientedGraph &G) {
-        auto newGraph = new OrientedGraph();
-
-        for(const auto &keyVal: G.mnodes) {
-            // Node *n = new Node();
-
-            newGraph->AddNode(keyVal.second->mid,
-                            keyVal.second->mposition[0],
-                            keyVal.second->mposition[1],
-                            keyVal.second->mlabel,
-                            keyVal.second->mexclude_movements);
-        }
-
-
-        for(const auto &keyVal: G.mlinks) {
-            // Link *l = new Link(*keyVal.second);
-            newGraph->AddLink(keyVal.second->mid,
-                            keyVal.second->mupstream,
-                            keyVal.second->mdownstream,
-                            keyVal.second->mlength,
-                            keyVal.second->mcosts,
-                            keyVal.second->mlabel);
-        }
-
-        return newGraph;
+    OrientedGraph* copyGraph(const OrientedGraph &G) { // TODO Remove (because trivial with copy constructor)
+        return new OrientedGraph(G);
     }
 
 
@@ -226,31 +245,9 @@ namespace hipop
      */
     OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &allGraphs) {
         auto newGraph = new OrientedGraph();
-
-        for(auto G:allGraphs) {
-            for(const auto &keyValNodes:G->mnodes) {
-                mapsets excludeMovements;
-                for(const auto &keyVal: keyValNodes.second->mexclude_movements) {
-                    setstring copy;
-                    for(const auto &s: keyVal.second) {
-                        copy.insert(s.c_str());
-                    }
-                    excludeMovements[keyVal.first] = copy;
-                }
-                newGraph->AddNode(keyValNodes.first, keyValNodes.second->mposition[0], keyValNodes.second->mposition[1], keyValNodes.second->mlabel, excludeMovements);
-            }
-
-            for(const auto &keyVal: G->mlinks) {
-                newGraph->AddLink(keyVal.first,
-                        keyVal.second->mupstream,
-                        keyVal.second->mdownstream,
-                        keyVal.second->mlength,
-                        keyVal.second->mcosts,
-                        keyVal.second->mlabel);
-
-            }
+        for (const OrientedGraph *G : allGraphs) {
+            newGraph->AddAllNodesAndLinks(*G);
         }
-
         return newGraph;
     }
 
