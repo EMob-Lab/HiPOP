@@ -19,36 +19,41 @@ typedef std::unordered_map<std::string, std::unordered_map<std::string, double> 
 
 namespace hipop
 {
+    class Node;
+
     class Link {
     public:
         std::string mid;
-        std::string mupstream;
-        std::string mdownstream;
+        const Node *mup;
+        const Node *mdown;
         mapcosts mcosts;
         std::string mlabel;
         double mlength;
 
-        Link(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "") :
+        Link(std::string id, const Node *up, const Node *down, double length, mapcosts costs, std::string label = "") :
             mid(std::move(id)),
-            mupstream(std::move(up)),
-            mdownstream(std::move(down)),
+            mup(up),
+            mdown(down),
             mcosts(std::move(costs)),
             mlabel(std::move(label)),
             mlength(length)
         {}
 
-        Link(const Link &other) {
-            mid = other.mid.c_str();
-            mlabel = other.mlabel.c_str();
-            mupstream = other.mupstream.c_str();
-            mdownstream = other.mdownstream.c_str();
-            mlength = other.mlength;
-
-            for(const auto &keyVal: other.mcosts) {
-                mcosts[keyVal.first] = keyVal.second;
+        /**
+         * Read the cost value associated to the current link, assuming the given mapLabelCost and cost type.
+         *
+         * @return 0 as default cost value if not explicitly set.
+         */
+        double getCost(const std::unordered_map<std::string, std::string> &mapLabelCost, const std::string &cost) const {
+            auto it1 = mcosts.find(mapLabelCost.at(mlabel));
+            if (it1 == mcosts.end()) {
+                return 0;
             }
-
-
+            auto it2 = it1->second.find(cost);
+            if (it2 == it1->second.end()) {
+                return 0;
+            }
+            return it2->second;
         }
 
         void updateCosts(mapcosts costs) {
@@ -98,11 +103,24 @@ namespace hipop
             }
         }
 
-        std::vector<Link*> getExits(const std::string &predecessor = "_default") {
+        /**
+         * TODO document forEachExit
+         */
+        template<typename Callback>
+        void forEachExit(const std::string &predecessor, Callback &&callback) const {
+            for (const auto &l : madj) {
+                auto it = mexclude_movements.find(predecessor);
+                if (it == mexclude_movements.end() || it->second.find(l.second->mdown->mid) == it->second.end()) {
+                    callback(const_cast<const Link *>(l.second));
+                }
+            }
+        }
+
+        std::vector<Link*> getExits(const std::string &predecessor = "_default") { // TODO remove
             std::vector<Link*> res;
             for(const auto &l: madj) {
-                std::string neighbor = l.second->mdownstream;
-                if(mexclude_movements.find(predecessor) == mexclude_movements.end() || mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
+                auto it = mexclude_movements.find(predecessor);
+                if (it == mexclude_movements.end() || it->second.find(l.second->mdown->mid) == it->second.end()) {
                     res.push_back(l.second);
                 }
             }
@@ -112,7 +130,7 @@ namespace hipop
         std::vector<Link*> getEntrances(const std::string &predecessor) {
             std::vector<Link*> res;
             for(const auto &l: mradj) {
-                std::string neighbor = l.second->mupstream;
+                const std::string &neighbor = l.second->mup->mid;
                 if(mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
                     res.push_back(l.second);
                 }
@@ -130,8 +148,7 @@ namespace hipop
 
         void AddNode(std::string id, double x, double y, std::string label = "", mapsets excludeMovements = {});
         void AddNode(Node *n);
-        void AddLink(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "");
-        void AddLink(Link* l);
+        void AddLink(std::string id, const std::string &up, const std::string &down, double length, mapcosts costs, std::string label = "");
         void DeleteLink(const std::string &id);
         void DeleteAllLinksToNode(const std::string &id);
         void UpdateLinkCosts(const std::string &lid, mapcosts costs);

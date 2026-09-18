@@ -65,82 +65,89 @@ namespace hipop
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels)
     {
-        pathCost path;
+        struct QueueItem {
 
-        PriorityQueue pq;
+            double dist;
+            const Node *node;
 
-        std::unordered_map<std::string, double> dist;
-        std::unordered_map<std::string, std::string> prev;
-        prev.reserve(G.mnodes.size());
+            /**
+             * Comparison operator implemented so that:
+             * - the top item in the queue is the one with the smallest dist,
+             * - ... or, in case of ties, the one whose ID comes first in lexicographical order.
+             */
+            bool operator<(const QueueItem &other) const {
+                return dist == other.dist ? node->mid > other.node->mid : dist > other.dist;
+            }
+        };
+
+        const Node *origin_node = G.mnodes.at(origin);
+        const Node *destination_node = G.mnodes.at(destination);
+
+        // Return a 0-node path with zero cost if origin and destination are identical.
+        // Remark: it would be more consistent with the general case to return 1-node path
+        // made of the single origin + destination node.
+        // Still, for compliance with legacy behavior, we return a 0-node path.
+        if (origin_node == destination_node) {
+            pathCost emptyPath;
+            emptyPath.second = 0;
+            return emptyPath;
+        }
+
+        std::unordered_map<const Node *, double> dist;
+        std::unordered_map<const Node *, const Node *> prev;
         dist.reserve(G.mnodes.size());
-        double inf = std::numeric_limits<double>::infinity();
-        for (const auto &keyVal : G.mnodes)
-        {
-            dist[keyVal.first] = inf;
-        }
-        pq.push(make_pair(0, origin));
-        dist[origin] = 0;
+        prev.reserve(G.mnodes.size());
+        dist[origin_node] = 0;
+        prev[origin_node] = nullptr;
 
-        path.second = inf;
-        prev[origin] = "";
+        std::priority_queue<QueueItem> pq;
+        pq.emplace(QueueItem{ 0, origin_node });
 
-        if (origin==destination) {
-        path.second = 0;
-        return path;
-        }
+        while (!pq.empty()) {
 
-        while (!pq.empty())
-        {
-            QueueItem current = pq.top();
+            const Node *u = pq.top().node;
+            double dist_u = dist.at(u);
             pq.pop();
-            std::string u = current.second;
 
-            if (u == destination)
-            {
-                std::string v = prev[u];
-                path.first.push_back(u);
-
-                while (v != origin)
-                {
-                    path.first.push_back(v);
-                    v = prev[v];
+            if (u == destination_node) {
+                pathCost path;
+                for (const Node *v = u; v != nullptr; v = prev.at(v)) {
+                    path.first.emplace_back(v->mid);
                 }
-
-                path.first.push_back(v);
                 std::reverse(path.first.begin(), path.first.end());
-                path.second = dist[destination];
+                path.second = dist_u;
                 return path;
             }
 
-            try
-            {
-                for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
+                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
-                    if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
+                    double cost_on_link = link->getCost(mapLabelCost, cost);
+                    if (cost_on_link < INFINITY)
                     {
-                        if (link->mcosts[mapLabelCost.at(link->mlabel)][cost] < std::numeric_limits<double>::infinity())
-                        {
-                            std::string neighbor = link->mdownstream;
-                            double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+                        const Node *neighbor = link->mdown;
+                        double new_dist = dist_u + cost_on_link;
 
-                            if (dist[neighbor] > new_dist)
-                            {
-                                dist[neighbor] = new_dist;
-                                pq.push(QueueItem(new_dist, neighbor));
-                                prev[neighbor] = u;
-                            }
+                        auto neighbor_it = dist.find(neighbor);
+                        if (neighbor_it == dist.end()) {
+                            neighbor_it = dist.emplace(neighbor, INFINITY).first;
+                        }
+
+                        if (neighbor_it->second > new_dist) {
+                            neighbor_it->second = new_dist;
+                            pq.emplace(QueueItem{ new_dist, neighbor });
+                            prev[neighbor] = u;
                         }
                     }
                 }
-            }
-            catch(const std::out_of_range&)
-            {
-                std::cerr <<  "The node " << u << " does not belong to the graph \n";
-            }
-
-
+            });
         }
-        return path;
+
+        // No path from origin to destination was found: return a 0-node path with infinite cost in this case.
+        // Remark: to make it more expicit, it would be better to return an optional<pathCost> instead.
+        pathCost invalidPath;
+        invalidPath.second = INFINITY;
+        return invalidPath;
     }
 
     /**
@@ -192,7 +199,7 @@ namespace hipop
                 {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
-                        std::string neighbor = link->mdownstream;
+                        std::string neighbor = link->mdown->mid;
                         double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
 
                         if (dist[neighbor] > new_dist)
@@ -259,8 +266,8 @@ namespace hipop
             Link*link = pair.second;
             if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
             {
-                std::string u = link->mupstream;
-                std::string v = link->mdownstream;
+                const std::string &u = link->mup->mid;
+                const std::string &v = link->mdown->mid;
                 dist[nodevMap.at(u)][nodevMap.at(v)] = link->mcosts[mapLabelCost.at(link->mlabel)][cost];
                 prev[nodevMap.at(u)][nodevMap.at(v)] = nodevMap.at(u);
             }
@@ -1267,7 +1274,7 @@ namespace hipop
             {
                 if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
-                    std::string neighbor = link->mdownstream;
+                    const std::string &neighbor = link->mdown->mid;
                     double tentative_score = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
 
                     if (tentative_score < dist[neighbor])
@@ -1390,38 +1397,38 @@ namespace hipop
         }
         for(const auto &keyVal: G.mlinks) {
           doubledG1->AddLink(keyVal.second->mid,
-                          keyVal.second->mupstream,
-                          keyVal.second->mdownstream,
+                          keyVal.second->mup->mid,
+                          keyVal.second->mdown->mid,
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG1->AddLink(keyVal.second->mid + "_TWIN",
-                          keyVal.second->mupstream + "_TWIN",
-                          keyVal.second->mdownstream + "_TWIN",
+                          keyVal.second->mup->mid + "_TWIN",
+                          keyVal.second->mdown->mid + "_TWIN",
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG1->AddLink(keyVal.second->mid + "_TRPL",
-                          keyVal.second->mupstream + "_TRPL",
-                          keyVal.second->mdownstream + "_TRPL",
+                          keyVal.second->mup->mid + "_TRPL",
+                          keyVal.second->mdown->mid + "_TRPL",
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG2->AddLink(keyVal.second->mid,
-                          keyVal.second->mupstream,
-                          keyVal.second->mdownstream,
+                          keyVal.second->mup->mid,
+                          keyVal.second->mdown->mid,
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG2->AddLink(keyVal.second->mid + "_TWIN",
-                          keyVal.second->mupstream + "_TWIN",
-                          keyVal.second->mdownstream + "_TWIN",
+                          keyVal.second->mup->mid + "_TWIN",
+                          keyVal.second->mdown->mid + "_TWIN",
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
           doubledG2->AddLink(keyVal.second->mid + "_TRPL",
-                          keyVal.second->mupstream + "_TRPL",
-                          keyVal.second->mdownstream + "_TRPL",
+                          keyVal.second->mup->mid + "_TRPL",
+                          keyVal.second->mdown->mid + "_TRPL",
                           keyVal.second->mlength,
                           keyVal.second->mcosts,
                           keyVal.second->mlabel);
@@ -1429,8 +1436,8 @@ namespace hipop
           bool original_to_twin_G1 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
           if (original_to_twin_G1) {
             doubledG1->AddLink(keyVal.second->mid + "_ORIGINAL_TO_TWIN",
-                            keyVal.second->mupstream,
-                            keyVal.second->mdownstream + "_TWIN",
+                            keyVal.second->mup->mid,
+                            keyVal.second->mdown->mid + "_TWIN",
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1439,8 +1446,8 @@ namespace hipop
           bool original_to_twin_G2 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
           if (original_to_twin_G2) {
             doubledG2->AddLink(keyVal.second->mid + "_ORIGINAL_TO_TWIN",
-                            keyVal.second->mupstream,
-                            keyVal.second->mdownstream + "_TWIN",
+                            keyVal.second->mup->mid,
+                            keyVal.second->mdown->mid + "_TWIN",
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1449,8 +1456,8 @@ namespace hipop
           bool twin_to_trpl_G1 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
           if (twin_to_trpl_G1) {
             doubledG1->AddLink(keyVal.second->mid + "_TWIN_TO_TRPL",
-                            keyVal.second->mupstream + "_TWIN",
-                            keyVal.second->mdownstream + "_TRPL",
+                            keyVal.second->mup->mid + "_TWIN",
+                            keyVal.second->mdown->mid + "_TRPL",
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1459,8 +1466,8 @@ namespace hipop
           bool twin_to_trpl_G2 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
           if (twin_to_trpl_G2) {
             doubledG2->AddLink(keyVal.second->mid + "_TWIN_TO_TRPL",
-                            keyVal.second->mupstream + "_TWIN",
-                            keyVal.second->mdownstream + "_TRPL",
+                            keyVal.second->mup->mid + "_TWIN",
+                            keyVal.second->mdown->mid + "_TRPL",
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
