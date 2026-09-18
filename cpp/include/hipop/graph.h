@@ -139,8 +139,6 @@ namespace hipop
 
     };
 
-    OrientedGraph* copyGraph(const OrientedGraph &G);
-
     OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &allGraphs);
 
 } // namespace hipop

@@ -718,11 +718,10 @@ namespace hipop
         int nbBatches = paths.size();
 
         std::vector<std::vector<double>> res(nbBatches);
-        OrientedGraph *privateG;
 
-        #pragma omp parallel shared(res, G, paths, cost, mapLabelCost) private(privateG)
+        #pragma omp parallel shared(res, G, paths, cost, mapLabelCost)
         {
-            privateG = copyGraph(G);
+            OrientedGraph privateG = G;
 
             #pragma omp for
             for (int i = 0; i < nbBatches; i++)
@@ -731,17 +730,10 @@ namespace hipop
                 std::vector<double> res_(nbPaths);
                 for (int j = 0; j < nbPaths; j++)
                 {
-                  res_[j] = computePathCost(*privateG, paths[i][j], cost, mapLabelCost);
+                  res_[j] = computePathCost(privateG, paths[i][j], cost, mapLabelCost);
                 }
                 res[i] = res_;
             }
-
-            // Not sure if the omp critical is necessary
-            #pragma omp critical
-            {
-                delete privateG;
-            }
-
         }
 
         return res;
@@ -1134,7 +1126,6 @@ namespace hipop
 
         std::size_t nbODs = origins.size();
         std::vector<std::vector<pathCost>> res(nbODs);
-        OrientedGraph *privateG;
 
         std::vector<int> uniqueIndices;
         std::unordered_map<int, int> duplicateIndices;
@@ -1145,9 +1136,9 @@ namespace hipop
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel shared(res, accessibleLabels, G, vecMapLabelCosts, origins, destinations, kPaths) private(privateG)
+        #pragma omp parallel shared(res, accessibleLabels, G, vecMapLabelCosts, origins, destinations, kPaths)
         {
-            privateG = copyGraph(G);
+            OrientedGraph privateG = G;
 
             #pragma omp for
             for (std::int64_t i = 0; i < nbUniqueIndices; ++i)
@@ -1155,20 +1146,13 @@ namespace hipop
                 int uniqueIdx = uniqueIndices[i];
                 if (accessibleLabels.empty())
                 {
-                    res[uniqueIdx] = KShortestPath(*privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, {}, vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
+                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, {}, vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
                 }
                 else
                 {
-                    res[uniqueIdx] = KShortestPath(*privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, accessibleLabels[uniqueIdx], vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
+                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, accessibleLabels[uniqueIdx], vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
                 }
             }
-
-            // Not sure if the omp critical is necessary
-            #pragma omp critical
-            {
-                delete privateG;
-            }
-
         }
 
         // Set shortest paths of duplicates
@@ -1485,16 +1469,13 @@ namespace hipop
         std::vector<std::string> costs(nbOD, cost);
         tie(uniqueIndices, duplicateIndices, nbPaths) = find_duplicates(origins, destinations, vecMapLabelCosts, costs, kPaths);
 
-        OrientedGraph *privateDoubledG1;
-        OrientedGraph *privateDoubledG2;
-
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel shared(res, vecAvailableLabels, vecMapLabelCosts, origins, destinationsTwin, kPaths, doubledG1, doubledG2) private(privateDoubledG1, privateDoubledG2)
+        #pragma omp parallel shared(res, vecAvailableLabels, vecMapLabelCosts, origins, destinationsTwin, kPaths, doubledG1, doubledG2)
         {
-          privateDoubledG1 = copyGraph(*doubledG1);
-          privateDoubledG2 = copyGraph(*doubledG2);
+          OrientedGraph privateDoubledG1 = *doubledG1;
+          OrientedGraph privateDoubledG2 = *doubledG2;
 
           #pragma omp for
           for (std::int64_t i = 0; i < nbUniqueIndices; i++)
@@ -1506,14 +1487,14 @@ namespace hipop
             if (vecAvailableLabels.empty())
             {
                 // Look for shortest paths on G1
-                resPath1 = KShortestPath(*privateDoubledG1, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
                 // Look for shortest paths on G2
-                resPath2 = KShortestPath(*privateDoubledG2, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
             else
             {
-                resPath1 = KShortestPath(*privateDoubledG1, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
-                resPath2 = KShortestPath(*privateDoubledG2, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
             // Concat resPath1 and resPath2
             resPath1.insert(resPath1.end(), resPath2.begin(), resPath2.end());
@@ -1547,12 +1528,6 @@ namespace hipop
             }
 
 
-        }
-
-        #pragma omp critical
-        {
-            if (privateDoubledG1) delete(privateDoubledG1);
-            if (privateDoubledG2) delete(privateDoubledG2);
         }
       }
       if (doubledG1) delete(doubledG1);
