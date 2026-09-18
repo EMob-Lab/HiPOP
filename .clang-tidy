@@ -5,7 +5,16 @@ WarningsAsErrors: '*'
 
 Checks: # See https://clang.llvm.org/extra/clang-tidy/checks/list.html
 
+  - modernize-*
   - performance-*
+
+  # Requiring all function definitions to follow the trailing-return-type syntax
+  # conflicts with the habits of most C/C++ developers. Moreover, this brings nothing
+  # in terms of performance, and the gain in terms of readability is questionable.
+  # Reminder:
+  # - classic syntax: `int function_name(...) { ... }`
+  # - trailing-return-type syntax: `auto function_name(...) -> int { ... }`
+  - -modernize-use-trailing-return-type
 
   # Avoiding string concatenation with operator+ often comes at the cost of readability,
   # for a limited gain in performance. The real problem to avoid is repeatedly appending

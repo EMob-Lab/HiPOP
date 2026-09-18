@@ -11,10 +11,10 @@
 
 #pragma once
 
-typedef std::set<std::string> setstring;
-typedef std::vector<std::string> vecstring;
-typedef std::unordered_map<std::string, std::set<std::string> > mapsets;
-typedef std::unordered_map<std::string, std::unordered_map<std::string, double> > mapcosts;
+using setstring = std::set<std::string>;
+using vecstring = std::vector<std::string>;
+using mapsets = std::unordered_map<std::string, std::set<std::string>>;
+using mapcosts = std::unordered_map<std::string, std::unordered_map<std::string, double>>;
 
 
 namespace hipop
@@ -37,20 +37,6 @@ namespace hipop
             mlength(length)
         {}
 
-        Link(const Link &other) {
-            mid = other.mid.c_str();
-            mlabel = other.mlabel.c_str();
-            mupstream = other.mupstream.c_str();
-            mdownstream = other.mdownstream.c_str();
-            mlength = other.mlength;
-
-            for(const auto &keyVal: other.mcosts) {
-                mcosts[keyVal.first] = keyVal.second;
-            }
-
-
-        }
-
         void updateCosts(mapcosts costs) {
             mcosts = std::move(costs);
         }
@@ -72,31 +58,6 @@ namespace hipop
             mlabel(std::move(label)),
             mexclude_movements(std::move(exclude_movements))
         {}
-
-        Node(const Node &other) {
-            mid = other.mid.c_str();
-            mposition[0] = other.mposition[0];
-            mposition[1] = other.mposition[1];
-
-            for(const auto &keyVal: other.madj) {
-                Link *l = new Link(*keyVal.second);
-                madj[keyVal.first] = l;
-            }
-
-            for(const auto &keyVal: other.mradj) {
-                Link *l = new Link(*keyVal.second);
-                mradj[keyVal.first] = l;
-            }
-
-            for(const auto &keyVal: other.mexclude_movements) {
-                setstring copy;
-                for(const auto &s: keyVal.second) {
-                    copy.insert(s.c_str());
-                }
-
-                mexclude_movements[keyVal.first] = copy;
-            }
-        }
 
         std::vector<Link*> getExits(const std::string &predecessor = "_default") {
             std::vector<Link*> res;
@@ -128,6 +89,13 @@ namespace hipop
         std::unordered_map<std::string, Node* > mnodes;
         std::unordered_map<std::string, Link* > mlinks;
 
+        /**
+         * Add all the nodes and links from `other` to the current OrientedGraph.
+         *
+         * The pre-existing nodes and links of the current OrientedGraph are preserved.
+         */
+        void AddAllNodesAndLinks(const OrientedGraph &other);
+
         void AddNode(std::string id, double x, double y, std::string label = "", mapsets excludeMovements = {});
         void AddNode(Node *n);
         void AddLink(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "");
@@ -146,23 +114,14 @@ namespace hipop
             return mlinks[id];
         }
 
-        OrientedGraph() {};
-        OrientedGraph(const OrientedGraph &other) {
-            for(const auto &keyVal: other.mnodes) {
-                Node *newNode = new Node(*keyVal.second);
-                mnodes[keyVal.first] = newNode;
-            }
-
-            for(const auto &keyVal: other.mlinks) {
-                Link *newLink = new Link(*keyVal.second);
-                mlinks[keyVal.first] = newLink;
-            }
-        }
+        OrientedGraph() = default;
+        OrientedGraph(const OrientedGraph &other);
+        OrientedGraph(OrientedGraph &&other) noexcept = default;
+        OrientedGraph &operator=(const OrientedGraph &other);
+        OrientedGraph &operator=(OrientedGraph &&other) noexcept = default;
         ~OrientedGraph();
 
     };
-
-    OrientedGraph* copyGraph(const OrientedGraph &G);
 
     OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &allGraphs);
 
