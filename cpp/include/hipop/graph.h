@@ -5,6 +5,7 @@
 #include <set>
 #include <vector>
 #include <array>
+#include <utility>
 
 #include <iostream>
 
@@ -27,14 +28,14 @@ namespace hipop
         std::string mlabel;
         double mlength;
 
-        Link(std::string _id, std::string _up, std::string _down, double length, mapcosts _costs, std::string label = "") {
-            mid = _id.c_str();
-            mlabel = label.c_str();
-            mupstream = _up.c_str();
-            mdownstream = _down.c_str();
-            mcosts = _costs;
-            mlength = length;
-        }
+        Link(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "") :
+            mid(std::move(id)),
+            mupstream(std::move(up)),
+            mdownstream(std::move(down)),
+            mcosts(std::move(costs)),
+            mlabel(std::move(label)),
+            mlength(length)
+        {}
 
         Link(const Link &other) {
             mid = other.mid.c_str();
@@ -51,11 +52,7 @@ namespace hipop
         }
 
         void updateCosts(mapcosts costs) {
-            for(const auto &keyMapCost: costs) {
-                for(const auto &keyVal: keyMapCost.second) {
-                    mcosts[keyMapCost.first][keyVal.first] = keyVal.second;
-                }
-            }
+            mcosts = std::move(costs);
         }
     };
 
@@ -67,16 +64,14 @@ namespace hipop
         std::unordered_map<std::string, Link* > madj;
         std::unordered_map<std::string, Link* > mradj;
         std::string mlabel;
-
         mapsets mexclude_movements;
 
-        Node(std::string _id, double x, double y, std::string label = "", mapsets exclude_movements = {}) {
-            mid = _id.c_str();
-            mposition[0] = x;
-            mposition[1] = y;
-            mexclude_movements = exclude_movements;
-            mlabel = label.c_str();
-        }
+        Node(std::string id, double x, double y, std::string label = "", mapsets exclude_movements = {}) :
+            mid(std::move(id)),
+            mposition{ x, y },
+            mlabel(std::move(label)),
+            mexclude_movements(std::move(exclude_movements))
+        {}
 
         Node(const Node &other) {
             mid = other.mid.c_str();
@@ -103,7 +98,7 @@ namespace hipop
             }
         }
 
-        std::vector<Link*> getExits(std::string predecessor = "_default") {
+        std::vector<Link*> getExits(const std::string &predecessor = "_default") {
             std::vector<Link*> res;
             for(const auto &l: madj) {
                 std::string neighbor = l.second->mdownstream;
@@ -114,7 +109,7 @@ namespace hipop
             return res;
         }
 
-        std::vector<Link*> getEntrances(std::string predecessor) {
+        std::vector<Link*> getEntrances(const std::string &predecessor) {
             std::vector<Link*> res;
             for(const auto &l: mradj) {
                 std::string neighbor = l.second->mupstream;
@@ -132,22 +127,23 @@ namespace hipop
     public:
         std::unordered_map<std::string, Node* > mnodes;
         std::unordered_map<std::string, Link* > mlinks;
-        void AddNode(std::string _id, double x, double y, std::string label = "", mapsets excludeMovements = {});
+
+        void AddNode(std::string id, double x, double y, std::string label = "", mapsets excludeMovements = {});
         void AddNode(Node *n);
-        void AddLink(std::string _id, std::string _up, std::string _down, double length, mapcosts _costs, std::string label = "");
+        void AddLink(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "");
         void AddLink(Link* l);
-        void DeleteLink(std::string _id);
-        void DeleteAllLinksToNode(std::string _id);
-        void UpdateLinkCosts(std::string lid, mapcosts _costs);
-        void UpdateCosts(std::unordered_map<std::string, mapcosts> maplinkcosts);
-        double getLength(std::string _up, std::string _down);
-        std::vector<std::string> GetLinksWithoutCost(std::string cost, const std::unordered_map<std::string, std::string> &mapLabelCost);
+        void DeleteLink(const std::string &id);
+        void DeleteAllLinksToNode(const std::string &id);
+        void UpdateLinkCosts(const std::string &lid, mapcosts costs);
+        void UpdateCosts(const std::unordered_map<std::string, mapcosts> &maplinkcosts);
+        double getLength(const std::string &up, const std::string &down);
+        std::vector<std::string> GetLinksWithoutCost(const std::string &cost, const std::unordered_map<std::string, std::string> &mapLabelCost);
 
         void ShowNodes();
         void ShowLinks();
 
-        Link* getLink(std::string  _id) {
-            return mlinks[_id];
+        Link* getLink(const std::string &id) {
+            return mlinks[id];
         }
 
         OrientedGraph() {};
@@ -168,6 +164,6 @@ namespace hipop
 
     OrientedGraph* copyGraph(const OrientedGraph &G);
 
-    OrientedGraph* mergeOrientedGraph(std::vector<const OrientedGraph*> allGraphs);
+    OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &allGraphs);
 
 } // namespace hipop

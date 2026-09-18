@@ -28,7 +28,7 @@ Remarks:
   conda activate hipop-dev
   ```
 
-- On MacOS with Apple Clang, OpenMP is not bundled. Use
+- On MacOS with Apple Clang, OpenMP is not bundled by default. Use:
   ```shell
   brew install libomp
   export OpenMP_ROOT=$(brew --prefix libomp)
@@ -100,6 +100,31 @@ and can be overridden by setting the `CMAKE_BUILD_TYPE` environment variable
 before invoking `cmake`.
 
 C++ tests are defined in `cpp/tests`.
+
+
+### Run static analysis of the C++ code
+
+HiPOP uses [clang-tidy](https://clang.llvm.org/extra/clang-tidy/) to catch bugs and performance
+issues beyond what compiler warnings cover. To enable it, follow the "Build and run the C++ test suite"
+workflow above, additionally passing `-DHIPOP_USE_CLANG_TIDY=ON` to `cmake`.
+The static analysis checks will then be run as part of the build.
+
+Configuration is in the `.clang-tidy` files (repository root, plus incremental overrides
+in subdirectories where needed).
+
+Remarks:
+
+- On Linux with GCC, clang-tidy additionally needs the LLVM OpenMP development headers.
+  On Ubuntu/Debian, can be installed with:
+  ```shell
+  sudo apt install libomp-dev
+  ```
+
+- On MacOS, clang-tidy is not installed by default. Use:
+  ```shell
+  brew install llvm
+  export CLANG_TIDY_ROOT=$(brew --prefix llvm)
+  ```
 
 
 ### Generate distribution files

@@ -9,7 +9,7 @@ on:
 jobs:
 
   lint:
-    name: Linting & static analysis
+    name: Linting
     runs-on: ubuntu-latest
 
     steps:
@@ -48,6 +48,22 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install LLVM OpenMP dev headers (Linux only)
+        if: runner.os == 'Linux'
+        # clang-tidy needs the LLVM OpenMP dev headers to process OpenMP-dependent code,
+        # which are not available by default on the Linux runners.
+        run: sudo apt-get update && sudo apt-get install -y libomp-dev
+
+      - name: Install LLVM toolchain (macOS only)
+        if: runner.os == 'macOS'
+        # clang-tidy is not available by default on the macOS runners,
+        # thus it must be installed separately to enable static analysis.
+        # The environment variable CLANG_TIDY_ROOT is then exported for subsequent steps
+        # (see script `cmake/ClangTidySettings.cmake`, which uses it as a search hint).
+        run: |
+          brew install llvm
+          echo "CLANG_TIDY_ROOT=$(brew --prefix llvm)" >> "$GITHUB_ENV"
+
       - name: Install OpenMP (macOS only)
         if: runner.os == 'macOS'
         # AppleClang has no OpenMP by default, thus it must be installed separately.
@@ -58,9 +74,9 @@ jobs:
           echo "OpenMP_ROOT=$(brew --prefix libomp)" >> "$GITHUB_ENV"
 
       - name: C++ core library - Configure
-        run: cmake -S . -B build-cpponly -G Ninja
+        run: cmake -S . -B build-cpponly -G Ninja -DHIPOP_USE_CLANG_TIDY=ON
 
-      - name: C++ core library - Build
+      - name: C++ core library - Build & static analysis
         run: cmake --build build-cpponly
 
       - name: C++ core library - Run tests

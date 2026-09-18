@@ -1,0 +1,15 @@
+---
+
+HeaderFilterRegex: hipop/.*
+WarningsAsErrors: '*'
+
+Checks: # See https://clang.llvm.org/extra/clang-tidy/checks/list.html
+
+  - performance-*
+
+  # Avoiding string concatenation with operator+ often comes at the cost of readability,
+  # for a limited gain in performance. The real problem to avoid is repeatedly appending
+  # to the same string instance in a loop. Unfortunately, this check can't reliably tell
+  # that situation apart from harmless one-off concatenations,
+  # and raises lots of false positives instead.
+  - -performance-inefficient-string-concatenation

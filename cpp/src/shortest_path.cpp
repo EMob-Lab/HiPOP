@@ -20,7 +20,7 @@ typedef std::pair<double, std::string> QueueItem;
 typedef std::priority_queue<QueueItem, std::vector<QueueItem>, std::greater<QueueItem>> PriorityQueue;
 typedef std::unordered_map<std::string, std::string> ShortestPathsTree;
 
-bool remove_value(PriorityQueue& pq, std::string value) {
+bool remove_value(PriorityQueue& pq, const std::string &value) {
     std::vector<std::pair<double, std::string>> temp;
 
     // Remove all occurrences of the value from the priority queue
@@ -63,7 +63,7 @@ namespace hipop
         const std::string &destination,
         const std::string &cost,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
-        setstring accessibleLabels)
+        const setstring &accessibleLabels)
     {
         pathCost path;
 
@@ -159,7 +159,7 @@ namespace hipop
         const std::string &origin,
         const std::string &cost,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
-        setstring accessibleLabels)
+        const setstring &accessibleLabels)
     {
 
         PriorityQueue pq;
@@ -201,7 +201,7 @@ namespace hipop
                             bool found = remove_value(pq, neighbor);
                             if (!found)
                             {
-                                std::cerr << "There must be negative cost cycles... Invalid call of Dijkstra." << std::endl;
+                                std::cerr << "There must be negative cost cycles... Invalid call of Dijkstra.\n";
                             }
                             pq.push(QueueItem(new_dist, neighbor));
                             prev[neighbor] = u;
@@ -232,7 +232,7 @@ namespace hipop
         const OrientedGraph &G,
         const std::string &cost,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
-        setstring accessibleLabels)
+        const setstring &accessibleLabels)
     {
         int V = G.mnodes.size();
 
@@ -308,7 +308,7 @@ namespace hipop
     std::tuple<std::vector<int>, std::unordered_map<int, int>, std::unordered_map<int, int>> find_duplicates(
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
-        const std::vector<std::unordered_map<std::string, std::string> > &vecMapLabelCosts,
+        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
         const std::vector<std::string> & costs,
         const std::vector<int> &kPaths)
     {
@@ -316,10 +316,10 @@ namespace hipop
         std::vector<std::string> ODsLabelCosts;
         for (int i = 0; i < nbODs; ++i)
         {
-            std::string o = origins[i];
-            std::string d = destinations[i];
-            std::string cost = costs[i];
-            std::unordered_map<std::string, std::string> mapLabelCosts = vecMapLabelCosts[i];
+            const std::string &o = origins[i];
+            const std::string &d = destinations[i];
+            const std::string &cost = costs[i];
+            const std::unordered_map<std::string, std::string> &mapLabelCosts = vecMapLabelCosts[i];
             std::vector<std::pair<std::string, std::string>> vecLabelCosts = std::vector<std::pair<std::string, std::string>>(mapLabelCosts.begin(), mapLabelCosts.end());
             std::sort(vecLabelCosts.begin(), vecLabelCosts.end(), [](const std::pair<std::string,std::string> &left, const std::pair<std::string,std::string> &right) {
                 return left.first < right.first;
@@ -381,12 +381,12 @@ namespace hipop
      */
     std::vector<pathCost> parallelDijkstra(
         const OrientedGraph &G,
-        std::vector<std::string> origins,
-        std::vector<std::string> destinations,
-        std::vector<std::unordered_map<std::string, std::string> > vecMapLabelCosts,
-        std::string cost,
+        const std::vector<std::string> &origins,
+        const std::vector<std::string> &destinations,
+        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
+        const std::string &cost,
         int threadNumber,
-        std::vector<setstring> vecAvailableLabels)
+        const std::vector<setstring> &vecAvailableLabels)
     {
         omp_set_num_threads(threadNumber);
 
@@ -439,11 +439,11 @@ namespace hipop
      */
     std::vector<ShortestPathsTree> parallelDijkstraSingleSource(
         const OrientedGraph &G,
-        std::vector<std::string> origins,
-        std::vector<std::unordered_map<std::string, std::string> > vecMapLabelCosts,
-        std::string cost,
+        const std::vector<std::string> &origins,
+        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
+        const std::string &cost,
         int threadNumber,
-        std::vector<setstring> vecAvailableLabels)
+        const std::vector<setstring> &vecAvailableLabels)
     {
         omp_set_num_threads(threadNumber);
 
@@ -480,12 +480,12 @@ namespace hipop
      */
     std::vector<pathCost> parallelDijkstraHeterogeneousCosts(
         const OrientedGraph &G,
-        std::vector<std::string> origins,
-        std::vector<std::string> destinations,
-        std::vector<std::unordered_map<std::string, std::string> > vecMapLabelCosts,
-        std::vector<std::string> costs,
+        const std::vector<std::string> &origins,
+        const std::vector<std::string> &destinations,
+        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
+        const std::vector<std::string> &costs,
         int threadNumber,
-        std::vector<setstring> vecAvailableLabels)
+        const std::vector<setstring> &vecAvailableLabels)
     {
         omp_set_num_threads(threadNumber);
 
@@ -600,7 +600,7 @@ namespace hipop
                 // Increase cost of all corresponding links and save initial costs
                 for (int j = 0; j < 5; ++j)
                 {
-                    std::string corresponding_link_id = corresponding_links_ids[j];
+                    const std::string &corresponding_link_id = corresponding_links_ids[j];
                     if (G.mlinks.find(corresponding_link_id) != G.mlinks.end())
                     {
                         Link *corresponding_link = G.mlinks[corresponding_link_id];
@@ -619,7 +619,7 @@ namespace hipop
                 // Only increase cost of all corresponding links
                 for (int j = 0; j < 5; ++j)
                 {
-                    std::string corresponding_link_id = corresponding_links_ids[j];
+                    const std::string &corresponding_link_id = corresponding_links_ids[j];
                     if (G.mlinks.find(corresponding_link_id) != G.mlinks.end())
                     {
                         Link *corresponding_link = G.mlinks[corresponding_link_id];
@@ -712,7 +712,7 @@ namespace hipop
         OrientedGraph &G,
         const std::vector<std::vector<std::vector<std::string>>> &paths,
         const std::string &cost,
-        const std::unordered_map<std::string, std::string> mapLabelCost,
+        const std::unordered_map<std::string, std::string> &mapLabelCost,
         int threadNumber)
     {
         omp_set_num_threads(threadNumber);
@@ -757,7 +757,11 @@ namespace hipop
      * @param mapLabelCost The type of cost map to choose on each label
      * @return double The total cost of the path
      */
-    double computePathCost(OrientedGraph &G, const std::vector<std::string> &path, std::string cost, const std::unordered_map<std::string, std::string> mapLabelCost)
+    double computePathCost(
+        OrientedGraph &G,
+        const std::vector<std::string> &path,
+        const std::string &cost,
+        const std::unordered_map<std::string, std::string> &mapLabelCost)
     {
         double c = 0;
 
@@ -786,7 +790,12 @@ namespace hipop
      * @param initialCosts The effective costs values to use for some links
      * @return double The total cost of the path
      */
-    double computePathCostWithInitialCostsDict(OrientedGraph &G, const std::vector<std::string> &path, std::string cost, const std::unordered_map<std::string, std::string> mapLabelCost, linkMapCosts initialCosts)
+    double computePathCostWithInitialCostsDict(
+        OrientedGraph &G,
+        const std::vector<std::string> &path,
+        const std::string &cost,
+        const std::unordered_map<std::string, std::string> &mapLabelCost,
+        linkMapCosts initialCosts)
     {
         double c = 0;
 
@@ -817,14 +826,14 @@ namespace hipop
      *
      * @param path The path to print
      */
-    void showPath(pathCost path)
+    void showPath(const pathCost &path)
     {
         std::cout << path.second << " [";
         for (const auto &p : path.first)
         {
             std::cout << p << ", ";
         }
-        std::cout << "]" << std::endl;
+        std::cout << "]\n" << std::flush;
     }
 
     /**
@@ -832,14 +841,14 @@ namespace hipop
      *
      * @param path The path to print
      */
-    void showPathNodes(std::vector<std::string> path)
+    void showPathNodes(const std::vector<std::string> &path)
     {
         std::cout << " [";
         for (const auto &p : path)
         {
             std::cout << p << ", ";
         }
-        std::cout << "]" << std::endl;
+        std::cout << "]\n" << std::flush;
     }
 
 
@@ -849,7 +858,7 @@ namespace hipop
      * @param path The path to decode
      * @return decodedPath The decoded path
      */
-    std::vector<std::string> decodeIntermodalPath(std::vector<std::string> path)
+    std::vector<std::string> decodeIntermodalPath(const std::vector<std::string> &path)
     {
         int pathSize = path.size();
         std::vector<std::string> decodedPath(pathSize);
@@ -895,7 +904,7 @@ namespace hipop
         const std::string &origin,
         const std::string &destination,
         const std::string &cost,
-        setstring accessibleLabels,
+        const setstring &accessibleLabels,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         double maxDiffCost,
         double maxDistInCommon,
@@ -947,11 +956,15 @@ namespace hipop
             bool isNew = true;
             if (intermodal)
             {
-                isNew = (std::all_of(paths.cbegin(), paths.cend(), [newPath](pathCost p){ return decodeIntermodalPath(p.first) != decodeIntermodalPath(newPath.first); }));
+                isNew = std::all_of(paths.cbegin(), paths.cend(), [newPath](const pathCost &p){
+                    return decodeIntermodalPath(p.first) != decodeIntermodalPath(newPath.first);
+                });
             }
             else
             {
-                isNew = (std::all_of(paths.cbegin(), paths.cend(), [newPath](pathCost p){ return p.first != newPath.first; }));
+                isNew = std::all_of(paths.cbegin(), paths.cend(), [newPath](const pathCost &p){
+                    return p.first != newPath.first;
+                });
             }
 
             if (maxDistInCommonChecked && maxDiffCostChecked && isNew)
@@ -998,10 +1011,10 @@ namespace hipop
      */
     std::vector<pathCost> YenKShortestPath(
         OrientedGraph &G,
-        std::string origin,
-        std::string destination,
-        std::string cost,
-        setstring accessibleLabels,
+        const std::string &origin,
+        const std::string &destination,
+        const std::string &cost,
+        const setstring &accessibleLabels,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         int kPath)
     {
@@ -1074,8 +1087,9 @@ namespace hipop
                 break;
             }
 
-            std::sort(B.begin(), B.end(), [](pathCost a, pathCost b)
-                    { return a.second < b.second; });
+            std::sort(B.begin(), B.end(), [](const pathCost &a, const pathCost &b) {
+                return a.second < b.second;
+            });
             A.push_back(B[0]);
             B.erase(B.begin());
         }
@@ -1108,8 +1122,8 @@ namespace hipop
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
         const std::string &cost,
-        const std::vector<std::unordered_map<std::string, std::string> > vecMapLabelCosts,
-        const std::vector<setstring> accessibleLabels,
+        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
+        const std::vector<setstring> &accessibleLabels,
         double maxDiffCost,
         double maxDistInCommon,
         double costMultiplier,
@@ -1171,8 +1185,9 @@ namespace hipop
             std::vector<pathCost> res_paths = res[i];
             if (res_paths.size() > k)
             {
-                std::sort(res_paths.begin(), res_paths.end(), [](pathCost a, pathCost b)
-                  { return a.second < b.second; });
+                std::sort(res_paths.begin(), res_paths.end(), [](const pathCost &a, const pathCost &b) {
+                    return a.second < b.second;
+                });
                 std::vector<pathCost> res_k_best_paths(res_paths.begin(), res_paths.begin() + k);
                 res[i] = res_k_best_paths;
             }
@@ -1200,7 +1215,7 @@ namespace hipop
         const std::string &cost,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels,
-        std::function<double(const Node *, const Node *)> heuristic)
+        const std::function<double(const Node *, const Node *)> &heuristic)
     {
         pathCost path;
 
@@ -1325,18 +1340,18 @@ namespace hipop
      */
     std::vector<std::vector<pathCost>> parallelKIntermodalShortestPath(
         const OrientedGraph &G,
-        std::vector<std::string> origins,
-        std::vector<std::string> destinations,
-        std::vector<std::unordered_map<std::string, std::string> > vecMapLabelCosts,
-        std::string cost,
+        const std::vector<std::string> &origins,
+        const std::vector<std::string> &destinations,
+        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
+        const std::string &cost,
         int threadNumber,
-        std::pair<std::unordered_set<std::string>, std::unordered_set<std::string>> pairMandatoryLabels,
+        const std::pair<std::unordered_set<std::string>, std::unordered_set<std::string>> &pairMandatoryLabels,
         double maxDiffCost,
         double maxDistInCommon,
         double costMultiplier,
         int maxRetry,
-        std::vector<int> kPaths,
-        std::vector<setstring> vecAvailableLabels)
+        const std::vector<int> &kPaths,
+        const std::vector<setstring> &vecAvailableLabels)
     {
         // Create doubled graph two ways
         OrientedGraph *doubledG1 = new OrientedGraph(); // pass first on first elem of pairMandatoryLabels
@@ -1454,6 +1469,7 @@ namespace hipop
 
         // Set destinations as nodes of the trpl graph
         std::vector<std::string> destinationsTwin;
+        destinationsTwin.reserve(destinations.size());
         for (const auto &destination : destinations) {
           destinationsTwin.push_back(destination + "_TRPL");
         }
@@ -1517,8 +1533,9 @@ namespace hipop
             resPath1.erase(std::unique( resPath1.begin(), resPath1.end() ), resPath1.end() );
 
             // Keep the k best paths found
-            std::sort(resPath1.begin(), resPath1.end(), [](pathCost a, pathCost b)
-              { return a.second < b.second; });
+            std::sort(resPath1.begin(), resPath1.end(), [](const pathCost &a, const pathCost &b) {
+                return a.second < b.second;
+            });
             std::size_t currentNbPaths = nbPaths[idx];
             if (resPath1.size() >= currentNbPaths)
             {
@@ -1555,8 +1572,9 @@ namespace hipop
           std::vector<pathCost> res_paths = res[i];
           if (res_paths.size() > k)
           {
-              std::sort(res_paths.begin(), res_paths.end(), [](pathCost a, pathCost b)
-                { return a.second < b.second; });
+              std::sort(res_paths.begin(), res_paths.end(), [](const pathCost &a, const pathCost &b) {
+                return a.second < b.second;
+              });
               std::vector<pathCost> res_k_best_paths(res_paths.begin(), res_paths.begin() + k);
               res[i] = res_k_best_paths;
           }
