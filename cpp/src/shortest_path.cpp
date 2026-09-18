@@ -16,9 +16,8 @@
 #include <cmath>
 #include <cstdint>
 
-typedef std::pair<double, std::string> QueueItem;
-typedef std::priority_queue<QueueItem, std::vector<QueueItem>, std::greater<QueueItem>> PriorityQueue;
-typedef std::unordered_map<std::string, std::string> ShortestPathsTree;
+using QueueItem = std::pair<double, std::string>;
+using PriorityQueue = std::priority_queue<QueueItem, std::vector<QueueItem>, std::greater<>>;
 
 bool remove_value(PriorityQueue& pq, const std::string &value) {
     std::vector<std::pair<double, std::string>> temp;
@@ -78,7 +77,7 @@ namespace hipop
         {
             dist[keyVal.first] = inf;
         }
-        pq.push(make_pair(0, origin));
+        pq.emplace(0, origin);
         dist[origin] = 0;
 
         path.second = inf;
@@ -126,7 +125,7 @@ namespace hipop
                             if (dist[neighbor] > new_dist)
                             {
                                 dist[neighbor] = new_dist;
-                                pq.push(QueueItem(new_dist, neighbor));
+                                pq.emplace(new_dist, neighbor);
                                 prev[neighbor] = u;
                             }
                         }
@@ -173,10 +172,10 @@ namespace hipop
             dist[keyVal.first] = inf;
             if (keyVal.first != origin)
             {
-                pq.push(make_pair(inf, keyVal.first));
+                pq.emplace(inf, keyVal.first);
             }
         }
-        pq.push(make_pair(0, origin));
+        pq.emplace(0, origin);
         dist[origin] = 0;
         prev[origin] = "";
 
@@ -203,7 +202,7 @@ namespace hipop
                             {
                                 std::cerr << "There must be negative cost cycles... Invalid call of Dijkstra.\n";
                             }
-                            pq.push(QueueItem(new_dist, neighbor));
+                            pq.emplace(new_dist, neighbor);
                             prev[neighbor] = u;
                         }
                     }
@@ -523,7 +522,7 @@ namespace hipop
         return res;
     }
 
-    typedef std::unordered_map<std::string, mapcosts> linkMapCosts;
+    using linkMapCosts = std::unordered_map<std::string, mapcosts>;
 
     /**
      * @brief Increase the cost in a OrientedGraph for a path
@@ -1230,7 +1229,7 @@ namespace hipop
         {
             dist[keyVal.first] = inf;
         }
-        pq.push(make_pair(0, origin));
+        pq.emplace(0, origin);
         dist[origin] = 0;
 
         path.second = inf;
@@ -1273,7 +1272,7 @@ namespace hipop
                     if (tentative_score < dist[neighbor])
                     {
                         dist[neighbor] = tentative_score;
-                        pq.push(QueueItem(tentative_score + heuristic(G.mnodes.at(u), G.mnodes.at(destination)), neighbor));
+                        pq.emplace(tentative_score + heuristic(G.mnodes.at(u), G.mnodes.at(destination)), neighbor);
                         prev[neighbor] = u;
                     }
                 }
@@ -1354,8 +1353,8 @@ namespace hipop
         const std::vector<setstring> &vecAvailableLabels)
     {
         // Create doubled graph two ways
-        OrientedGraph *doubledG1 = new OrientedGraph(); // pass first on first elem of pairMandatoryLabels
-        OrientedGraph *doubledG2 = new OrientedGraph(); // pass first on second elem of pairMandatoryLabels
+        auto doubledG1 = new OrientedGraph(); // pass first on first elem of pairMandatoryLabels
+        auto doubledG2 = new OrientedGraph(); // pass first on second elem of pairMandatoryLabels
         for(const auto &keyVal: G.mnodes) {
             doubledG1->AddNode(keyVal.second->mid,
                             keyVal.second->mposition[0],

@@ -7,9 +7,8 @@
 
 #pragma once
 
-typedef std::set<std::string> setstring;
-typedef std::pair<std::vector<std::string>, double> pathCost;
-typedef std::unordered_map<std::string, std::string> ShortestPathsTree;
+using pathCost = std::pair<std::vector<std::string>, double>;
+using ShortestPathsTree = std::unordered_map<std::string, std::string>;
 
 namespace hipop
 {

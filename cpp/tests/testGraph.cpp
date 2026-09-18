@@ -13,14 +13,14 @@
 // WARNING: any modification in this test should be reflected in the python test as well.
 int testGraph(int, char**)
 {
-    hipop::OrientedGraph *G = new hipop::OrientedGraph();
+    auto G = new hipop::OrientedGraph();
     G->AddNode("a", 0, 0);
 
     std::unordered_map<std::string, std::set<std::string> > excludeMovements;
     excludeMovements["a"] = {"c"};
     G->AddNode("b", 2, 5, "", excludeMovements);
 
-    hipop::Node *newNode = new hipop::Node("c", 12., 43.);
+    auto newNode = new hipop::Node("c", 12., 43.);
     G->AddNode(newNode);
 
     G->AddNode("d", 435, 345);

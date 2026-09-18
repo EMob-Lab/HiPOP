@@ -27,7 +27,7 @@ namespace hipop
      * @return OrientedGraph*
      */
     OrientedGraph* makeManhattan(int n, double linkLength) {
-        OrientedGraph *G = new OrientedGraph();
+        auto G = new OrientedGraph();
 
         for (int i = 0; i < n; i++)
         {

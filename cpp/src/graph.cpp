@@ -20,14 +20,12 @@ namespace hipop
      *
      */
     OrientedGraph::~OrientedGraph() {
-        for (auto iter : mlinks) {
+        for (const auto &iter : mlinks) {
             delete iter.second;
-            iter.second = NULL;
         }
 
-        for (auto iter : mnodes) {
+        for (const auto &iter : mnodes) {
             delete iter.second;
-            iter.second = NULL;
         }
 
         mnodes.clear();
@@ -113,7 +111,6 @@ namespace hipop
 
             mlinks.erase(id);
             delete pLink;
-            pLink = NULL;
         }
     };
 
@@ -126,10 +123,8 @@ namespace hipop
 
         if (mnodes.find(id) != mnodes.end())
         {
-            Node* pNode = mnodes[id];
-            for (auto it = pNode->madj.begin(); it!= pNode->madj.end(); it++)
-            {
-                DeleteLink(it->second->mid);
+            for (const auto &it : mnodes[id]->madj) {
+                DeleteLink(it.second->mid);
             }
         }
 
@@ -152,9 +147,8 @@ namespace hipop
      */
     void OrientedGraph::UpdateCosts(const std::unordered_map<std::string, mapcosts> &maplinkcosts)
     {
-        for (auto it = maplinkcosts.begin(); it!= maplinkcosts.end(); it++)
-        {
-            UpdateLinkCosts(it->first, it->second);
+        for (const auto &it : maplinkcosts) {
+            UpdateLinkCosts(it.first, it.second);
         }
     }
 
@@ -197,7 +191,7 @@ namespace hipop
      * @return OrientedGraph* The copy
      */
     OrientedGraph* copyGraph(const OrientedGraph &G) {
-        OrientedGraph* newGraph = new OrientedGraph();
+        auto newGraph = new OrientedGraph();
 
         for(const auto &keyVal: G.mnodes) {
             // Node *n = new Node();
@@ -231,7 +225,7 @@ namespace hipop
      * @return OrientedGraph* The result of the merge
      */
     OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &allGraphs) {
-        OrientedGraph *newGraph = new OrientedGraph();
+        auto newGraph = new OrientedGraph();
 
         for(auto G:allGraphs) {
             for(const auto &keyValNodes:G->mnodes) {
