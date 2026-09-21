@@ -33,6 +33,9 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+dependencies = [
+    "matplotlib >= 3.10",
+]
 
 [project.urls]
 Repository = "https://github.com/EMob-Lab/HiPOP"
