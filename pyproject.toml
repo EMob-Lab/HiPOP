@@ -50,6 +50,7 @@ build = [ # Dependencies needed for build tasks. Must be kept identical to "buil
 ]
 lint = [ # Dependencies needed for linting / static analysis.
     "pre-commit >= 4.6",
+    "pyrefly >= 1.3",
 ]
 test = [ # Dependencies needed for test tasks. Must be kept identical to tool.cibuildwheel."test-requires"
     "pytest >= 9.1",

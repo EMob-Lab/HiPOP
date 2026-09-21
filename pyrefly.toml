@@ -1,0 +1,13 @@
+project-includes = [
+    "python/**/*.py",
+]
+search-path = [
+    "python",
+    "build-scikit/python/stubs",
+]
+preset = "strict"
+
+[errors]
+unannotated-return = "error"
+unnecessary-type-conversion = "error"
+untyped-import = "error"
