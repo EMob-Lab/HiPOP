@@ -4,6 +4,10 @@ InheritParentConfig: true
 
 Checks:
 
+  # By their very nature, tests and examples are full of magic numbers: to initialize inputs,
+  # to assert output results, etc... and this is normal.
+  - -cppcoreguidelines-avoid-magic-numbers
+
   # `std::endl` should be avoided in production code since it is potentially sub-efficient
   # (see https://clang.llvm.org/extra/clang-tidy/checks/performance/avoid-endl.html).
   # Still, for tests and examples, it improves readibility.

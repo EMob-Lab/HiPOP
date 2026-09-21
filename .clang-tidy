@@ -5,8 +5,25 @@ WarningsAsErrors: '*'
 
 Checks: # See https://clang.llvm.org/extra/clang-tidy/checks/list.html
 
+  - cppcoreguidelines-*
   - modernize-*
   - performance-*
+
+  # FIXME Significant legacy code refactoring would be necessary to address these warnings properly
+  # (in particular, it would require to carefully review the integral types used to encode
+  # the inputs and outputs of graph algorithm functions).
+  - -cppcoreguidelines-narrowing-conversions
+
+  # FIXME Definitively worth enabling, but this would require to modify the graph data-structure
+  # (to use smart pointers to manage Node/Link allocations - or even better to allocate them in-place
+  # in the `mnodes`/`mlinks` maps), with impacts on the Python API. To be addressed in a dedicated change.
+  - -cppcoreguidelines-owning-memory
+
+  # These checks require to use bounds-checked accessors on containers (e.g. `.at()` instead of `operator[]`).
+  # Disabled because of the performance cost in hot loops, and because they raise false positives:
+  # the index may be valid by the general logic of the algorithm, even if the checks can't deduce it.
+  - -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access
+  - -cppcoreguidelines-pro-bounds-constant-array-index
 
   # Requiring all function definitions to follow the trailing-return-type syntax
   # conflicts with the habits of most C/C++ developers. Moreover, this brings nothing
