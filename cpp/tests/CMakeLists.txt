@@ -5,9 +5,10 @@ set(Tests
     testDijkstra1.cpp
     testDijkstra2.cpp
     testKShortestPath.cpp
-    testYenKShortestPath.cpp
     testManhattan.cpp
     testparallelKShortestPath.cpp
+    testStringUtil.cpp
+    testYenKShortestPath.cpp
 )
 
 # Create a single executable (aka. the driver) capable of running each registered test.
