@@ -1,0 +1,15 @@
+# Generate the type stubs for module `hipop.cpp`.
+#
+# Variables to be set at configure time:
+# - Python_EXECUTABLE: python interpreter that the extension is built for (used to run pybind11-stubgen).
+# - HIPOP_STUBS_DIR: directory where pybind11-stubgen writes the stubs.
+
+# Remove the output of previous runs, if any.
+file(REMOVE_RECURSE "@HIPOP_STUBS_DIR@")
+
+# Stub generation using the pybind11_stubgen tool.
+execute_process(
+    COMMAND "@Python_EXECUTABLE@" -m pybind11_stubgen hipop.cpp --output-dir "@HIPOP_STUBS_DIR@"
+    WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}" # `python -m` adds the working directory to the module search path.
+    COMMAND_ERROR_IS_FATAL ANY
+)

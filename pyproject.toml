@@ -45,6 +45,7 @@ Issues = "https://github.com/EMob-Lab/HiPOP/issues"
 build = [ # Dependencies needed for build tasks. Must be kept identical to "build-system".requires
     "dynamic-metadata >= 0.5",
     "pybind11 >= 3.1",
+    "pybind11-stubgen >= 2.5",
     "scikit-build-core >= 1.0",
 ]
 lint = [ # Dependencies needed for linting / static analysis.
@@ -71,6 +72,7 @@ distrib = [ # Dependencies needed to build distribution files (wheels & source d
 requires = [ # Must be kept identical to "dependency-groups".build
     "dynamic-metadata >= 0.5",
     "pybind11 >= 3.1",
+    "pybind11-stubgen >= 2.5",
     "scikit-build-core >= 1.0",
 ]
 build-backend = "scikit_build_core.build"
