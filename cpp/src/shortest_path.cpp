@@ -403,12 +403,12 @@ namespace hipop
                 return left.first < right.first;
             });
 
-            std::string ODLabelCosts = o + d + cost;
+            std::string ODLabelCosts = StrCat(o, d, cost);
             for (const auto &labelCosts : vecLabelCosts)
             {
-                ODLabelCosts = ODLabelCosts + "-" + labelCosts.first + ":" + labelCosts.second;
+                StrAppend(ODLabelCosts, "-", labelCosts.first, ":", labelCosts.second);
             }
-            ODsLabelCosts.push_back(ODLabelCosts);
+            ODsLabelCosts.emplace_back(std::move(ODLabelCosts));
         }
 
         std::set<std::string> s;

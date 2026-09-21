@@ -1,4 +1,5 @@
 #include "hipop/graph.h"
+#include "hipop/string_util.h"
 
 #include <unordered_map>
 #include <string>
@@ -47,26 +48,26 @@ namespace hipop
                 if(j < n-1) {
                     std::string upstream = std::to_string(ind);
                     std::string downstream = std::to_string(ind+1);
-                    G->AddLink(upstream + "_" + downstream, upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
+                    G->AddLink(StrCat(upstream, "_" , downstream), upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
                 }
 
                 if(j > 0) {
                     std::string upstream = std::to_string(ind);
                     std::string downstream = std::to_string(ind-1);
-                    G->AddLink(upstream + "_" + downstream, upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
+                    G->AddLink(StrCat(upstream, "_" , downstream), upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
                 }
 
                 if(i < n - 1) {
                     std::string upstream = std::to_string(ind);
                     std::string downstream = std::to_string(ind+n);
 
-                    G->AddLink(upstream + "_" + downstream, upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
+                    G->AddLink(StrCat(upstream, "_" , downstream), upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
                 }
 
                 if(i > 0) {
                     std::string upstream = std::to_string(ind);
                     std::string downstream = std::to_string(ind-n);
-                    G->AddLink(upstream + "_" + downstream, upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
+                    G->AddLink(StrCat(upstream, "_" , downstream), upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
                 }
             }
 
@@ -75,43 +76,43 @@ namespace hipop
         int counter = 0;
         for (int i = 0; i < n; i++)
         {
-            std::string upstream = "WEST_"+std::to_string(i);
+            std::string upstream = StrCat("WEST_", std::to_string(i));
             std::string downstream = std::to_string(i);
             G->AddNode(upstream, -linkLength, i*linkLength);
-            G->AddLink(upstream+"_"+downstream, upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
-            G->AddLink(downstream+"_"+upstream, downstream, upstream, linkLength, makeSimpleCostMap(linkLength));
+            G->AddLink(StrCat(upstream, "_" , downstream), upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
+            G->AddLink(StrCat(downstream, "_" , upstream), downstream, upstream, linkLength, makeSimpleCostMap(linkLength));
         }
 
         counter = 0;
         for (int i = n*(n-1); i < n*n; i++)
         {
-            std::string upstream = "EAST_"+std::to_string(counter);
+            std::string upstream = StrCat("EAST_", std::to_string(counter));
             std::string downstream = std::to_string(i);
             G->AddNode(upstream, n*linkLength, counter*linkLength);
-            G->AddLink(upstream+"_"+downstream, upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
-            G->AddLink(downstream+"_"+upstream, downstream, upstream, linkLength, makeSimpleCostMap(linkLength));
+            G->AddLink(StrCat(upstream, "_" , downstream), upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
+            G->AddLink(StrCat(downstream, "_" , upstream), downstream, upstream, linkLength, makeSimpleCostMap(linkLength));
             counter++;
         }
 
         counter = 0;
         for (int i = n-1; i < n*n; i+=n)
         {
-            std::string upstream = "NORTH_"+std::to_string(counter);
+            std::string upstream = StrCat("NORTH_", std::to_string(counter));
             std::string downstream = std::to_string(i);
             G->AddNode(upstream, counter*linkLength, n*linkLength);
-            G->AddLink(upstream+"_"+downstream, upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
-            G->AddLink(downstream+"_"+upstream, downstream, upstream, linkLength, makeSimpleCostMap(linkLength));
+            G->AddLink(StrCat(upstream, "_" , downstream), upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
+            G->AddLink(StrCat(downstream, "_" , upstream), downstream, upstream, linkLength, makeSimpleCostMap(linkLength));
             counter++;
         }
 
         counter = 0;
         for (int i = 0; i < n*n; i+=n)
         {
-            std::string upstream = "SOUTH_"+std::to_string(counter);
+            std::string upstream = StrCat("SOUTH_", std::to_string(counter));
             std::string downstream = std::to_string(i);
             G->AddNode(upstream, counter*linkLength, -linkLength);
-            G->AddLink(upstream+"_"+downstream, upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
-            G->AddLink(downstream+"_"+upstream, downstream, upstream, linkLength, makeSimpleCostMap(linkLength));
+            G->AddLink(StrCat(upstream, "_" , downstream), upstream, downstream, linkLength, makeSimpleCostMap(linkLength));
+            G->AddLink(StrCat(downstream, "_" , upstream), downstream, upstream, linkLength, makeSimpleCostMap(linkLength));
             counter++;
         }
 
