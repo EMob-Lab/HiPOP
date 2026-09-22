@@ -199,7 +199,7 @@ namespace hipop
                         double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
                         if (cost_on_link < std::numeric_limits<double>::infinity())
                         {
-                            std::string neighbor = link->mdownstream;
+                            const std::string &neighbor = link->mdown->mid;
                             double new_dist = dist[u] + cost_on_link;
 
                             if (dist[neighbor] > new_dist)
@@ -272,7 +272,7 @@ namespace hipop
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
                         double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
-                        std::string neighbor = link->mdownstream;
+                        const std::string &neighbor = link->mdown->mid;
                         double new_dist = dist[u] + cost_on_link;
 
                         if (dist[neighbor] > new_dist)
@@ -339,8 +339,8 @@ namespace hipop
             Link*link = pair.second;
             if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
             {
-                std::string u = link->mupstream;
-                std::string v = link->mdownstream;
+                const std::string &u = link->mup->mid;
+                const std::string &v = link->mdown->mid;
                 dist[nodevMap.at(u)][nodevMap.at(v)] = link->cost(mapLabelCost.at(link->mlabel), cost);
                 prev[nodevMap.at(u)][nodevMap.at(v)] = nodevMap.at(u);
             }
@@ -1315,7 +1315,7 @@ namespace hipop
                 if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
                     double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
-                    std::string neighbor = link->mdownstream;
+                    const std::string &neighbor = link->mdown->mid;
                     double tentative_score = dist[u] + cost_on_link;
 
                     if (tentative_score < dist[neighbor])
@@ -1438,38 +1438,38 @@ namespace hipop
         }
         for(const auto &keyVal: G.mlinks) {
             doubledG1.AddLink(keyVal.second->mid,
-                            keyVal.second->mupstream,
-                            keyVal.second->mdownstream,
+                            keyVal.second->mup->mid,
+                            keyVal.second->mdown->mid,
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TWIN),
-                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
-                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TRIPLE_TRIPLE),
-                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TRIPLE),
-                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TRIPLE),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG2.AddLink(keyVal.second->mid,
-                            keyVal.second->mupstream,
-                            keyVal.second->mdownstream,
+                            keyVal.second->mup->mid,
+                            keyVal.second->mdown->mid,
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TWIN),
-                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
-                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TRIPLE_TRIPLE),
-                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TRIPLE),
-                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TRIPLE),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1477,8 +1477,8 @@ namespace hipop
             bool original_to_twin_G1 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
             if (original_to_twin_G1) {
                 doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
-                                keyVal.second->mupstream,
-                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                                keyVal.second->mup->mid,
+                                StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
                                 keyVal.second->mlabel);
@@ -1487,8 +1487,8 @@ namespace hipop
             bool original_to_twin_G2 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
             if (original_to_twin_G2) {
                 doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
-                                keyVal.second->mupstream,
-                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                                keyVal.second->mup->mid,
+                                StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
                                 keyVal.second->mlabel);
@@ -1497,8 +1497,8 @@ namespace hipop
             bool twin_to_trpl_G1 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
             if (twin_to_trpl_G1) {
                 doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TRIPLE),
-                                StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
-                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                                StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TWIN),
+                                StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TRIPLE),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
                                 keyVal.second->mlabel);
@@ -1507,8 +1507,8 @@ namespace hipop
             bool twin_to_trpl_G2 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
             if (twin_to_trpl_G2) {
                 doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TRIPLE),
-                                StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
-                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                                StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TWIN),
+                                StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TRIPLE),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
                                 keyVal.second->mlabel);

@@ -64,8 +64,8 @@ namespace hipop
             const Link *otherLink = it.second;
             AddLink(
                 otherLink->mid,
-                otherLink->mupstream,
-                otherLink->mdownstream,
+                otherLink->mup->mid,
+                otherLink->mdown->mid,
                 otherLink->mlength,
                 otherLink->mcosts,
                 otherLink->mlabel
@@ -99,10 +99,14 @@ namespace hipop
      * @param costs The costs of the Link
      * @param label The optional label of the Link
      */
-    void OrientedGraph::AddLink(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label) {
-        Link *new_link = new Link(std::move(id), std::move(up), std::move(down), length, std::move(costs), std::move(label));
-        mnodes[new_link->mupstream]->madj.emplace(new_link->mdownstream, new_link);
-        mnodes[new_link->mdownstream]->mradj.emplace(new_link->mupstream, new_link);
+    void OrientedGraph::AddLink(std::string id, const std::string &up, const std::string &down, double length, mapcosts costs, std::string label) {
+
+        Node *up_node = mnodes.at(up);
+        Node *down_node = mnodes.at(down);
+
+        Link *new_link = new Link(std::move(id), up_node, down_node, length, std::move(costs), std::move(label));
+        up_node->madj.emplace(down, new_link);
+        down_node->mradj.emplace(up, new_link);
         mlinks.emplace(new_link->mid, new_link);
     }
 
@@ -118,16 +122,16 @@ namespace hipop
         {
             Link* pLink = mlinks[id];
 
-            if (mnodes.find(pLink->mupstream) != mnodes.end())
+            if (mnodes.find(pLink->mup->mid) != mnodes.end())
             {
-                Node* pUp = mnodes[pLink->mupstream];
-                pUp->madj.erase(pLink->mdownstream);
+                Node* pUp = mnodes[pLink->mup->mid];
+                pUp->madj.erase(pLink->mdown->mid);
             }
 
-            if (mnodes.find(pLink->mdownstream) != mnodes.end())
+            if (mnodes.find(pLink->mdown->mid) != mnodes.end())
             {
-                Node* pDown = mnodes[pLink->mdownstream];
-                pDown->mradj.erase(pLink->mupstream);
+                Node* pDown = mnodes[pLink->mdown->mid];
+                pDown->mradj.erase(pLink->mup->mid);
             }
 
             mlinks.erase(id);
@@ -189,7 +193,7 @@ namespace hipop
      */
     void OrientedGraph::ShowLinks() {
         for(const auto &elem: mlinks) {
-            std::cout << "Link(" << elem.first << ", " << elem.second->mupstream << ", " << elem.second->mdownstream << ")\n";
+            std::cout << "Link(" << elem.first << ", " << elem.second->mup->mid << ", " << elem.second->mdown->mid << ")\n";
         }
     }
 

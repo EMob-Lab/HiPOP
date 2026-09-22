@@ -11,8 +11,8 @@ namespace hipop_wrappers {
 void graph(py::module_ &m) {
     py::class_<hipop::Link>(m, "Link")
         .def_readonly("id", &hipop::Link::mid)
-        .def_readonly("upstream", &hipop::Link::mupstream)
-        .def_readonly("downstream", &hipop::Link::mdownstream)
+        .def_property_readonly("upstream", [](const hipop::Link &link) { return link.mup->mid; })
+        .def_property_readonly("downstream", [](const hipop::Link &link) { return link.mdown->mid; })
         .def_readonly("costs", &hipop::Link::mcosts)
         .def_readonly("label", &hipop::Link::mlabel)
         .def_readonly("length", &hipop::Link::mlength)

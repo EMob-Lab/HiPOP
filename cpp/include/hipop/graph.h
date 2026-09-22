@@ -19,21 +19,24 @@ using mapcosts = std::unordered_map<std::string, std::unordered_map<std::string,
 
 namespace hipop
 {
+    class Node;
+
+
     class Link {
     public:
         std::string mid;
-        std::string mupstream;
-        std::string mdownstream;
+        const Node *mup;
+        const Node *mdown;
         mapcosts mcosts; // mcosts[modality][cost-metric] -> cost-value
         std::string mlabel;
         double mlength;
 
     private:
 
-        Link(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "") :
+        Link(std::string id, const Node *up, const Node *down, double length, mapcosts costs, std::string label = "") :
             mid(std::move(id)),
-            mupstream(std::move(up)),
-            mdownstream(std::move(down)),
+            mup(up),
+            mdown(down),
             mcosts(std::move(costs)),
             mlabel(std::move(label)),
             mlength(length)
@@ -110,7 +113,7 @@ namespace hipop
         std::vector<Link*> getExits(const std::string &predecessor = "_default") {
             std::vector<Link*> res;
             for(const auto &l: madj) {
-                std::string neighbor = l.second->mdownstream;
+                const std::string &neighbor = l.second->mdown->mid;
                 if(mexclude_movements.find(predecessor) == mexclude_movements.end() || mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
                     res.push_back(l.second);
                 }
@@ -121,7 +124,7 @@ namespace hipop
         std::vector<Link*> getEntrances(const std::string &predecessor) {
             std::vector<Link*> res;
             for(const auto &l: mradj) {
-                std::string neighbor = l.second->mupstream;
+                const std::string &neighbor = l.second->mup->mid;
                 if(mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
                     res.push_back(l.second);
                 }
@@ -145,7 +148,7 @@ namespace hipop
         void AddAllNodesAndLinks(const OrientedGraph &other);
 
         void AddNode(std::string id, double x, double y, std::string label = "", mapsets excludeMovements = {});
-        void AddLink(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "");
+        void AddLink(std::string id, const std::string &up, const std::string &down, double length, mapcosts costs, std::string label = "");
         void DeleteLink(const std::string &id);
         void DeleteAllLinksToNode(const std::string &id);
         void UpdateLinkCosts(const std::string &lid, mapcosts costs);
