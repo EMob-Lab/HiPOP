@@ -190,8 +190,7 @@ namespace hipop
                 return path;
             }
 
-            for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
-            {
+            G.mnodes.at(u)->forEachExit(prev[u], [&](const Link *link) {
                 if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
                     double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
@@ -208,7 +207,7 @@ namespace hipop
                         }
                     }
                 }
-            }
+            });
         }
         return path;
     }
@@ -256,8 +255,7 @@ namespace hipop
             pq.pop();
             std::string u = current.second;
 
-            for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
-            {
+            G.mnodes.at(u)->forEachExit(prev[u], [&](const Link *link) {
                 if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
                     double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
@@ -276,7 +274,7 @@ namespace hipop
                         prev[neighbor] = u;
                     }
                 }
-            }
+            });
       }
 
 
@@ -1294,8 +1292,7 @@ namespace hipop
                 return path;
             }
 
-            for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
-            {
+            G.mnodes.at(u)->forEachExit(prev[u], [&](const Link *link) {
                 if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
                     double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
@@ -1309,7 +1306,7 @@ namespace hipop
                         prev[neighbor] = u;
                     }
                 }
-            }
+            });
         }
         return path;
     }

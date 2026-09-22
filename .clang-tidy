@@ -9,6 +9,15 @@ Checks: # See https://clang.llvm.org/extra/clang-tidy/checks/list.html
   - modernize-*
   - performance-*
 
+  # This check assumes that each `T&&` function argument (with `T` a template parameter of the function)
+  # is meant to be forwarded (see F.19 principle from C++ Core Guidelines, as referred in
+  # https://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines/missing-std-forward.html).
+  # Still, `T&&`-arguments may have other roles - typically be used as "universal references"
+  # (see Scott Meyers: https://isocpp.org/blog/2012/11/universal-references-in-c11-scott-meyers).
+  # In that case, the rule may raise false positives - and blindly applying its suggested
+  # fix may even break the code's behavior.
+  - -cppcoreguidelines-missing-std-forward
+
   # FIXME Significant legacy code refactoring would be necessary to address these warnings properly
   # (in particular, it would require to carefully review the integral types used to encode
   # the inputs and outputs of graph algorithm functions).

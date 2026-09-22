@@ -27,7 +27,7 @@ int testGraph(int, char**)
     G->AddLink("b_c", "b", "c", 12, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");
     G->AddLink("b_d", "b", "d", 12, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");
 
-    std::vector<hipop::Link*> exits = G->mnodes["b"]->getExits("a");
+    std::vector<const hipop::Link*> exits = G->mnodes["b"]->getExits("a");
 
     assertTrue(exits.size()==1, "Exits does not return one link");
     assertTrue(exits[0]->mdown->mid=="d", "Node should be d");

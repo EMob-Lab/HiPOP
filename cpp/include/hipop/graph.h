@@ -110,26 +110,43 @@ namespace hipop
         Node &operator=(Node &&other) = delete;
         ~Node() = default;
 
-        std::vector<Link*> getExits(const std::string &predecessor = "_default") {
-            std::vector<Link*> res;
-            for(const auto &l: madj) {
-                const std::string &neighbor = l.second->mdown->mid;
-                if(mexclude_movements.find(predecessor) == mexclude_movements.end() || mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
-                    res.push_back(l.second);
+        /**
+         * Assuming we follow a path in the graph, and that we come from node `predecessor`,
+         * this method computes all the allowed exit links from the current node, and invokes
+         * the given callback for each allowed exit link.
+         *
+         * The allowed exit links are always a subset of the outgoing links of the current node.
+         * Still some outgoing links might be disallowed due to movement restrictions.
+         *
+         * @param predecessor ID of the previous node on a path.
+         * @param callback Must be a callable object with the following signature: `void(const Link *link)`.
+         *                 The callback must not modify the graph structure.
+         */
+        template<typename Callback>
+        void forEachExit(const std::string &predecessor, Callback &&callback) const {
+            for (const auto &l : madj) {
+                auto it = mexclude_movements.find(predecessor);
+                if (it == mexclude_movements.end() || it->second.find(l.second->mdown->mid) == it->second.end()) {
+                    callback(const_cast<const Link*>(l.second));
                 }
             }
-            return res;
         }
 
-        std::vector<Link*> getEntrances(const std::string &predecessor) {
-            std::vector<Link*> res;
-            for(const auto &l: mradj) {
-                const std::string &neighbor = l.second->mup->mid;
-                if(mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
-                    res.push_back(l.second);
-                }
-            }
-            return res;
+        /**
+         * Assuming we follow a path in the graph, and that we come from node `predecessor`,
+         * this method returns all the allowed exit links from the current node.
+         *
+         * The allowed exit links are always a subset of the outgoing links of the current node.
+         * Still some outgoing links might be disallowed due to movement restrictions.
+         *
+         * Time-critical functions should prefer using forEachExit() instead (less memory allocation overhead).
+         *
+         * @param predecessor ID of the previous node on a path.
+         */
+        std::vector<const Link*> getExits(const std::string &predecessor) const {
+            std::vector<const Link*> result;
+            forEachExit(predecessor, [&result](const Link *link) { result.emplace_back(link); });
+            return result;
         }
 
     };
