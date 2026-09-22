@@ -190,34 +190,25 @@ namespace hipop
                 return path;
             }
 
-            try
+            for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
             {
-                for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
+                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
-                    if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
+                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                    if (cost_on_link < std::numeric_limits<double>::infinity())
                     {
-                        double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
-                        if (cost_on_link < std::numeric_limits<double>::infinity())
-                        {
-                            const std::string &neighbor = link->mdown->mid;
-                            double new_dist = dist[u] + cost_on_link;
+                        const std::string &neighbor = link->mdown->mid;
+                        double new_dist = dist[u] + cost_on_link;
 
-                            if (dist[neighbor] > new_dist)
-                            {
-                                dist[neighbor] = new_dist;
-                                pq.emplace(new_dist, neighbor);
-                                prev[neighbor] = u;
-                            }
+                        if (dist[neighbor] > new_dist)
+                        {
+                            dist[neighbor] = new_dist;
+                            pq.emplace(new_dist, neighbor);
+                            prev[neighbor] = u;
                         }
                     }
                 }
             }
-            catch(const std::out_of_range&)
-            {
-                std::cerr <<  "The node " << u << " does not belong to the graph \n";
-            }
-
-
         }
         return path;
     }
@@ -265,33 +256,26 @@ namespace hipop
             pq.pop();
             std::string u = current.second;
 
-            try
+            for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
             {
-                for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
+                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
-                    if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
-                    {
-                        double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
-                        const std::string &neighbor = link->mdown->mid;
-                        double new_dist = dist[u] + cost_on_link;
+                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                    const std::string &neighbor = link->mdown->mid;
+                    double new_dist = dist[u] + cost_on_link;
 
-                        if (dist[neighbor] > new_dist)
+                    if (dist[neighbor] > new_dist)
+                    {
+                        dist[neighbor] = new_dist;
+                        bool found = remove_value(pq, neighbor);
+                        if (!found)
                         {
-                            dist[neighbor] = new_dist;
-                            bool found = remove_value(pq, neighbor);
-                            if (!found)
-                            {
-                                std::cerr << "There must be negative cost cycles... Invalid call of Dijkstra.\n";
-                            }
-                            pq.emplace(new_dist, neighbor);
-                            prev[neighbor] = u;
+                            std::cerr << "There must be negative cost cycles... Invalid call of Dijkstra.\n";
                         }
+                        pq.emplace(new_dist, neighbor);
+                        prev[neighbor] = u;
                     }
                 }
-            }
-            catch(const std::out_of_range&)
-            {
-                std::cerr <<  "The node " << u << " does not belong to the graph \n";
             }
       }
 
