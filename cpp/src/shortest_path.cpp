@@ -143,73 +143,88 @@ namespace hipop
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels)
     {
-        pathCost path;
+        struct DijkstraQueueItem {
 
-        PriorityQueue pq;
+            double dist;
+            const Node *node;
 
-        std::unordered_map<std::string, double> dist;
-        std::unordered_map<std::string, std::string> prev;
-        prev.reserve(G.mnodes.size());
+            /**
+             * Comparison operator implemented so that:
+             * - the top item in the queue is the one with the smallest dist,
+             * - ... or, in case of ties, the one whose ID comes first in lexicographical order.
+             */
+            bool operator<(const DijkstraQueueItem &other) const {
+                return dist == other.dist ? node->mid > other.node->mid : dist > other.dist;
+            }
+        };
+
+        const Node *origin_node = G.mnodes.at(origin);
+        const Node *destination_node = G.mnodes.at(destination);
+
+        // Return a 0-node path with zero cost if origin and destination are identical.
+        // Remark: it would be more consistent with the general case to return 1-node path
+        // made of the single origin + destination node.
+        // Still, for compliance with legacy behavior, we return a 0-node path.
+        if (origin_node == destination_node) {
+            pathCost empty_path;
+            empty_path.second = 0;
+            return empty_path;
+        }
+
+        std::unordered_map<const Node*, double> dist; // No nullptr keys in this map.
+        std::unordered_map<const Node*, const Node*> prev; // No nullptr (neither as key nor as value) in this map.
         dist.reserve(G.mnodes.size());
-        double inf = std::numeric_limits<double>::infinity();
-        for (const auto &keyVal : G.mnodes)
-        {
-            dist[keyVal.first] = inf;
-        }
-        pq.emplace(0, origin);
-        dist[origin] = 0;
+        prev.reserve(G.mnodes.size());
+        dist[origin_node] = 0;
+        // `prev[origin_node]` is intentionally left unset (the origin node has no predecessor).
 
-        path.second = inf;
-        prev[origin] = "";
+        std::priority_queue<DijkstraQueueItem> pq;
+        pq.emplace(DijkstraQueueItem{ 0, origin_node });
 
-        if (origin==destination) {
-        path.second = 0;
-        return path;
-        }
+        while (!pq.empty()) {
 
-        while (!pq.empty())
-        {
-            QueueItem current = pq.top();
+            const Node *u = pq.top().node;
+            double dist_u = dist.at(u);
             pq.pop();
-            std::string u = current.second;
 
-            if (u == destination)
-            {
-                std::string v = prev[u];
-                path.first.push_back(u);
-
-                while (v != origin)
-                {
-                    path.first.push_back(v);
-                    v = prev[v];
+            if (u == destination_node) {
+                pathCost path;
+                for (auto it = prev.find(u); it != prev.end(); it = prev.find(it->second)) {
+                    path.first.emplace_back(it->first->mid);
                 }
-
-                path.first.push_back(v);
+                path.first.emplace_back(origin_node->mid);
                 std::reverse(path.first.begin(), path.first.end());
-                path.second = dist[destination];
+                path.second = dist_u;
                 return path;
             }
 
-            G.mnodes.at(u)->forEachExit(prev[u], [&](const Link *link) {
-                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
-                {
-                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
-                    if (cost_on_link < std::numeric_limits<double>::infinity())
-                    {
-                        const std::string &neighbor = link->mdown->mid;
-                        double new_dist = dist[u] + cost_on_link;
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
+                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
 
-                        if (dist[neighbor] > new_dist)
-                        {
-                            dist[neighbor] = new_dist;
-                            pq.emplace(new_dist, neighbor);
-                            prev[neighbor] = u;
-                        }
+                    // The Dijkstra algorithm requires that all link costs are >= 0, and so does
+                    // the current implementation. `cost_on_link` must NOT be NaN either.
+                    // However, having link costs equal to +infinity is allowed:
+                    // the corresponding links are never visited.
+
+                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                    double new_dist = dist_u + cost_on_link;
+                    const Node *neighbor = link->mdown;
+
+                    auto neighbor_it = dist.try_emplace(neighbor, INFINITY).first;
+                    if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
+                        neighbor_it->second = new_dist;
+                        pq.emplace(DijkstraQueueItem{ new_dist, neighbor });
+                        prev[neighbor] = u;
                     }
                 }
             });
         }
-        return path;
+
+        // No path from origin to destination was found: return a 0-node path with infinite cost in this case.
+        // Remark: to make it more expicit, it would be better to return an optional<pathCost> instead.
+        pathCost invalid_path;
+        invalid_path.second = INFINITY;
+        return invalid_path;
     }
 
     /**
