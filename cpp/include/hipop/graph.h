@@ -24,7 +24,7 @@ namespace hipop
         std::string mid;
         std::string mupstream;
         std::string mdownstream;
-        mapcosts mcosts;
+        mapcosts mcosts; // mcosts[modality][cost-metric] -> cost-value
         std::string mlabel;
         double mlength;
 
@@ -44,6 +44,26 @@ namespace hipop
         Link &operator=(const Link &other) = delete;
         Link &operator=(Link &&other) = delete;
         ~Link() = default;
+
+        /**
+         * Read the cost value associated to the current link, assuming the given modality and cost metric.
+         *
+         * @return 0 if no cost value is explicitly set for the given modality and/or cost metric.
+         *         FIXME It would be probably better to either throw an exception or return a +inf value
+         *         (i.e. considering that the underlying link is effectively impassable) if no cost value
+         *         is explicitly set. Still, 0 is returned to match the legacy behavior.
+         */
+        double cost(const std::string &modality, const std::string &cost) const {
+            auto it1 = mcosts.find(modality);
+            if (it1 == mcosts.end()) {
+                return 0;
+            }
+            auto it2 = it1->second.find(cost);
+            if (it2 == it1->second.end()) {
+                return 0;
+            }
+            return it2->second;
+        }
 
         void updateCosts(mapcosts costs) {
             mcosts = std::move(costs);

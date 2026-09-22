@@ -196,10 +196,11 @@ namespace hipop
                 {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
-                        if (link->mcosts[mapLabelCost.at(link->mlabel)][cost] < std::numeric_limits<double>::infinity())
+                        double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                        if (cost_on_link < std::numeric_limits<double>::infinity())
                         {
                             std::string neighbor = link->mdownstream;
-                            double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+                            double new_dist = dist[u] + cost_on_link;
 
                             if (dist[neighbor] > new_dist)
                             {
@@ -270,8 +271,9 @@ namespace hipop
                 {
                     if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                     {
+                        double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
                         std::string neighbor = link->mdownstream;
-                        double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+                        double new_dist = dist[u] + cost_on_link;
 
                         if (dist[neighbor] > new_dist)
                         {
@@ -339,7 +341,7 @@ namespace hipop
             {
                 std::string u = link->mupstream;
                 std::string v = link->mdownstream;
-                dist[nodevMap.at(u)][nodevMap.at(v)] = link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+                dist[nodevMap.at(u)][nodevMap.at(v)] = link->cost(mapLabelCost.at(link->mlabel), cost);
                 prev[nodevMap.at(u)][nodevMap.at(v)] = nodevMap.at(u);
             }
         }
@@ -833,7 +835,7 @@ namespace hipop
           for (size_t i = 0; i < path.size() - 1; i++)
           {
               Link *link = G.mnodes[path[i]]->madj[path[i + 1]];
-              c += link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+              c += link->cost(mapLabelCost.at(link->mlabel), cost);
           }
           return c;
         }
@@ -873,7 +875,7 @@ namespace hipop
               }
               else
               {
-                  c += link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+                  c += link->cost(mapLabelCost.at(link->mlabel), cost);
               }
           }
           return c;
@@ -1312,8 +1314,9 @@ namespace hipop
             {
                 if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
                 {
+                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
                     std::string neighbor = link->mdownstream;
-                    double tentative_score = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+                    double tentative_score = dist[u] + cost_on_link;
 
                     if (tentative_score < dist[neighbor])
                     {
