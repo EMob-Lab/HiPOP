@@ -20,8 +20,7 @@ int testGraph(int, char**)
     excludeMovements["a"] = {"c"};
     G->AddNode("b", 2, 5, "", excludeMovements);
 
-    auto newNode = new hipop::Node("c", 12., 43.);
-    G->AddNode(newNode);
+    G->AddNode("c", 12., 43.);
 
     G->AddNode("d", 435, 345);
     G->AddLink("a_b", "a", "b", 12, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");

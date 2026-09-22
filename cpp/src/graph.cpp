@@ -86,17 +86,7 @@ namespace hipop
     void OrientedGraph::AddNode(std::string id, double x, double y, std::string label, mapsets excludeMovements) {
         Node *new_node = new Node(std::move(id), x, y, std::move(label), std::move(excludeMovements));
         mnodes[new_node->mid] = new_node;
-    };
-
-
-    /**
-     * @brief Add an exisiting Node to the OrientedGraph
-     *
-     * @param n
-     */
-    void OrientedGraph::AddNode(Node* n) {
-        mnodes[n->mid] = n;
-    };
+    }
 
 
     /**
@@ -114,19 +104,8 @@ namespace hipop
         mnodes[new_link->mupstream]->madj.emplace(new_link->mdownstream, new_link);
         mnodes[new_link->mdownstream]->mradj.emplace(new_link->mupstream, new_link);
         mlinks.emplace(new_link->mid, new_link);
-    };
+    }
 
-    /**
-     * @brief Add an existing Link to the OrientedGraph
-     *
-     * @param l The Link to add
-     */
-    void OrientedGraph::AddLink(Link *l) {
-        mnodes[l->mupstream]->madj[l->mdownstream] = l;
-        mnodes[l->mdownstream]->mradj[l->mupstream] = l;
-
-        mlinks[l->mid] = l;
-    };
 
     /**
      * @brief Delete a link from the OrientedGraph

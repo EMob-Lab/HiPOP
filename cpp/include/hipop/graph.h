@@ -28,6 +28,8 @@ namespace hipop
         std::string mlabel;
         double mlength;
 
+    private:
+
         Link(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "") :
             mid(std::move(id)),
             mupstream(std::move(up)),
@@ -36,6 +38,10 @@ namespace hipop
             mlabel(std::move(label)),
             mlength(length)
         {}
+
+        friend class OrientedGraph;
+
+    public:
 
         // Relationships between Node and Link instances are materialized through raw pointers.
         // Copying and/or moving these instances would break these relationships.
@@ -80,12 +86,18 @@ namespace hipop
         std::string mlabel;
         mapsets mexclude_movements;
 
+    private:
+
         Node(std::string id, double x, double y, std::string label = "", mapsets exclude_movements = {}) :
             mid(std::move(id)),
             mposition{ x, y },
             mlabel(std::move(label)),
             mexclude_movements(std::move(exclude_movements))
         {}
+
+        friend class OrientedGraph;
+
+    public:
 
         // Relationships between Node and Link instances are materialized through raw pointers.
         // Copying and/or moving these instances would break these relationships.
@@ -133,9 +145,7 @@ namespace hipop
         void AddAllNodesAndLinks(const OrientedGraph &other);
 
         void AddNode(std::string id, double x, double y, std::string label = "", mapsets excludeMovements = {});
-        void AddNode(Node *n);
         void AddLink(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "");
-        void AddLink(Link* l);
         void DeleteLink(const std::string &id);
         void DeleteAllLinksToNode(const std::string &id);
         void UpdateLinkCosts(const std::string &lid, mapcosts costs);

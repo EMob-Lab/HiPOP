@@ -10,8 +10,6 @@ namespace hipop_wrappers {
 
 void graph(py::module_ &m) {
     py::class_<hipop::Link>(m, "Link")
-        .def(py::init<std::string, std::string, std::string, double, mapcosts,  std::string>(),
-             py::arg("id"), py::arg("up"), py::arg("down"), py::arg("length"), py::arg("cost"), py::arg("label") = "")
         .def_readonly("id", &hipop::Link::mid)
         .def_readonly("upstream", &hipop::Link::mupstream)
         .def_readonly("downstream", &hipop::Link::mdownstream)
@@ -21,8 +19,6 @@ void graph(py::module_ &m) {
         .def("update_costs", &hipop::Link::updateCosts);
 
     py::class_<hipop::Node>(m, "Node")
-          .def(py::init<std::string, double, double, std::string, std::unordered_map<std::string, std::set<std::string> > >(),
-               py::arg("id"), py::arg("x"), py::arg("y"), py::arg("label") = "",py::arg("exclude_movements") = mapsets())
           .def_readonly("id", &hipop::Node::mid)
           .def_readonly("position", &hipop::Node::mposition)
           .def_readonly("adj", &hipop::Node::madj)
@@ -36,9 +32,8 @@ void graph(py::module_ &m) {
           .def(py::init<>())
           .def_readwrite("nodes", &hipop::OrientedGraph::mnodes)
           .def_readwrite("links", &hipop::OrientedGraph::mlinks)
-          .def("add_node", py::overload_cast<std::string, double, double, std::string, mapsets>(&hipop::OrientedGraph::AddNode), py::arg("id"), py::arg("x"), py::arg("y"), py::arg("label"), py::arg("exclude_movements") = mapsets())
-          .def("add_node", py::overload_cast<hipop::Node*>(&hipop::OrientedGraph::AddNode), py::arg("node"))
-          .def("add_link", py::overload_cast<std::string, std::string, std::string, double, mapcosts, std::string>(&hipop::OrientedGraph::AddLink),
+          .def("add_node", &hipop::OrientedGraph::AddNode, py::arg("id"), py::arg("x"), py::arg("y"), py::arg("label"), py::arg("exclude_movements") = mapsets())
+          .def("add_link", &hipop::OrientedGraph::AddLink,
                py::arg("id"), py::arg("up"), py::arg("down"), py::arg("length"), py::arg("costs"), py::arg("label") = "_def")
           .def("delete_link",&hipop::OrientedGraph::DeleteLink)
           .def("delete_all_links_to_node",&hipop::OrientedGraph::DeleteAllLinksToNode)
