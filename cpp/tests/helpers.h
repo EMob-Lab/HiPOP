@@ -2,11 +2,13 @@
 
 #include <hipop/shortest_path.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 
 inline void assertTrue(bool test, std::string_view message) {
@@ -62,6 +64,30 @@ inline void assertEqualPaths(const pathCost &actual, const pathCost &expected, s
         std::cerr << "  actual:   ";
         print(actual);
         std::cerr << "  expected: ";
+        print(expected);
+
+        throw std::runtime_error(static_cast<std::string>(message));
+    }
+}
+
+
+inline void assertEqualShortestPathsTrees(const ShortestPathsTree &actual, const ShortestPathsTree &expected,
+    std::string_view message) {
+
+    if (actual != expected) {
+        std::cerr << "[ERROR] " << message << '\n';
+
+        auto print = [](const ShortestPathsTree &tree) {
+            std::vector<std::pair<std::string, std::string>> sorted(tree.begin(), tree.end());
+            std::sort(sorted.begin(), sorted.end());
+            for (const auto &it : sorted) {
+                std::cerr << "    " << it.first << " -> " << (it.second.empty() ? "<no predecessor>" : it.second) << '\n';
+            }
+        };
+
+        std::cerr << "  actual:\n";
+        print(actual);
+        std::cerr << "  expected:\n";
         print(expected);
 
         throw std::runtime_error(static_cast<std::string>(message));

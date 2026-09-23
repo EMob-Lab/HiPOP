@@ -3,6 +3,7 @@ set(Tests
     testGraph.cpp
     testGraphMerge.cpp
     testDijkstra.cpp
+    testDijkstraSingleSource.cpp
     testKShortestPath.cpp
     testYenKShortestPath.cpp
     testManhattan.cpp
