@@ -37,7 +37,7 @@ inline hipop::OrientedGraph simple_graph(bool withBusLayer) {
     G.AddNode("I", 2, 2); // Non-reachable if there is no bus!
 
     G.AddLink("A_B", "A", "B", 1, {{"CAR", {{"time", 5}}}}, "CarLayer");
-    G.AddLink("B_C", "B", "C", 1, {{"CAR", {{"time", 1.5}}}}, "CarLayer");
+    G.AddLink("B_C", "B", "C", 1, {{"CAR", {{"time", 1.5}}}}, "CarLayer"); // Max speed for car achieved here.
     G.AddLink("D_E", "D", "E", 1, {{"CAR", {{"time", 2}}}}, "CarLayer");
     G.AddLink("E_F", "E", "F", 1, {{"CAR", {{"time", 3}}}}, "CarLayer");
     G.AddLink("A_D", "A", "D", 1, {{"CAR", {{"time", 6}}}}, "CarLayer");
@@ -47,11 +47,23 @@ inline hipop::OrientedGraph simple_graph(bool withBusLayer) {
     if (withBusLayer) {
         G.AddLink("A_E", "A", "E", 3, {{"BUS", {{"time", 7}}}}, "BusLayer");
         G.AddLink("D_I", "D", "I", 2, {{"BUS", {{"time", 4}}}}, "BusLayer");
-        G.AddLink("E_I", "E", "I", 1, {{"BUS", {{"time", 1}}}}, "BusLayer");
+        G.AddLink("E_I", "E", "I", 1, {{"BUS", {{"time", 1}}}}, "BusLayer"); // Max speed for bus achieved here.
     }
 
     return G;
 }
+
+
+/**
+ * Maximum speed achieved in the simple graph for the car layer.
+ */
+constexpr double SIMPLE_GRAPH_CAR_MAX_SPEED = 1 / 1.5;
+
+
+/**
+ * Maximum speed achieved in the simple graph for the bus layer.
+ */
+constexpr double SIMPLE_GRAPH_BUS_MAX_SPEED = 1;
 
 
 /**
