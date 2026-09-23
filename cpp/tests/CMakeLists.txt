@@ -2,8 +2,7 @@ set(Tests
     testCopyGraph.cpp
     testGraph.cpp
     testGraphMerge.cpp
-    testDijkstra1.cpp
-    testDijkstra2.cpp
+    testDijkstra.cpp
     testKShortestPath.cpp
     testYenKShortestPath.cpp
     testManhattan.cpp
