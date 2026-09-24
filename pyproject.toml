@@ -33,6 +33,9 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+dependencies = [
+    "matplotlib >= 3.10",
+]
 
 [project.urls]
 Repository = "https://github.com/EMob-Lab/HiPOP"
@@ -42,10 +45,12 @@ Issues = "https://github.com/EMob-Lab/HiPOP/issues"
 build = [ # Dependencies needed for build tasks. Must be kept identical to "build-system".requires
     "dynamic-metadata >= 0.5",
     "pybind11 >= 3.1",
+    "pybind11-stubgen >= 2.5",
     "scikit-build-core >= 1.0",
 ]
 lint = [ # Dependencies needed for linting / static analysis.
     "pre-commit >= 4.6",
+    "pyrefly >= 1.3",
 ]
 test = [ # Dependencies needed for test tasks. Must be kept identical to tool.cibuildwheel."test-requires"
     "pytest >= 9.1",
@@ -68,6 +73,7 @@ distrib = [ # Dependencies needed to build distribution files (wheels & source d
 requires = [ # Must be kept identical to "dependency-groups".build
     "dynamic-metadata >= 0.5",
     "pybind11 >= 3.1",
+    "pybind11-stubgen >= 2.5",
     "scikit-build-core >= 1.0",
 ]
 build-backend = "scikit_build_core.build"

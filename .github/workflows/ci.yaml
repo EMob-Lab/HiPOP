@@ -85,6 +85,9 @@ jobs:
       - name: Python wrapper - Build & install
         run: pip install --group dev .
 
+      - name: Python wrapper - Run type checks
+        run: pyrefly check
+
       - name: Python wrapper - Run tests
         run: pytest
 
