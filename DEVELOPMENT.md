@@ -76,6 +76,19 @@ When a staged file breaks one of the rules, the hook rewrites it in place
 and aborts the commit; review the fix, re-stage the file, and commit again.
 
 
+### Check the Python type annotations
+
+```shell
+pyrefly check
+```
+
+Configuration of the Python type checker [pyrefly](https://pyrefly.org/) is in `pyrefly.toml`.
+
+The build generates type stubs (`*.pyi` files) for the compiled C++ extension, so that
+the type checker can analyze code using it; these stubs are also bundled into the wheel files.
+They can be found in directory `build-scikit/python/stubs`.
+
+
 ### Run the Python test suite
 
 ```shell

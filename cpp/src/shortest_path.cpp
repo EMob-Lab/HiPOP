@@ -1,5 +1,6 @@
 #include "hipop/graph.h"
 #include "hipop/shortest_path.h"
+#include "hipop/string_util.h"
 
 #include <omp.h>
 
@@ -15,32 +16,109 @@
 #include <iostream>
 #include <cmath>
 #include <cstdint>
+#include <string_view>
 
-typedef std::pair<double, std::string> QueueItem;
-typedef std::priority_queue<QueueItem, std::vector<QueueItem>, std::greater<QueueItem>> PriorityQueue;
-typedef std::unordered_map<std::string, std::string> ShortestPathsTree;
 
-bool remove_value(PriorityQueue& pq, const std::string &value) {
-    std::vector<std::pair<double, std::string>> temp;
+namespace { // Anonymous namespace
 
-    // Remove all occurrences of the value from the priority queue
-    bool found = false;
-    while (!pq.empty()) {
-        if (pq.top().second != value) {
-            temp.push_back(pq.top());
+    using QueueItem = std::pair<double, std::string>;
+    using PriorityQueue = std::priority_queue<QueueItem, std::vector<QueueItem>, std::greater<>>;
+
+    bool remove_value(PriorityQueue& pq, const std::string &value) {
+        std::vector<std::pair<double, std::string>> temp;
+
+        // Remove all occurrences of the value from the priority queue
+        bool found = false;
+        while (!pq.empty()) {
+            if (pq.top().second != value) {
+                temp.push_back(pq.top());
+            }
+            else {
+                found = true;
+            }
+            pq.pop();
         }
-        else {
-            found = true;
+
+        // Reconstruct the priority queue without the removed value
+        for (const auto& item : temp) {
+            pq.push(item);
         }
-        pq.pop();
+
+        return found;
     }
 
-    // Reconstruct the priority queue without the removed value
-    for (const auto& item : temp) {
-        pq.push(item);
+
+    /**
+     * Suffixes added to the node IDs when building an intermodal graph.
+     */
+    namespace IntermodalNodeSuffix {
+        constexpr std::string_view TWIN = "_TWIN";
+        constexpr std::string_view TRIPLE = "_TRPL";
     }
 
-    return found;
+    /**
+     * Suffixes added to the link IDs when building an intermodal graph.
+     */
+    namespace IntermodalLinkSuffix {
+        constexpr std::string_view TWIN_TWIN = "_TWIN";                 // Between twin nodes
+        constexpr std::string_view TRIPLE_TRIPLE = "_TRPL";             // Between triple nodes
+        constexpr std::string_view ORIGINAL_TWIN = "_ORIGINAL_TO_TWIN"; // From an original node to a twin node
+        constexpr std::string_view TWIN_TRIPLE = "_TWIN_TO_TRPL";       // From a twin node to a triple node
+    }
+
+
+    /**
+     * If the given node ID ends with one of the {@link IntermodalNodeSuffix}, remove it.
+     *
+     * FIXME This function may not work properly if any node ID in the original graph accidentally ends
+     *       with one of the intermodal suffixes. Could be easily fixed by adding a suffix to the original nodes.
+     */
+    std::string removeIntermodalNodeSuffix(std::string_view nodeId) {
+        std::size_t sz = nodeId.size();
+        for (const std::string_view &suffix : { IntermodalNodeSuffix::TWIN, IntermodalNodeSuffix::TRIPLE }) {
+
+            // FIXME Why `sz > suffix.size()` and not `sz >= suffix.size()`?
+            // Using `>=` would be more logical for the suffix removing task implemented here,
+            // but since the current implementation is not correct with respect to the original node IDs,
+            // maybe using `>` avoids accidental removal of original node ID suffixes. But in that case,
+            // this is just a fix "by chance" rather than a logically correct implementation.
+            if (sz > suffix.size() && nodeId.substr(sz - suffix.size()) == suffix) {
+                return static_cast<std::string>(nodeId.substr(0, sz - suffix.size()));
+            }
+        }
+        return static_cast<std::string>(nodeId);
+    }
+
+
+    /**
+     * If the given link ID ends with one of the {@link IntermodalLinkSuffix}, remove it.
+     *
+     * FIXME This function do not work properly **EVEN IN STANDARD CASES**, because suffix `TWIN_TWIN`
+     * is itself a suffix of `ORIGINAL_TWIN` (and `TRIPLE_TRIPLE` is also itself a suffix of `TWIN_TRIPLE`).
+     * And second bug, as for `removeIntermodalNodeSuffix(..)`, if any link ID in the original graph accidentally ends
+     * with one of the intermodal suffixes, such link ID is incorrectly truncated by this function.
+     * All these issues can be easily fixed by 1) modifying the link suffixes to avoid overlaps,
+     * and 2) adding a suffix to the original link IDs to distinguish them from intermodal suffixes.
+     */
+    std::string removeIntermodalLinkSuffix(std::string_view linkId) {
+        std::size_t sz = linkId.size();
+        for (const std::string_view &suffix : {
+            IntermodalLinkSuffix::TWIN_TWIN,
+            IntermodalLinkSuffix::TRIPLE_TRIPLE,
+            IntermodalLinkSuffix::ORIGINAL_TWIN,
+            IntermodalLinkSuffix::TWIN_TRIPLE,
+        }) {
+
+            // FIXME Why `sz > suffix.size()` and not `sz >= suffix.size()`?
+            // Same remark as for `removeIntermodalNodeSuffix(..)`.
+            if (sz > suffix.size() && linkId.substr(sz - suffix.size()) == suffix) {
+                return static_cast<std::string>(linkId.substr(0, sz - suffix.size()));
+            }
+        }
+        return static_cast<std::string>(linkId);
+    }
+
+
 }
 
 
@@ -78,7 +156,7 @@ namespace hipop
         {
             dist[keyVal.first] = inf;
         }
-        pq.push(make_pair(0, origin));
+        pq.emplace(0, origin);
         dist[origin] = 0;
 
         path.second = inf;
@@ -126,7 +204,7 @@ namespace hipop
                             if (dist[neighbor] > new_dist)
                             {
                                 dist[neighbor] = new_dist;
-                                pq.push(QueueItem(new_dist, neighbor));
+                                pq.emplace(new_dist, neighbor);
                                 prev[neighbor] = u;
                             }
                         }
@@ -173,10 +251,10 @@ namespace hipop
             dist[keyVal.first] = inf;
             if (keyVal.first != origin)
             {
-                pq.push(make_pair(inf, keyVal.first));
+                pq.emplace(inf, keyVal.first);
             }
         }
-        pq.push(make_pair(0, origin));
+        pq.emplace(0, origin);
         dist[origin] = 0;
         prev[origin] = "";
 
@@ -203,7 +281,7 @@ namespace hipop
                             {
                                 std::cerr << "There must be negative cost cycles... Invalid call of Dijkstra.\n";
                             }
-                            pq.push(QueueItem(new_dist, neighbor));
+                            pq.emplace(new_dist, neighbor);
                             prev[neighbor] = u;
                         }
                     }
@@ -325,12 +403,12 @@ namespace hipop
                 return left.first < right.first;
             });
 
-            std::string ODLabelCosts = o + d + cost;
+            std::string ODLabelCosts = StrCat(o, d, cost);
             for (const auto &labelCosts : vecLabelCosts)
             {
-                ODLabelCosts = ODLabelCosts + "-" + labelCosts.first + ":" + labelCosts.second;
+                StrAppend(ODLabelCosts, "-", labelCosts.first, ":", labelCosts.second);
             }
-            ODsLabelCosts.push_back(ODLabelCosts);
+            ODsLabelCosts.emplace_back(std::move(ODLabelCosts));
         }
 
         std::set<std::string> s;
@@ -523,7 +601,7 @@ namespace hipop
         return res;
     }
 
-    typedef std::unordered_map<std::string, mapcosts> linkMapCosts;
+    using linkMapCosts = std::unordered_map<std::string, mapcosts>;
 
     /**
      * @brief Increase the cost in a OrientedGraph for a path
@@ -570,37 +648,21 @@ namespace hipop
      */
     void increaseCostsFromIntermodalPath(OrientedGraph &G, const std::vector<std::string> &path, linkMapCosts &initial_costs, double costMultiplier)
     {
-
         for (size_t i = 0; i < path.size() - 1; i++)
         {
             Link *link = G.mnodes[path[i]]->madj[path[i + 1]];
-            std::string decoded_link_id = "";
-
-            if (link->mid.size() > 5 && (link->mid.compare(link->mid.size() - 5, 5, "_TWIN") == 0 || link->mid.compare(link->mid.size() - 5, 5, "_TRPL") == 0))
-            {
-              decoded_link_id = link->mid.substr(0, link->mid.size() - 5);
-            }
-            else if (link->mid.size() > 17 && (link->mid.compare(link->mid.size() - 17, 17, "_ORIGINAL_TO_TWIN") == 0))
-            {
-                decoded_link_id = link->mid.substr(0, link->mid.size() - 17);
-            }
-            else if (link->mid.size() > 13 && (link->mid.compare(link->mid.size() - 13, 13, "_ORIGINAL_TO_TWIN") == 0))
-            {
-                decoded_link_id = link->mid.substr(0, link->mid.size() - 13);
-            }
-            else
-            {
-                decoded_link_id = link->mid;
-            }
-
-            std::vector<std::string> corresponding_links_ids = {decoded_link_id, decoded_link_id + "_TWIN", decoded_link_id + "_TRPL", decoded_link_id + "_ORIGINAL_TO_TWIN", decoded_link_id + "_TWIN_TO_TRPL"};
+            std::string decoded_link_id = removeIntermodalLinkSuffix(link->mid);
 
             if (initial_costs.find(decoded_link_id) == initial_costs.end())
             {
-                // Increase cost of all corresponding links and save initial costs
-                for (int j = 0; j < 5; ++j)
-                {
-                    const std::string &corresponding_link_id = corresponding_links_ids[j];
+                for (std::string_view link_suffix : {
+                    std::string_view(""),
+                    IntermodalLinkSuffix::TWIN_TWIN,
+                    IntermodalLinkSuffix::TRIPLE_TRIPLE,
+                    IntermodalLinkSuffix::ORIGINAL_TWIN,
+                    IntermodalLinkSuffix::TWIN_TRIPLE,
+                }) {
+                    std::string corresponding_link_id = StrCat(decoded_link_id, link_suffix);
                     if (G.mlinks.find(corresponding_link_id) != G.mlinks.end())
                     {
                         Link *corresponding_link = G.mlinks[corresponding_link_id];
@@ -617,9 +679,14 @@ namespace hipop
             else
             {
                 // Only increase cost of all corresponding links
-                for (int j = 0; j < 5; ++j)
-                {
-                    const std::string &corresponding_link_id = corresponding_links_ids[j];
+                for (std::string_view link_suffix : {
+                    std::string_view(""),
+                    IntermodalLinkSuffix::TWIN_TWIN,
+                    IntermodalLinkSuffix::TRIPLE_TRIPLE,
+                    IntermodalLinkSuffix::ORIGINAL_TWIN,
+                    IntermodalLinkSuffix::TWIN_TRIPLE,
+                }) {
+                    std::string corresponding_link_id = StrCat(decoded_link_id, link_suffix);
                     if (G.mlinks.find(corresponding_link_id) != G.mlinks.end())
                     {
                         Link *corresponding_link = G.mlinks[corresponding_link_id];
@@ -719,11 +786,10 @@ namespace hipop
         int nbBatches = paths.size();
 
         std::vector<std::vector<double>> res(nbBatches);
-        OrientedGraph *privateG;
 
-        #pragma omp parallel shared(res, G, paths, cost, mapLabelCost) private(privateG)
+        #pragma omp parallel shared(res, G, paths, cost, mapLabelCost)
         {
-            privateG = copyGraph(G);
+            OrientedGraph privateG = G;
 
             #pragma omp for
             for (int i = 0; i < nbBatches; i++)
@@ -732,17 +798,10 @@ namespace hipop
                 std::vector<double> res_(nbPaths);
                 for (int j = 0; j < nbPaths; j++)
                 {
-                  res_[j] = computePathCost(*privateG, paths[i][j], cost, mapLabelCost);
+                  res_[j] = computePathCost(privateG, paths[i][j], cost, mapLabelCost);
                 }
                 res[i] = res_;
             }
-
-            // Not sure if the omp critical is necessary
-            #pragma omp critical
-            {
-                delete privateG;
-            }
-
         }
 
         return res;
@@ -860,16 +919,10 @@ namespace hipop
      */
     std::vector<std::string> decodeIntermodalPath(const std::vector<std::string> &path)
     {
-        int pathSize = path.size();
-        std::vector<std::string> decodedPath(pathSize);
-        for (int k = 0; k < pathSize; k++) {
-            if (path[k].size() > 5 && (path[k].compare(path[k].size() - 5, 5, "_TWIN") == 0 || path[k].compare(path[k].size() - 5, 5, "_TRPL") == 0)) {
-                decodedPath[k] = path[k].substr(0, path[k].size() - 5);
-            }
-            else
-            {
-                decodedPath[k] = path[k];
-            }
+        std::vector<std::string> decodedPath;
+        decodedPath.reserve(path.size());
+        for (const std::string &pathNodeId : path) {
+            decodedPath.emplace_back(removeIntermodalNodeSuffix(pathNodeId));
         }
         return decodedPath;
     }
@@ -1135,7 +1188,6 @@ namespace hipop
 
         std::size_t nbODs = origins.size();
         std::vector<std::vector<pathCost>> res(nbODs);
-        OrientedGraph *privateG;
 
         std::vector<int> uniqueIndices;
         std::unordered_map<int, int> duplicateIndices;
@@ -1146,9 +1198,9 @@ namespace hipop
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel shared(res, accessibleLabels, G, vecMapLabelCosts, origins, destinations, kPaths) private(privateG)
+        #pragma omp parallel shared(res, accessibleLabels, G, vecMapLabelCosts, origins, destinations, kPaths)
         {
-            privateG = copyGraph(G);
+            OrientedGraph privateG = G;
 
             #pragma omp for
             for (std::int64_t i = 0; i < nbUniqueIndices; ++i)
@@ -1156,20 +1208,13 @@ namespace hipop
                 int uniqueIdx = uniqueIndices[i];
                 if (accessibleLabels.empty())
                 {
-                    res[uniqueIdx] = KShortestPath(*privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, {}, vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
+                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, {}, vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
                 }
                 else
                 {
-                    res[uniqueIdx] = KShortestPath(*privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, accessibleLabels[uniqueIdx], vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
+                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, accessibleLabels[uniqueIdx], vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
                 }
             }
-
-            // Not sure if the omp critical is necessary
-            #pragma omp critical
-            {
-                delete privateG;
-            }
-
         }
 
         // Set shortest paths of duplicates
@@ -1230,7 +1275,7 @@ namespace hipop
         {
             dist[keyVal.first] = inf;
         }
-        pq.push(make_pair(0, origin));
+        pq.emplace(0, origin);
         dist[origin] = 0;
 
         path.second = inf;
@@ -1273,7 +1318,7 @@ namespace hipop
                     if (tentative_score < dist[neighbor])
                     {
                         dist[neighbor] = tentative_score;
-                        pq.push(QueueItem(tentative_score + heuristic(G.mnodes.at(u), G.mnodes.at(destination)), neighbor));
+                        pq.emplace(tentative_score + heuristic(G.mnodes.at(u), G.mnodes.at(destination)), neighbor);
                         prev[neighbor] = u;
                     }
                 }
@@ -1354,124 +1399,124 @@ namespace hipop
         const std::vector<setstring> &vecAvailableLabels)
     {
         // Create doubled graph two ways
-        OrientedGraph *doubledG1 = new OrientedGraph(); // pass first on first elem of pairMandatoryLabels
-        OrientedGraph *doubledG2 = new OrientedGraph(); // pass first on second elem of pairMandatoryLabels
+        OrientedGraph doubledG1; // pass first on first elem of pairMandatoryLabels
+        OrientedGraph doubledG2; // pass first on second elem of pairMandatoryLabels
         for(const auto &keyVal: G.mnodes) {
-            doubledG1->AddNode(keyVal.second->mid,
+            doubledG1.AddNode(keyVal.second->mid,
                             keyVal.second->mposition[0],
                             keyVal.second->mposition[1],
                             keyVal.second->mlabel,
                             keyVal.second->mexclude_movements);
-            doubledG1->AddNode(keyVal.second->mid + "_TWIN",
+            doubledG1.AddNode(StrCat(keyVal.second->mid, IntermodalNodeSuffix::TWIN),
                             keyVal.second->mposition[0],
                             keyVal.second->mposition[1],
                             keyVal.second->mlabel,
                             keyVal.second->mexclude_movements);
-            doubledG1->AddNode(keyVal.second->mid + "_TRPL",
+            doubledG1.AddNode(StrCat(keyVal.second->mid, IntermodalNodeSuffix::TRIPLE),
                             keyVal.second->mposition[0],
                             keyVal.second->mposition[1],
                             keyVal.second->mlabel,
                             keyVal.second->mexclude_movements);
-            doubledG2->AddNode(keyVal.second->mid,
+            doubledG2.AddNode(keyVal.second->mid,
                             keyVal.second->mposition[0],
                             keyVal.second->mposition[1],
                             keyVal.second->mlabel,
                             keyVal.second->mexclude_movements);
-            doubledG2->AddNode(keyVal.second->mid + "_TWIN",
+            doubledG2.AddNode(StrCat(keyVal.second->mid, IntermodalNodeSuffix::TWIN),
                             keyVal.second->mposition[0],
                             keyVal.second->mposition[1],
                             keyVal.second->mlabel,
                             keyVal.second->mexclude_movements);
-            doubledG2->AddNode(keyVal.second->mid + "_TRPL",
+            doubledG2.AddNode(StrCat(keyVal.second->mid, IntermodalNodeSuffix::TRIPLE),
                             keyVal.second->mposition[0],
                             keyVal.second->mposition[1],
                             keyVal.second->mlabel,
                             keyVal.second->mexclude_movements);
         }
         for(const auto &keyVal: G.mlinks) {
-          doubledG1->AddLink(keyVal.second->mid,
-                          keyVal.second->mupstream,
-                          keyVal.second->mdownstream,
-                          keyVal.second->mlength,
-                          keyVal.second->mcosts,
-                          keyVal.second->mlabel);
-          doubledG1->AddLink(keyVal.second->mid + "_TWIN",
-                          keyVal.second->mupstream + "_TWIN",
-                          keyVal.second->mdownstream + "_TWIN",
-                          keyVal.second->mlength,
-                          keyVal.second->mcosts,
-                          keyVal.second->mlabel);
-          doubledG1->AddLink(keyVal.second->mid + "_TRPL",
-                          keyVal.second->mupstream + "_TRPL",
-                          keyVal.second->mdownstream + "_TRPL",
-                          keyVal.second->mlength,
-                          keyVal.second->mcosts,
-                          keyVal.second->mlabel);
-          doubledG2->AddLink(keyVal.second->mid,
-                          keyVal.second->mupstream,
-                          keyVal.second->mdownstream,
-                          keyVal.second->mlength,
-                          keyVal.second->mcosts,
-                          keyVal.second->mlabel);
-          doubledG2->AddLink(keyVal.second->mid + "_TWIN",
-                          keyVal.second->mupstream + "_TWIN",
-                          keyVal.second->mdownstream + "_TWIN",
-                          keyVal.second->mlength,
-                          keyVal.second->mcosts,
-                          keyVal.second->mlabel);
-          doubledG2->AddLink(keyVal.second->mid + "_TRPL",
-                          keyVal.second->mupstream + "_TRPL",
-                          keyVal.second->mdownstream + "_TRPL",
-                          keyVal.second->mlength,
-                          keyVal.second->mcosts,
-                          keyVal.second->mlabel);
-          // Add link on G1 between original and twin graph only if it corresponds to a mandatory label of the first group
-          bool original_to_twin_G1 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
-          if (original_to_twin_G1) {
-            doubledG1->AddLink(keyVal.second->mid + "_ORIGINAL_TO_TWIN",
+            doubledG1.AddLink(keyVal.second->mid,
                             keyVal.second->mupstream,
-                            keyVal.second->mdownstream + "_TWIN",
+                            keyVal.second->mdownstream,
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
-          }
-          // Add link on G2 between original and twin graph only if it corresponds to a mandatory label of the second group
-          bool original_to_twin_G2 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
-          if (original_to_twin_G2) {
-            doubledG2->AddLink(keyVal.second->mid + "_ORIGINAL_TO_TWIN",
+            doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TWIN),
+                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                            keyVal.second->mlength,
+                            keyVal.second->mcosts,
+                            keyVal.second->mlabel);
+            doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TRIPLE_TRIPLE),
+                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                            keyVal.second->mlength,
+                            keyVal.second->mcosts,
+                            keyVal.second->mlabel);
+            doubledG2.AddLink(keyVal.second->mid,
                             keyVal.second->mupstream,
-                            keyVal.second->mdownstream + "_TWIN",
+                            keyVal.second->mdownstream,
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
-          }
-          // Add link on G1 between twin and triple graph only if it corresponds to a mandatory label of the second group
-          bool twin_to_trpl_G1 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
-          if (twin_to_trpl_G1) {
-            doubledG1->AddLink(keyVal.second->mid + "_TWIN_TO_TRPL",
-                            keyVal.second->mupstream + "_TWIN",
-                            keyVal.second->mdownstream + "_TRPL",
+            doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TWIN),
+                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
-          }
-          // Add link on G2 between twin and triple graph only if it corresponds to a mandatory label of the first group
-          bool twin_to_trpl_G2 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
-          if (twin_to_trpl_G2) {
-            doubledG2->AddLink(keyVal.second->mid + "_TWIN_TO_TRPL",
-                            keyVal.second->mupstream + "_TWIN",
-                            keyVal.second->mdownstream + "_TRPL",
+            doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TRIPLE_TRIPLE),
+                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
-          }
+            // Add link on G1 between original and twin graph only if it corresponds to a mandatory label of the first group
+            bool original_to_twin_G1 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
+            if (original_to_twin_G1) {
+                doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
+                                keyVal.second->mupstream,
+                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                                keyVal.second->mlength,
+                                keyVal.second->mcosts,
+                                keyVal.second->mlabel);
+            }
+            // Add link on G2 between original and twin graph only if it corresponds to a mandatory label of the second group
+            bool original_to_twin_G2 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
+            if (original_to_twin_G2) {
+                doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
+                                keyVal.second->mupstream,
+                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                                keyVal.second->mlength,
+                                keyVal.second->mcosts,
+                                keyVal.second->mlabel);
+            }
+            // Add link on G1 between twin and triple graph only if it corresponds to a mandatory label of the second group
+            bool twin_to_trpl_G1 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
+            if (twin_to_trpl_G1) {
+                doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TRIPLE),
+                                StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
+                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                                keyVal.second->mlength,
+                                keyVal.second->mcosts,
+                                keyVal.second->mlabel);
+            }
+            // Add link on G2 between twin and triple graph only if it corresponds to a mandatory label of the first group
+            bool twin_to_trpl_G2 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
+            if (twin_to_trpl_G2) {
+                doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TRIPLE),
+                                StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
+                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                                keyVal.second->mlength,
+                                keyVal.second->mcosts,
+                                keyVal.second->mlabel);
+            }
         }
 
         // Set destinations as nodes of the trpl graph
         std::vector<std::string> destinationsTwin;
         destinationsTwin.reserve(destinations.size());
         for (const auto &destination : destinations) {
-          destinationsTwin.push_back(destination + "_TRPL");
+            destinationsTwin.emplace_back(StrCat(destination, IntermodalNodeSuffix::TRIPLE));
         }
 
         // Launch dijkstra algo for each OD in parallel
@@ -1486,16 +1531,13 @@ namespace hipop
         std::vector<std::string> costs(nbOD, cost);
         tie(uniqueIndices, duplicateIndices, nbPaths) = find_duplicates(origins, destinations, vecMapLabelCosts, costs, kPaths);
 
-        OrientedGraph *privateDoubledG1;
-        OrientedGraph *privateDoubledG2;
-
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel shared(res, vecAvailableLabels, vecMapLabelCosts, origins, destinationsTwin, kPaths, doubledG1, doubledG2) private(privateDoubledG1, privateDoubledG2)
+        #pragma omp parallel shared(res, vecAvailableLabels, vecMapLabelCosts, origins, destinationsTwin, kPaths, doubledG1, doubledG2)
         {
-          privateDoubledG1 = copyGraph(*doubledG1);
-          privateDoubledG2 = copyGraph(*doubledG2);
+          OrientedGraph privateDoubledG1 = doubledG1;
+          OrientedGraph privateDoubledG2 = doubledG2;
 
           #pragma omp for
           for (std::int64_t i = 0; i < nbUniqueIndices; i++)
@@ -1507,26 +1549,20 @@ namespace hipop
             if (vecAvailableLabels.empty())
             {
                 // Look for shortest paths on G1
-                resPath1 = KShortestPath(*privateDoubledG1, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
                 // Look for shortest paths on G2
-                resPath2 = KShortestPath(*privateDoubledG2, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
             else
             {
-                resPath1 = KShortestPath(*privateDoubledG1, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
-                resPath2 = KShortestPath(*privateDoubledG2, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
             // Concat resPath1 and resPath2
             resPath1.insert(resPath1.end(), resPath2.begin(), resPath2.end());
             // Decode paths
             for (auto &path1 : resPath1) {
-              if (path1.first.size() > 0) {
-                for (std::string &pathNode : path1.first) {
-                  if (pathNode.size() > 5 && (pathNode.compare(pathNode.size() - 5, 5, "_TWIN") == 0 || pathNode.compare(pathNode.size() - 5, 5, "_TRPL") == 0)) {
-                    pathNode = pathNode.substr(0, pathNode.size() - 5);
-                  }
-                }
-              }
+                path1.first = decodeIntermodalPath(path1.first);
             }
             // Keep only unique paths
             sort( resPath1.begin(), resPath1.end() );
@@ -1549,15 +1585,7 @@ namespace hipop
 
 
         }
-
-        #pragma omp critical
-        {
-            if (privateDoubledG1) delete(privateDoubledG1);
-            if (privateDoubledG2) delete(privateDoubledG2);
-        }
       }
-      if (doubledG1) delete(doubledG1);
-      if (doubledG2) delete(doubledG2);
 
       // Set shortest paths of duplicates
       for (const auto& elem : duplicateIndices)
