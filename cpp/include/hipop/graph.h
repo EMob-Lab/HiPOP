@@ -62,7 +62,7 @@ namespace hipop
          *         (i.e. considering that the underlying link is effectively impassable) if no cost value
          *         is explicitly set. Still, 0 is returned to match the legacy behavior.
          */
-        double cost(const std::string &modality, const std::string &cost) const {
+        [[nodiscard]] double cost(const std::string &modality, const std::string &cost) const {
             auto it1 = mcosts.find(modality);
             if (it1 == mcosts.end()) {
                 return 0;
@@ -143,7 +143,7 @@ namespace hipop
          *
          * @param predecessor ID of the previous node on a path.
          */
-        std::vector<const Link*> getExits(const std::string &predecessor) const {
+        [[nodiscard]] std::vector<const Link*> getExits(const std::string &predecessor) const {
             std::vector<const Link*> result;
             forEachExit(predecessor, [&result](const Link *link) { result.emplace_back(link); });
             return result;
