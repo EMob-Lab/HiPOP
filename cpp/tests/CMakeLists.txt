@@ -1,9 +1,10 @@
 set(Tests
+    testAStar.cpp
     testCopyGraph.cpp
     testGraph.cpp
     testGraphMerge.cpp
-    testDijkstra1.cpp
-    testDijkstra2.cpp
+    testDijkstra.cpp
+    testDijkstraSingleSource.cpp
     testKShortestPath.cpp
     testManhattan.cpp
     testparallelKShortestPath.cpp
