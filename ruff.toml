@@ -1,0 +1,19 @@
+include = [
+    "python/**/*.py",
+]
+
+indent-width = 4
+line-length = 120
+src = ["python"] # First-party code location (for import sorting)
+
+[lint]
+# The default ruleset is used (since no `select = ...` field is set):
+# https://docs.astral.sh/ruff/default-rules/
+
+ignore = [ # See https://docs.astral.sh/ruff/rules/ for the list of rules and rule codes.
+
+    # No exception to the default ruleset so far...
+]
+
+[format]
+exclude = ["*"] # Disable the Ruff formatter
