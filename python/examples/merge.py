@@ -1,4 +1,3 @@
-from importlib.resources import path
 from hipop.graph import OrientedGraph, merge_oriented_graph
 
 G = OrientedGraph()
