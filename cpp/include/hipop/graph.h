@@ -27,7 +27,7 @@ namespace hipop
         std::string mid;
         const Node *mup;
         const Node *mdown;
-        mapcosts mcosts; // mcosts[modality][cost-metric] -> cost-value
+        mapcosts mcosts; // mcosts[cost-family][cost-metric] -> cost-value
         std::string mlabel;
         double mlength;
 
@@ -55,19 +55,19 @@ namespace hipop
         ~Link() = default;
 
         /**
-         * Read the cost value associated to the current link, assuming the given modality and cost metric.
+         * Read the cost value associated to the current link, assuming the given cost family and cost metric.
          *
-         * @return 0 if no cost value is explicitly set for the given modality and/or cost metric.
+         * @return 0 if no cost value is explicitly set for the given cost family and/or cost metric.
          *         FIXME It would be probably better to either throw an exception or return a +inf value
          *         (i.e. considering that the underlying link is effectively impassable) if no cost value
          *         is explicitly set. Still, 0 is returned to match the legacy behavior.
          */
-        [[nodiscard]] double cost(const std::string &modality, const std::string &cost) const {
-            auto it1 = mcosts.find(modality);
+        [[nodiscard]] double cost(const std::string &costFamily, const std::string &costMetric) const {
+            auto it1 = mcosts.find(costFamily);
             if (it1 == mcosts.end()) {
                 return 0;
             }
-            auto it2 = it1->second.find(cost);
+            auto it2 = it1->second.find(costMetric);
             if (it2 == it1->second.end()) {
                 return 0;
             }
@@ -171,7 +171,7 @@ namespace hipop
         void UpdateLinkCosts(const std::string &lid, mapcosts costs);
         void UpdateCosts(const std::unordered_map<std::string, mapcosts> &maplinkcosts);
         double getLength(const std::string &up, const std::string &down);
-        std::vector<std::string> GetLinksWithoutCost(const std::string &cost, const std::unordered_map<std::string, std::string> &mapLabelCost);
+        std::vector<std::string> GetLinksWithoutCost(const std::string &costMetric, const std::unordered_map<std::string, std::string> &mapLabelCost);
 
         void ShowNodes();
         void ShowLinks();

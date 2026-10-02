@@ -14,7 +14,7 @@ void shortest_path(py::module_ &m) {
         py::arg("graph"),
         py::arg("origin"),
         py::arg("destination"),
-        py::arg("cost"),
+        py::arg("cost_metric"),
         py::arg("map_label_cost"),
         py::arg("available_labels") = setstring());
     m.def(
@@ -22,14 +22,14 @@ void shortest_path(py::module_ &m) {
         &hipop::dijkstraSingleSource,
         py::arg("graph"),
         py::arg("origin"),
-        py::arg("cost"),
+        py::arg("cost_metric"),
         py::arg("map_label_cost"),
         py::arg("available_labels") = setstring());
     m.def(
       "floyd_warshall",
       &hipop::floydWarshall,
       py::arg("graph"),
-      py::arg("cost"),
+      py::arg("cost_metric"),
       py::arg("map_label_cost"),
       py::arg("available_labels") = setstring()
     );
@@ -40,7 +40,7 @@ void shortest_path(py::module_ &m) {
         py::arg("origins"),
         py::arg("destinations"),
         py::arg("map_label_costs"),
-        py::arg("cost"),
+        py::arg("cost_metric"),
         py::arg("thread_number"),
         py::arg("available_labels") = std::vector<setstring>());
     m.def(
@@ -49,7 +49,7 @@ void shortest_path(py::module_ &m) {
         py::arg("graph"),
         py::arg("origins"),
         py::arg("map_label_costs"),
-        py::arg("cost"),
+        py::arg("cost_metric"),
         py::arg("thread_number"),
         py::arg("available_labels") = std::vector<setstring>());
     m.def(
@@ -59,7 +59,7 @@ void shortest_path(py::module_ &m) {
         py::arg("origins"),
         py::arg("destinations"),
         py::arg("map_label_costs"),
-        py::arg("costs"),
+        py::arg("cost_metrics"),
         py::arg("thread_number"),
         py::arg("available_labels") = std::vector<setstring>());
     m.def("k_shortest_path", &hipop::KShortestPath);
@@ -76,7 +76,7 @@ void shortest_path(py::module_ &m) {
         py::arg("origins"),
         py::arg("destinations"),
         py::arg("map_label_costs"),
-        py::arg("cost"),
+        py::arg("cost_metric"),
         py::arg("thread_number"),
         py::arg("pair_mandatory_labels"),
         py::arg("max_diff_cost"),

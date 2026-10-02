@@ -16,12 +16,12 @@ namespace hipop
 
     double computePathCost(OrientedGraph &G,
         const std::vector<std::string> &path,
-        const std::string &cost,
+        const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &mapLabelCost);
 
     std::vector<std::vector<double>> computePathsCosts(OrientedGraph &G,
         const std::vector<std::vector<std::vector<std::string>>> &paths,
-        const std::string &cost,
+        const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         int threadNumber);
 
@@ -29,25 +29,25 @@ namespace hipop
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
+        const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels = {});
     ShortestPathsTree dijkstraSingleSource(
         const OrientedGraph &G,
         const std::string &origin,
-        const std::string &cost,
+        const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels);
     std::pair<std::vector<std::vector<int>>, std::unordered_map<int, std::string>> floydWarshall(
         const OrientedGraph &G,
-        const std::string &cost,
+        const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels);
     pathCost aStar(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
+        const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels,
         const std::function<double(const Node *, const Node *)> &heuristic);
@@ -55,7 +55,7 @@ namespace hipop
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
+        const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels);
 
@@ -64,7 +64,7 @@ namespace hipop
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
         const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::string &cost,
+        const std::string &costMetric,
         int threadNumber,
         const std::vector<setstring> &vecAvailableLabels = {});
 
@@ -72,7 +72,7 @@ namespace hipop
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::string &cost,
+        const std::string &costMetric,
         int threadNumber,
         const std::vector<setstring> &vecAvailableLabels = {});
 
@@ -81,7 +81,7 @@ namespace hipop
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
         const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::vector<std::string> &costs,
+        const std::vector<std::string> &costMetrics,
         int threadNumber,
         const std::vector<setstring> &vecAvailableLabels = {});
 
@@ -89,7 +89,7 @@ namespace hipop
         OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
+        const std::string &costMetric,
         const setstring &accessibleLabels,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         int kPath);
@@ -97,7 +97,7 @@ namespace hipop
         OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
+        const std::string &costMetric,
         const setstring &accessibleLabels,
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         double maxDiffCost,
@@ -111,7 +111,7 @@ namespace hipop
         OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
-        const std::string &cost,
+        const std::string &costMetric,
         const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
         const std::vector<setstring> &accessibleLabels,
         double maxDiffCost,
@@ -126,7 +126,7 @@ namespace hipop
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
         const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::string &cost,
+        const std::string &costMetric,
         int threadNumber,
         const std::pair<std::unordered_set<std::string>, std::unordered_set<std::string>> &pairMandatoryLabels,
         double maxDiffCost,
