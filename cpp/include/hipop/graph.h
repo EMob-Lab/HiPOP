@@ -19,23 +19,32 @@ using mapcosts = std::unordered_map<std::string, std::unordered_map<std::string,
 
 namespace hipop
 {
+    class Node;
+
+
     class Link {
     public:
         std::string mid;
-        std::string mupstream;
-        std::string mdownstream;
-        mapcosts mcosts;
+        const Node *mup;
+        const Node *mdown;
+        mapcosts mcosts; // mcosts[modality][cost-metric] -> cost-value
         std::string mlabel;
         double mlength;
 
-        Link(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "") :
+    private:
+
+        Link(std::string id, const Node *up, const Node *down, double length, mapcosts costs, std::string label = "") :
             mid(std::move(id)),
-            mupstream(std::move(up)),
-            mdownstream(std::move(down)),
+            mup(up),
+            mdown(down),
             mcosts(std::move(costs)),
             mlabel(std::move(label)),
             mlength(length)
         {}
+
+        friend class OrientedGraph;
+
+    public:
 
         // Relationships between Node and Link instances are materialized through raw pointers.
         // Copying and/or moving these instances would break these relationships.
@@ -44,6 +53,26 @@ namespace hipop
         Link &operator=(const Link &other) = delete;
         Link &operator=(Link &&other) = delete;
         ~Link() = default;
+
+        /**
+         * Read the cost value associated to the current link, assuming the given modality and cost metric.
+         *
+         * @return 0 if no cost value is explicitly set for the given modality and/or cost metric.
+         *         FIXME It would be probably better to either throw an exception or return a +inf value
+         *         (i.e. considering that the underlying link is effectively impassable) if no cost value
+         *         is explicitly set. Still, 0 is returned to match the legacy behavior.
+         */
+        [[nodiscard]] double cost(const std::string &modality, const std::string &cost) const {
+            auto it1 = mcosts.find(modality);
+            if (it1 == mcosts.end()) {
+                return 0;
+            }
+            auto it2 = it1->second.find(cost);
+            if (it2 == it1->second.end()) {
+                return 0;
+            }
+            return it2->second;
+        }
 
         void updateCosts(mapcosts costs) {
             mcosts = std::move(costs);
@@ -60,12 +89,18 @@ namespace hipop
         std::string mlabel;
         mapsets mexclude_movements;
 
+    private:
+
         Node(std::string id, double x, double y, std::string label = "", mapsets exclude_movements = {}) :
             mid(std::move(id)),
             mposition{ x, y },
             mlabel(std::move(label)),
             mexclude_movements(std::move(exclude_movements))
         {}
+
+        friend class OrientedGraph;
+
+    public:
 
         // Relationships between Node and Link instances are materialized through raw pointers.
         // Copying and/or moving these instances would break these relationships.
@@ -75,26 +110,43 @@ namespace hipop
         Node &operator=(Node &&other) = delete;
         ~Node() = default;
 
-        std::vector<Link*> getExits(const std::string &predecessor = "_default") {
-            std::vector<Link*> res;
-            for(const auto &l: madj) {
-                std::string neighbor = l.second->mdownstream;
-                if(mexclude_movements.find(predecessor) == mexclude_movements.end() || mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
-                    res.push_back(l.second);
+        /**
+         * Assuming we follow a path in the graph, and that we come from node `predecessor`,
+         * this method computes all the allowed exit links from the current node, and invokes
+         * the given callback for each allowed exit link.
+         *
+         * The allowed exit links are always a subset of the outgoing links of the current node.
+         * Still some outgoing links might be disallowed due to movement restrictions.
+         *
+         * @param predecessor ID of the previous node on a path.
+         * @param callback Must be a callable object with the following signature: `void(const Link *link)`.
+         *                 The callback must not modify the graph structure.
+         */
+        template<typename Callback>
+        void forEachExit(const std::string &predecessor, Callback &&callback) const {
+            for (const auto &l : madj) {
+                auto it = mexclude_movements.find(predecessor);
+                if (it == mexclude_movements.end() || it->second.find(l.second->mdown->mid) == it->second.end()) {
+                    callback(const_cast<const Link*>(l.second));
                 }
             }
-            return res;
         }
 
-        std::vector<Link*> getEntrances(const std::string &predecessor) {
-            std::vector<Link*> res;
-            for(const auto &l: mradj) {
-                std::string neighbor = l.second->mupstream;
-                if(mexclude_movements[predecessor].find(neighbor) == mexclude_movements[predecessor].end()) {
-                    res.push_back(l.second);
-                }
-            }
-            return res;
+        /**
+         * Assuming we follow a path in the graph, and that we come from node `predecessor`,
+         * this method returns all the allowed exit links from the current node.
+         *
+         * The allowed exit links are always a subset of the outgoing links of the current node.
+         * Still some outgoing links might be disallowed due to movement restrictions.
+         *
+         * Time-critical functions should prefer using forEachExit() instead (less memory allocation overhead).
+         *
+         * @param predecessor ID of the previous node on a path.
+         */
+        [[nodiscard]] std::vector<const Link*> getExits(const std::string &predecessor) const {
+            std::vector<const Link*> result;
+            forEachExit(predecessor, [&result](const Link *link) { result.emplace_back(link); });
+            return result;
         }
 
     };
@@ -113,9 +165,7 @@ namespace hipop
         void AddAllNodesAndLinks(const OrientedGraph &other);
 
         void AddNode(std::string id, double x, double y, std::string label = "", mapsets excludeMovements = {});
-        void AddNode(Node *n);
-        void AddLink(std::string id, std::string up, std::string down, double length, mapcosts costs, std::string label = "");
-        void AddLink(Link* l);
+        void AddLink(std::string id, const std::string &up, const std::string &down, double length, mapcosts costs, std::string label = "");
         void DeleteLink(const std::string &id);
         void DeleteAllLinksToNode(const std::string &id);
         void UpdateLinkCosts(const std::string &lid, mapcosts costs);

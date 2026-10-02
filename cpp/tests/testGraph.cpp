@@ -20,18 +20,17 @@ int testGraph(int, char**)
     excludeMovements["a"] = {"c"};
     G->AddNode("b", 2, 5, "", excludeMovements);
 
-    auto newNode = new hipop::Node("c", 12., 43.);
-    G->AddNode(newNode);
+    G->AddNode("c", 12., 43.);
 
     G->AddNode("d", 435, 345);
     G->AddLink("a_b", "a", "b", 12, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");
     G->AddLink("b_c", "b", "c", 12, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");
     G->AddLink("b_d", "b", "d", 12, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");
 
-    std::vector<hipop::Link*> exits = G->mnodes["b"]->getExits("a");
+    std::vector<const hipop::Link*> exits = G->mnodes["b"]->getExits("a");
 
     assertTrue(exits.size()==1, "Exits does not return one link");
-    assertTrue(exits[0]->mdownstream=="d", "Node should be d");
+    assertTrue(exits[0]->mdown->mid=="d", "Node should be d");
 
     return 0;
 }

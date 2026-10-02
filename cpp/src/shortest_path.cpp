@@ -21,31 +21,23 @@
 
 namespace { // Anonymous namespace
 
-    using QueueItem = std::pair<double, std::string>;
-    using PriorityQueue = std::priority_queue<QueueItem, std::vector<QueueItem>, std::greater<>>;
+    /**
+     * Element of the priority queue used in the Dijkstra/A* algorithms.
+     */
+    struct DijkstraQueueItem {
 
-    bool remove_value(PriorityQueue& pq, const std::string &value) {
-        std::vector<std::pair<double, std::string>> temp;
+        double dist;
+        const hipop::Node *node;
 
-        // Remove all occurrences of the value from the priority queue
-        bool found = false;
-        while (!pq.empty()) {
-            if (pq.top().second != value) {
-                temp.push_back(pq.top());
-            }
-            else {
-                found = true;
-            }
-            pq.pop();
+        /**
+         * Comparison operator implemented so that:
+         * - the top item in the queue is the one with the smallest dist,
+         * - ... or, in case of ties, the one whose ID comes first in lexicographical order.
+         */
+        bool operator<(const DijkstraQueueItem &other) const {
+            return dist == other.dist ? node->mid > other.node->mid : dist > other.dist;
         }
-
-        // Reconstruct the priority queue without the removed value
-        for (const auto& item : temp) {
-            pq.push(item);
-        }
-
-        return found;
-    }
+    };
 
 
     /**
@@ -143,82 +135,73 @@ namespace hipop
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels)
     {
-        pathCost path;
+        const Node *origin_node = G.mnodes.at(origin);
+        const Node *destination_node = G.mnodes.at(destination);
 
-        PriorityQueue pq;
+        // Return a 0-node path with zero cost if origin and destination are identical.
+        // Remark: it would be more consistent with the general case to return 1-node path
+        // made of the single origin + destination node.
+        // Still, for compliance with legacy behavior, we return a 0-node path.
+        if (origin_node == destination_node) {
+            pathCost empty_path;
+            empty_path.second = 0;
+            return empty_path;
+        }
 
-        std::unordered_map<std::string, double> dist;
-        std::unordered_map<std::string, std::string> prev;
-        prev.reserve(G.mnodes.size());
+        std::unordered_map<const Node*, double> dist; // No nullptr keys in this map.
+        std::unordered_map<const Node*, const Node*> prev; // No nullptr (neither as key nor as value) in this map.
         dist.reserve(G.mnodes.size());
-        double inf = std::numeric_limits<double>::infinity();
-        for (const auto &keyVal : G.mnodes)
-        {
-            dist[keyVal.first] = inf;
-        }
-        pq.emplace(0, origin);
-        dist[origin] = 0;
+        prev.reserve(G.mnodes.size());
+        dist[origin_node] = 0;
+        // `prev[origin_node]` is intentionally left unset (the origin node has no predecessor).
 
-        path.second = inf;
-        prev[origin] = "";
+        std::priority_queue<DijkstraQueueItem> pq;
+        pq.emplace(DijkstraQueueItem{ 0, origin_node });
 
-        if (origin==destination) {
-        path.second = 0;
-        return path;
-        }
+        while (!pq.empty()) {
 
-        while (!pq.empty())
-        {
-            QueueItem current = pq.top();
+            const Node *u = pq.top().node;
+            double dist_u = dist.at(u);
             pq.pop();
-            std::string u = current.second;
 
-            if (u == destination)
-            {
-                std::string v = prev[u];
-                path.first.push_back(u);
-
-                while (v != origin)
-                {
-                    path.first.push_back(v);
-                    v = prev[v];
+            if (u == destination_node) {
+                pathCost path;
+                for (auto it = prev.find(u); it != prev.end(); it = prev.find(it->second)) {
+                    path.first.emplace_back(it->first->mid);
                 }
-
-                path.first.push_back(v);
+                path.first.emplace_back(origin_node->mid);
                 std::reverse(path.first.begin(), path.first.end());
-                path.second = dist[destination];
+                path.second = dist_u;
                 return path;
             }
 
-            try
-            {
-                for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
-                {
-                    if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
-                    {
-                        if (link->mcosts[mapLabelCost.at(link->mlabel)][cost] < std::numeric_limits<double>::infinity())
-                        {
-                            std::string neighbor = link->mdownstream;
-                            double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
+                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
 
-                            if (dist[neighbor] > new_dist)
-                            {
-                                dist[neighbor] = new_dist;
-                                pq.emplace(new_dist, neighbor);
-                                prev[neighbor] = u;
-                            }
-                        }
+                    // The Dijkstra algorithm requires that all link costs are >= 0, and so does
+                    // the current implementation. `cost_on_link` must NOT be NaN either.
+                    // However, having link costs equal to +infinity is allowed:
+                    // the corresponding links are never visited.
+
+                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                    double new_dist = dist_u + cost_on_link;
+                    const Node *neighbor = link->mdown;
+
+                    auto neighbor_it = dist.try_emplace(neighbor, INFINITY).first;
+                    if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
+                        neighbor_it->second = new_dist;
+                        pq.emplace(DijkstraQueueItem{ new_dist, neighbor });
+                        prev[neighbor] = u;
                     }
                 }
-            }
-            catch(const std::out_of_range&)
-            {
-                std::cerr <<  "The node " << u << " does not belong to the graph \n";
-            }
-
-
+            });
         }
-        return path;
+
+        // No path from origin to destination was found: return a 0-node path with infinite cost in this case.
+        // Remark: to make it more expicit, it would be better to return an optional<pathCost> instead.
+        pathCost invalid_path;
+        invalid_path.second = INFINITY;
+        return invalid_path;
     }
 
     /**
@@ -239,62 +222,48 @@ namespace hipop
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels)
     {
+        const Node *origin_node = G.mnodes.at(origin);
 
-        PriorityQueue pq;
-        std::unordered_map<std::string, double> dist;
-        ShortestPathsTree prev;
-        prev.reserve(G.mnodes.size());
+        std::unordered_map<const Node*, double> dist; // No nullptr keys in this map.
+        ShortestPathsTree prev; // Values equals to "" (empty string) means "no predecessor" in this map.
         dist.reserve(G.mnodes.size());
-        double inf = std::numeric_limits<double>::infinity();
-        for (const auto &keyVal : G.mnodes)
-        {
-            dist[keyVal.first] = inf;
-            if (keyVal.first != origin)
-            {
-                pq.emplace(inf, keyVal.first);
-            }
+        prev.reserve(G.mnodes.size());
+        for (const auto &it : G.mnodes) {
+            dist.emplace(it.second, origin_node == it.second ? 0 : INFINITY);
+            prev.emplace(it.second->mid, "");
         }
-        pq.emplace(0, origin);
-        dist[origin] = 0;
-        prev[origin] = "";
 
-        while (!pq.empty())
-        {
-            QueueItem current = pq.top();
+        std::priority_queue<DijkstraQueueItem> pq;
+        pq.emplace(DijkstraQueueItem{ 0, origin_node });
+
+        while (!pq.empty()) {
+
+            const Node *u = pq.top().node;
+            double dist_u = dist.at(u);
             pq.pop();
-            std::string u = current.second;
 
-            try
-            {
-                for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
-                {
-                    if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
-                    {
-                        std::string neighbor = link->mdownstream;
-                        double new_dist = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+            u->forEachExit(prev.at(u->mid), [&](const Link *link) {
+                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
 
-                        if (dist[neighbor] > new_dist)
-                        {
-                            dist[neighbor] = new_dist;
-                            bool found = remove_value(pq, neighbor);
-                            if (!found)
-                            {
-                                std::cerr << "There must be negative cost cycles... Invalid call of Dijkstra.\n";
-                            }
-                            pq.emplace(new_dist, neighbor);
-                            prev[neighbor] = u;
-                        }
+                    // The Dijkstra algorithm requires that all link costs are >= 0, and so does
+                    // the current implementation. `cost_on_link` must NOT be NaN either.
+                    // However, having link costs equal to +infinity is allowed:
+                    // the corresponding links are never visited.
+
+                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                    double new_dist = dist_u + cost_on_link;
+                    const Node *neighbor = link->mdown;
+
+                    auto neighbor_it = dist.find(neighbor);
+                    if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
+                        neighbor_it->second = new_dist;
+                        pq.emplace(DijkstraQueueItem{ new_dist, neighbor });
+                        prev[neighbor->mid] = u->mid;
                     }
                 }
-            }
-            catch(const std::out_of_range&)
-            {
-                std::cerr <<  "The node " << u << " does not belong to the graph \n";
-            }
-      }
-
-
-      return prev;
+            });
+        }
+        return prev;
     }
 
     /**
@@ -337,9 +306,9 @@ namespace hipop
             Link*link = pair.second;
             if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
             {
-                std::string u = link->mupstream;
-                std::string v = link->mdownstream;
-                dist[nodevMap.at(u)][nodevMap.at(v)] = link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+                const std::string &u = link->mup->mid;
+                const std::string &v = link->mdown->mid;
+                dist[nodevMap.at(u)][nodevMap.at(v)] = link->cost(mapLabelCost.at(link->mlabel), cost);
                 prev[nodevMap.at(u)][nodevMap.at(v)] = nodevMap.at(u);
             }
         }
@@ -833,7 +802,7 @@ namespace hipop
           for (size_t i = 0; i < path.size() - 1; i++)
           {
               Link *link = G.mnodes[path[i]]->madj[path[i + 1]];
-              c += link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+              c += link->cost(mapLabelCost.at(link->mlabel), cost);
           }
           return c;
         }
@@ -873,7 +842,7 @@ namespace hipop
               }
               else
               {
-                  c += link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+                  c += link->cost(mapLabelCost.at(link->mlabel), cost);
               }
           }
           return c;
@@ -1262,81 +1231,76 @@ namespace hipop
         const setstring &accessibleLabels,
         const std::function<double(const Node *, const Node *)> &heuristic)
     {
-        pathCost path;
+        const Node *origin_node = G.mnodes.at(origin);
+        const Node *destination_node = G.mnodes.at(destination);
 
-        PriorityQueue pq;
+        // FIXME This is mostly the same implementation as dijkstra(): in fact, dijkstra() is equivalent to A*
+        // with a heuristic function that always returns 0. Could be refactored to avoid code duplication.
 
-        std::unordered_map<std::string, double> dist;
-        std::unordered_map<std::string, std::string> prev;
-        prev.reserve(G.mnodes.size());
+        // Return a 0-node path with zero cost if origin and destination are identical.
+        // Remark: it would be more consistent with the general case to return 1-node path
+        // made of the single origin + destination node.
+        // Still, for compliance with legacy behavior, we return a 0-node path.
+        if (origin_node == destination_node) {
+            pathCost empty_path;
+            empty_path.second = 0;
+            return empty_path;
+        }
+
+        std::unordered_map<const Node*, double> dist; // No nullptr keys in this map.
+        std::unordered_map<const Node*, const Node*> prev; // No nullptr (neither as key nor as value) in this map.
         dist.reserve(G.mnodes.size());
-        double inf = std::numeric_limits<double>::infinity();
-        for (const auto &keyVal : G.mnodes)
-        {
-            dist[keyVal.first] = inf;
-        }
-        pq.emplace(0, origin);
-        dist[origin] = 0;
+        prev.reserve(G.mnodes.size());
+        dist[origin_node] = 0;
+        // `prev[origin_node]` is intentionally left unset (the origin node has no predecessor).
 
-        path.second = inf;
-        prev[origin] = "";
+        std::priority_queue<DijkstraQueueItem> pq;
+        pq.emplace(DijkstraQueueItem{ heuristic(origin_node, destination_node), origin_node });
 
-        if (origin == destination){
-        path.second = 0;
-        return path;
-        }
+        while (!pq.empty()) {
 
-        while (!pq.empty())
-        {
-            std::string u = pq.top().second;
+            const Node *u = pq.top().node;
+            double dist_u = dist.at(u);
             pq.pop();
 
-            if (u == destination)
-            {
-                std::string v = prev[u];
-                path.first.push_back(u);
-
-                while (v != origin)
-                {
-                    path.first.push_back(v);
-                    v = prev[v];
+            if (u == destination_node) {
+                pathCost path;
+                for (auto it = prev.find(u); it != prev.end(); it = prev.find(it->second)) {
+                    path.first.emplace_back(it->first->mid);
                 }
-
-                path.first.push_back(v);
+                path.first.emplace_back(origin_node->mid);
                 std::reverse(path.first.begin(), path.first.end());
-                path.second = dist[destination];
+                path.second = dist_u;
                 return path;
             }
 
-            for (const auto link : G.mnodes.at(u)->getExits(prev[u]))
-            {
-                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
-                {
-                    std::string neighbor = link->mdownstream;
-                    double tentative_score = dist[u] + link->mcosts[mapLabelCost.at(link->mlabel)][cost];
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
+                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
 
-                    if (tentative_score < dist[neighbor])
-                    {
-                        dist[neighbor] = tentative_score;
-                        pq.emplace(tentative_score + heuristic(G.mnodes.at(u), G.mnodes.at(destination)), neighbor);
+                    // The Dijkstra algorithm requires that all link costs are >= 0, and so does
+                    // the current implementation. `cost_on_link` must NOT be NaN either.
+                    // However, having link costs equal to +infinity is allowed:
+                    // the corresponding links are never visited.
+
+                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                    double new_dist = dist_u + cost_on_link;
+                    const Node *neighbor = link->mdown;
+
+                    auto neighbor_it = dist.try_emplace(neighbor, INFINITY).first;
+                    if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
+                        neighbor_it->second = new_dist;
+                        pq.emplace(DijkstraQueueItem{ new_dist + heuristic(neighbor, destination_node), neighbor });
                         prev[neighbor] = u;
                     }
                 }
-            }
+            });
         }
-        return path;
-    }
 
-    /**
-     * @brief A simple heuristic for the A* based on the euclidian distance between two nodes
-     *
-     * @param current The current Node
-     * @param dest The destination Node
-     * @return double The distance between current and dest
-     */
-    double euclidianDist(const Node *current, const Node *dest)
-    {
-        return std::sqrt(std::pow(dest->mposition[0] - current->mposition[0], 2) + std::pow(dest->mposition[1] - current->mposition[1], 2));
+        // No path from origin to destination was found: return a 0-node path with infinite cost in this case.
+        // Remark: to make it more expicit, it would be better to return an optional<pathCost> instead.
+        pathCost invalid_path;
+        invalid_path.second = INFINITY;
+        return invalid_path;
     }
 
     /**
@@ -1358,7 +1322,13 @@ namespace hipop
         const std::unordered_map<std::string, std::string> &mapLabelCost,
         const setstring &accessibleLabels)
     {
-        return aStar(G, origin, destination, cost, mapLabelCost, accessibleLabels, euclidianDist);
+        return aStar(G, origin, destination, cost, mapLabelCost, accessibleLabels,
+            [](const Node *current, const Node *dest) {
+                double dx = dest->mposition[0] - current->mposition[0];
+                double dy = dest->mposition[1] - current->mposition[1];
+                return std::sqrt(dx * dx + dy * dy);
+            }
+        );
     }
 
     /**
@@ -1435,38 +1405,38 @@ namespace hipop
         }
         for(const auto &keyVal: G.mlinks) {
             doubledG1.AddLink(keyVal.second->mid,
-                            keyVal.second->mupstream,
-                            keyVal.second->mdownstream,
+                            keyVal.second->mup->mid,
+                            keyVal.second->mdown->mid,
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TWIN),
-                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
-                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TRIPLE_TRIPLE),
-                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TRIPLE),
-                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TRIPLE),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG2.AddLink(keyVal.second->mid,
-                            keyVal.second->mupstream,
-                            keyVal.second->mdownstream,
+                            keyVal.second->mup->mid,
+                            keyVal.second->mdown->mid,
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TWIN),
-                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
-                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TWIN),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
             doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TRIPLE_TRIPLE),
-                            StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TRIPLE),
-                            StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TRIPLE),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TRIPLE),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1474,8 +1444,8 @@ namespace hipop
             bool original_to_twin_G1 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
             if (original_to_twin_G1) {
                 doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
-                                keyVal.second->mupstream,
-                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                                keyVal.second->mup->mid,
+                                StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
                                 keyVal.second->mlabel);
@@ -1484,8 +1454,8 @@ namespace hipop
             bool original_to_twin_G2 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
             if (original_to_twin_G2) {
                 doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
-                                keyVal.second->mupstream,
-                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TWIN),
+                                keyVal.second->mup->mid,
+                                StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
                                 keyVal.second->mlabel);
@@ -1494,8 +1464,8 @@ namespace hipop
             bool twin_to_trpl_G1 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
             if (twin_to_trpl_G1) {
                 doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TRIPLE),
-                                StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
-                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                                StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TWIN),
+                                StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TRIPLE),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
                                 keyVal.second->mlabel);
@@ -1504,8 +1474,8 @@ namespace hipop
             bool twin_to_trpl_G2 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
             if (twin_to_trpl_G2) {
                 doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::TWIN_TRIPLE),
-                                StrCat(keyVal.second->mupstream, IntermodalNodeSuffix::TWIN),
-                                StrCat(keyVal.second->mdownstream, IntermodalNodeSuffix::TRIPLE),
+                                StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::TWIN),
+                                StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TRIPLE),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
                                 keyVal.second->mlabel);
