@@ -99,13 +99,17 @@ the Ruff recommendation cannot reasonably be followed. Each of them must come wi
 a short explanation in plain English of why the suppression is needed.
 
 
-### Check the Python type annotations
+### Run the Python type checker
 
 ```shell
 pyrefly check
 ```
 
-Configuration of the Python type checker [pyrefly](https://pyrefly.org/) is in `pyrefly.toml`.
+The type checker [Pyrefly](https://pyrefly.org/) performs a static analysis of the Python code
+to verify that the type annotations are present and consistent.
+[Integration with most IDEs is available](https://pyrefly.org/en/docs/IDE/).
+
+Configuration of the type checker is in `pyrefly.toml`.
 
 The build generates type stubs (`*.pyi` files) for the compiled C++ extension, so that
 the type checker can analyze code using it; these stubs are also bundled into the wheel files.

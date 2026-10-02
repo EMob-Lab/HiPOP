@@ -89,7 +89,7 @@ jobs:
         run: pip install --group dev .
 
       - name: Python wrapper - Run type checks
-        run: pyrefly check
+        run: pyrefly check --output-format=github
 
       - name: Python wrapper - Run tests
         run: pytest
