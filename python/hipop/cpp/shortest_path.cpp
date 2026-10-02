@@ -1,178 +1,184 @@
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/pair.h>
+#include <nanobind/stl/set.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/unordered_map.h>
+#include <nanobind/stl/unordered_set.h>
+#include <nanobind/stl/vector.h>
 
 #include <hipop/shortest_path.h>
 
-namespace py = pybind11;
+namespace nb = nanobind;
+using namespace nb::literals;
 
 namespace hipop_wrappers {
 
-void shortest_path(py::module_ &m) {
+void shortest_path(nb::module_ &m) {
 
     m.def(
         "dijkstra",
         &hipop::dijkstra,
-        py::arg("graph"),
-        py::arg("origin"),
-        py::arg("destination"),
-        py::arg("cost_metric"),
-        py::arg("label_to_cost_family"),
-        py::arg("accessible_link_labels") = setstring()
+        "graph"_a,
+        "origin"_a,
+        "destination"_a,
+        "cost_metric"_a,
+        "label_to_cost_family"_a,
+        "accessible_link_labels"_a = setstring()
     );
 
     m.def(
         "dijkstra_single_source",
         &hipop::dijkstraSingleSource,
-        py::arg("graph"),
-        py::arg("origin"),
-        py::arg("cost_metric"),
-        py::arg("label_to_cost_family"),
-        py::arg("accessible_link_labels") = setstring()
+        "graph"_a,
+        "origin"_a,
+        "cost_metric"_a,
+        "label_to_cost_family"_a,
+        "accessible_link_labels"_a = setstring()
     );
 
     m.def(
         "floyd_warshall",
         &hipop::floydWarshall,
-        py::arg("graph"),
-        py::arg("cost_metric"),
-        py::arg("label_to_cost_family"),
-        py::arg("accessible_link_labels") = setstring()
+        "graph"_a,
+        "cost_metric"_a,
+        "label_to_cost_family"_a,
+        "accessible_link_labels"_a = setstring()
     );
 
     m.def(
         "parallel_dijkstra",
         &hipop::parallelDijkstra,
-        py::arg("graph"),
-        py::arg("origins"),
-        py::arg("destinations"),
-        py::arg("label_to_cost_family"),
-        py::arg("cost_metric"),
-        py::arg("thread_number"),
-        py::arg("accessible_link_labels") = std::vector<setstring>()
+        "graph"_a,
+        "origins"_a,
+        "destinations"_a,
+        "label_to_cost_family"_a,
+        "cost_metric"_a,
+        "thread_number"_a,
+        "accessible_link_labels"_a = std::vector<setstring>()
     );
 
     m.def(
         "parallel_dijkstra_single_source",
         &hipop::parallelDijkstraSingleSource,
-        py::arg("graph"),
-        py::arg("origins"),
-        py::arg("label_to_cost_family"),
-        py::arg("cost_metric"),
-        py::arg("thread_number"),
-        py::arg("accessible_link_labels") = std::vector<setstring>()
+        "graph"_a,
+        "origins"_a,
+        "label_to_cost_family"_a,
+        "cost_metric"_a,
+        "thread_number"_a,
+        "accessible_link_labels"_a = std::vector<setstring>()
     );
 
     m.def(
         "parallel_dijkstra_heterogeneous_costs",
         &hipop::parallelDijkstraHeterogeneousCosts,
-        py::arg("graph"),
-        py::arg("origins"),
-        py::arg("destinations"),
-        py::arg("label_to_cost_family"),
-        py::arg("cost_metrics"),
-        py::arg("thread_number"),
-        py::arg("accessible_link_labels") = std::vector<setstring>()
+        "graph"_a,
+        "origins"_a,
+        "destinations"_a,
+        "label_to_cost_family"_a,
+        "cost_metrics"_a,
+        "thread_number"_a,
+        "accessible_link_labels"_a = std::vector<setstring>()
     );
 
     m.def(
         "k_shortest_path",
         &hipop::KShortestPath,
-        py::arg("graph"),
-        py::arg("origin"),
-        py::arg("destination"),
-        py::arg("cost_metric"),
-        py::arg("accessible_link_labels"),
-        py::arg("label_to_cost_family"),
-        py::arg("max_diff_cost"),
-        py::arg("max_dist_in_common"),
-        py::arg("cost_multiplier"),
-        py::arg("max_retry"),
-        py::arg("k_path"),
-        py::arg("intermodal")
+        "graph"_a,
+        "origin"_a,
+        "destination"_a,
+        "cost_metric"_a,
+        "accessible_link_labels"_a,
+        "label_to_cost_family"_a,
+        "max_diff_cost"_a,
+        "max_dist_in_common"_a,
+        "cost_multiplier"_a,
+        "max_retry"_a,
+        "k_path"_a,
+        "intermodal"_a
     );
 
     m.def(
         "parallel_k_shortest_path",
         &hipop::parallelKShortestPath,
-        py::arg("graph"),
-        py::arg("origins"),
-        py::arg("destinations"),
-        py::arg("cost_metric"),
-        py::arg("label_to_cost_family"),
-        py::arg("accessible_link_labels"),
-        py::arg("max_diff_cost"),
-        py::arg("max_dist_in_common"),
-        py::arg("cost_multiplier"),
-        py::arg("max_retry"),
-        py::arg("k_paths"),
-        py::arg("thread_number")
+        "graph"_a,
+        "origins"_a,
+        "destinations"_a,
+        "cost_metric"_a,
+        "label_to_cost_family"_a,
+        "accessible_link_labels"_a,
+        "max_diff_cost"_a,
+        "max_dist_in_common"_a,
+        "cost_multiplier"_a,
+        "max_retry"_a,
+        "k_paths"_a,
+        "thread_number"_a
     );
 
     m.def(
         "yen_k_shortest_path",
         &hipop::YenKShortestPath,
-        py::arg("graph"),
-        py::arg("origin"),
-        py::arg("destination"),
-        py::arg("cost_metric"),
-        py::arg("accessible_link_labels"),
-        py::arg("label_to_cost_family"),
-        py::arg("k_path")
+        "graph"_a,
+        "origin"_a,
+        "destination"_a,
+        "cost_metric"_a,
+        "accessible_link_labels"_a,
+        "label_to_cost_family"_a,
+        "k_path"_a
     );
 
     m.def(
         "astar_euclidian_dist",
         &hipop::aStarEuclidianDist,
-        py::arg("graph"),
-        py::arg("origin"),
-        py::arg("destination"),
-        py::arg("cost_metric"),
-        py::arg("label_to_cost_family"),
-        py::arg("accessible_link_labels")
+        "graph"_a,
+        "origin"_a,
+        "destination"_a,
+        "cost_metric"_a,
+        "label_to_cost_family"_a,
+        "accessible_link_labels"_a
     );
 
     m.def(
         "compute_path_length",
         &hipop::computePathLength,
-        py::arg("graph"),
-        py::arg("path")
+        "graph"_a,
+        "path"_a
     );
 
     m.def(
         "compute_path_cost",
         &hipop::computePathCost,
-        py::arg("graph"),
-        py::arg("path"),
-        py::arg("cost_metric"),
-        py::arg("label_to_cost_family")
+        "graph"_a,
+        "path"_a,
+        "cost_metric"_a,
+        "label_to_cost_family"_a
     );
 
     m.def(
         "compute_paths_costs",
         &hipop::computePathsCosts,
-        py::arg("graph"),
-        py::arg("paths"),
-        py::arg("cost_metric"),
-        py::arg("label_to_cost_family"),
-        py::arg("thread_number")
+        "graph"_a,
+        "paths"_a,
+        "cost_metric"_a,
+        "label_to_cost_family"_a,
+        "thread_number"_a
     );
 
     m.def(
         "parallel_k_intermodal_shortest_path",
         &hipop::parallelKIntermodalShortestPath,
-        py::arg("graph"),
-        py::arg("origins"),
-        py::arg("destinations"),
-        py::arg("label_to_cost_family"),
-        py::arg("cost_metric"),
-        py::arg("thread_number"),
-        py::arg("pair_mandatory_labels"),
-        py::arg("max_diff_cost"),
-        py::arg("max_dist_in_common"),
-        py::arg("cost_multiplier"),
-        py::arg("max_retry"),
-        py::arg("k_paths"),
-        py::arg("accessible_link_labels") = std::vector<setstring>()
+        "graph"_a,
+        "origins"_a,
+        "destinations"_a,
+        "label_to_cost_family"_a,
+        "cost_metric"_a,
+        "thread_number"_a,
+        "pair_mandatory_labels"_a,
+        "max_diff_cost"_a,
+        "max_dist_in_common"_a,
+        "cost_multiplier"_a,
+        "max_retry"_a,
+        "k_paths"_a,
+        "accessible_link_labels"_a = std::vector<setstring>()
     );
 }
 
