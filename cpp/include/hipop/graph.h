@@ -158,26 +158,26 @@ namespace hipop
         std::unordered_map<std::string, Link* > mlinks;
 
         /**
-         * Add all the nodes and links from `other` to the current OrientedGraph.
+         * Add all the nodes and links from `graph` to the current OrientedGraph.
          *
          * The pre-existing nodes and links of the current OrientedGraph are preserved.
          */
-        void AddAllNodesAndLinks(const OrientedGraph &other);
+        void AddAllNodesAndLinks(const OrientedGraph &graph);
 
         void AddNode(std::string id, double x, double y, std::string label = "", mapsets excludeMovements = {});
         void AddLink(std::string id, const std::string &up, const std::string &down, double length, mapcosts costs, std::string label = "");
-        void DeleteLink(const std::string &id);
-        void DeleteAllLinksToNode(const std::string &id);
-        void UpdateLinkCosts(const std::string &lid, mapcosts costs);
-        void UpdateCosts(const std::unordered_map<std::string, mapcosts> &maplinkcosts);
+        void DeleteLink(const std::string &linkId);
+        void DeleteAllLinksToNode(const std::string &nodeId);
+        void UpdateLinkCosts(const std::string &linkId, mapcosts costs);
+        void UpdateCosts(const std::unordered_map<std::string, mapcosts> &linkIdToCosts);
         double getLength(const std::string &up, const std::string &down);
         std::vector<std::string> GetLinksWithoutCost(const std::string &costMetric, const std::unordered_map<std::string, std::string> &labelToCostFamily);
 
         void ShowNodes();
         void ShowLinks();
 
-        Link* getLink(const std::string &id) {
-            return mlinks[id];
+        Link* getLink(const std::string &linkId) {
+            return mlinks[linkId];
         }
 
         OrientedGraph() = default;
@@ -189,6 +189,6 @@ namespace hipop
 
     };
 
-    OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &allGraphs);
+    OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &graphs);
 
 } // namespace hipop

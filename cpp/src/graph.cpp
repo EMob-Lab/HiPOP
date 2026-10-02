@@ -49,8 +49,8 @@ namespace hipop
     }
 
 
-    void OrientedGraph::AddAllNodesAndLinks(const OrientedGraph &other) {
-        for (const auto &it : other.mnodes) {
+    void OrientedGraph::AddAllNodesAndLinks(const OrientedGraph &graph) {
+        for (const auto &it : graph.mnodes) {
             const Node *otherNode = it.second;
             AddNode(
                 otherNode->mid,
@@ -60,7 +60,7 @@ namespace hipop
                 otherNode->mexclude_movements
             );
         }
-        for (const auto &it : other.mlinks) {
+        for (const auto &it : graph.mlinks) {
             const Link *otherLink = it.second;
             AddLink(
                 otherLink->mid,
@@ -113,14 +113,12 @@ namespace hipop
 
     /**
      * @brief Delete a link from the OrientedGraph
-     *
-     * @param _id The Link id to delete
      */
-    void OrientedGraph::DeleteLink(const std::string &id) {
+    void OrientedGraph::DeleteLink(const std::string &linkId) {
 
-        if (mlinks.find(id) != mlinks.end())
+        if (mlinks.find(linkId) != mlinks.end())
         {
-            Link* pLink = mlinks[id];
+            Link* pLink = mlinks[linkId];
 
             if (mnodes.find(pLink->mup->mid) != mnodes.end())
             {
@@ -134,21 +132,19 @@ namespace hipop
                 pDown->mradj.erase(pLink->mup->mid);
             }
 
-            mlinks.erase(id);
+            mlinks.erase(linkId);
             delete pLink;
         }
     };
 
     /**
      * @brief Delete all links to a specific node
-     *
-     * @param _id The Node id to consider
      */
-    void OrientedGraph::DeleteAllLinksToNode(const std::string &id) {
+    void OrientedGraph::DeleteAllLinksToNode(const std::string &nodeId) {
 
-        if (mnodes.find(id) != mnodes.end())
+        if (mnodes.find(nodeId) != mnodes.end())
         {
-            for (const auto &it : mnodes[id]->madj) {
+            for (const auto &it : mnodes[nodeId]->madj) {
                 DeleteLink(it.second->mid);
             }
         }
@@ -158,21 +154,21 @@ namespace hipop
     /**
      * @brief Update a Link costs
      *
-     * @param lid The id of the Link to update
-     * @param _costs The new costs
+     * @param linkId The id of the Link to update
+     * @param costs The new costs
      */
-    void OrientedGraph::UpdateLinkCosts(const std::string &lid, mapcosts costs) {
-        mlinks[lid]->updateCosts(std::move(costs));
+    void OrientedGraph::UpdateLinkCosts(const std::string &linkId, mapcosts costs) {
+        mlinks[linkId]->updateCosts(std::move(costs));
     }
 
     /**
      * @brief Update a list of link costs
      *
-     * @param maplinkcosts The map of the links/costs to update
+     * @param linkIdToCosts The map of the links/costs to update
      */
-    void OrientedGraph::UpdateCosts(const std::unordered_map<std::string, mapcosts> &maplinkcosts)
+    void OrientedGraph::UpdateCosts(const std::unordered_map<std::string, mapcosts> &linkIdToCosts)
     {
-        for (const auto &it : maplinkcosts) {
+        for (const auto &it : linkIdToCosts) {
             UpdateLinkCosts(it.first, it.second);
         }
     }
@@ -197,11 +193,11 @@ namespace hipop
         }
     }
 
- /**
+    /**
      * @brief Get the length of a link
      *
-     * @param _up the upstream node of the link
-     * @param _down the downstream node of the link
+     * @param up the upstream node of the link
+     * @param down the downstream node of the link
      * @return double the length of the link
      */
     double OrientedGraph::getLength(const std::string &up, const std::string &down)
@@ -213,12 +209,12 @@ namespace hipop
     /**
      * @brief Merge multiple OrientedGraph together into one
      *
-     * @param allGraphs Vector of OrientedGraph to merge
+     * @param graphs Vector of OrientedGraph to merge
      * @return OrientedGraph* The result of the merge
      */
-    OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &allGraphs) {
+    OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &graphs) {
         auto newGraph = new OrientedGraph();
-        for (const OrientedGraph *G : allGraphs) {
+        for (const OrientedGraph *G : graphs) {
             newGraph->AddAllNodesAndLinks(*G);
         }
         return newGraph;
