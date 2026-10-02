@@ -1,7 +1,7 @@
-from importlib.resources import path
-from hipop.graph import OrientedGraph, link_to_dict, graph_to_dict
-from hipop.shortest_path import parallel_k_shortest_path, compute_path_length
 from pprint import pprint
+
+from hipop.graph import OrientedGraph, graph_to_dict
+from hipop.shortest_path import parallel_k_shortest_path
 
 G = OrientedGraph()
 
@@ -26,7 +26,7 @@ destinations = ["3" for _ in range(N)]
 layers = [{'pv_layer'} for _ in range(N)]
 
 # Usable services (for each layer)
-s=dict()
+s={}
 s['pv_layer']='PV'
 services = [s for _ in range(N)]
 

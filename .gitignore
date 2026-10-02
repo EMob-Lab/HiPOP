@@ -4,8 +4,9 @@
 # Python bytecode directories
 __pycache__/
 
-# Temporary/cache directories created by miscellaneous development tools
-/.pytest_cache/
+# Temporary directories created by miscellaneous development tools
+/.pytest_cache
+/.ruff_cache
 
 # Output directories for Python distribution files (wheels & source distributions)
 /dist/

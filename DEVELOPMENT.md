@@ -76,13 +76,40 @@ When a staged file breaks one of the rules, the hook rewrites it in place
 and aborts the commit; review the fix, re-stage the file, and commit again.
 
 
-### Check the Python type annotations
+### Run the Python linter
+
+```shell
+ruff check          # Report the lint errors
+ruff check --fix    # ... or also fix what can be fixed automatically
+```
+
+The linter [Ruff](https://docs.astral.sh/ruff/) performs a static analysis of the Python code
+to catch likely bugs (unreachable code, misused language constructs, etc.),
+enforce good practices, and check a few code style conventions.
+[Integration with most IDEs is available](https://docs.astral.sh/ruff/editors/setup/).
+
+Configuration of the linter is in the `ruff.toml` files
+(repository root, plus incremental overrides in subdirectories where needed).
+
+A lint error can be silenced locally on a line with a `# ruff: ignore[<rule-code>]` comment
+(or with [equivalent comments](https://docs.astral.sh/ruff/linter/#error-suppression)
+for block-level or file-level error suppression).
+**Error suppression comments should be a last resort**, reserved for the rare cases where
+the Ruff recommendation cannot reasonably be followed. Each of them must come with
+a short explanation in plain English of why the suppression is needed.
+
+
+### Run the Python type checker
 
 ```shell
 pyrefly check
 ```
 
-Configuration of the Python type checker [pyrefly](https://pyrefly.org/) is in `pyrefly.toml`.
+The type checker [Pyrefly](https://pyrefly.org/) performs a static analysis of the Python code
+to verify that the type annotations are present and consistent.
+[Integration with most IDEs is available](https://pyrefly.org/en/docs/IDE/).
+
+Configuration of the type checker is in `pyrefly.toml`.
 
 The build generates type stubs (`*.pyi` files) for the compiled C++ extension, so that
 the type checker can analyze code using it; these stubs are also bundled into the wheel files.

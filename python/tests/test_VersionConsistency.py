@@ -1,5 +1,6 @@
-import hipop
 import importlib.metadata
+
+import hipop
 
 
 def test_version_consistency() -> None:

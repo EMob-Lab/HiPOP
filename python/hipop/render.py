@@ -17,7 +17,7 @@ def render_oriented_graph(
     ax.plot(x, y, 'o', markerfacecolor='white', markeredgecolor=color, fillstyle='full', markersize=nodesize)
 
     lines = []
-    for lid, link in G.links.items():
+    for link in G.links.values():
         lines.append([G.nodes[link.upstream].position, G.nodes[link.downstream].position])
     line_segment = LineCollection(lines, linestyles='solid', linewidths=linkwidth, cmap=cmap)
     ax.add_collection(line_segment)
