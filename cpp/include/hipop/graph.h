@@ -171,7 +171,7 @@ namespace hipop
         void UpdateLinkCosts(const std::string &lid, mapcosts costs);
         void UpdateCosts(const std::unordered_map<std::string, mapcosts> &maplinkcosts);
         double getLength(const std::string &up, const std::string &down);
-        std::vector<std::string> GetLinksWithoutCost(const std::string &costMetric, const std::unordered_map<std::string, std::string> &mapLabelCost);
+        std::vector<std::string> GetLinksWithoutCost(const std::string &costMetric, const std::unordered_map<std::string, std::string> &labelToCostFamily);
 
         void ShowNodes();
         void ShowLinks();

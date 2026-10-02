@@ -15,7 +15,7 @@ void shortest_path(py::module_ &m) {
         py::arg("origin"),
         py::arg("destination"),
         py::arg("cost_metric"),
-        py::arg("map_label_cost"),
+        py::arg("label_to_cost_family"),
         py::arg("available_labels") = setstring());
     m.def(
         "dijkstra_single_source",
@@ -23,14 +23,14 @@ void shortest_path(py::module_ &m) {
         py::arg("graph"),
         py::arg("origin"),
         py::arg("cost_metric"),
-        py::arg("map_label_cost"),
+        py::arg("label_to_cost_family"),
         py::arg("available_labels") = setstring());
     m.def(
       "floyd_warshall",
       &hipop::floydWarshall,
       py::arg("graph"),
       py::arg("cost_metric"),
-      py::arg("map_label_cost"),
+      py::arg("label_to_cost_family"),
       py::arg("available_labels") = setstring()
     );
     m.def(
@@ -39,7 +39,7 @@ void shortest_path(py::module_ &m) {
         py::arg("graph"),
         py::arg("origins"),
         py::arg("destinations"),
-        py::arg("map_label_costs"),
+        py::arg("label_to_cost_family"),
         py::arg("cost_metric"),
         py::arg("thread_number"),
         py::arg("available_labels") = std::vector<setstring>());
@@ -48,7 +48,7 @@ void shortest_path(py::module_ &m) {
         &hipop::parallelDijkstraSingleSource,
         py::arg("graph"),
         py::arg("origins"),
-        py::arg("map_label_costs"),
+        py::arg("label_to_cost_family"),
         py::arg("cost_metric"),
         py::arg("thread_number"),
         py::arg("available_labels") = std::vector<setstring>());
@@ -58,7 +58,7 @@ void shortest_path(py::module_ &m) {
         py::arg("graph"),
         py::arg("origins"),
         py::arg("destinations"),
-        py::arg("map_label_costs"),
+        py::arg("label_to_cost_family"),
         py::arg("cost_metrics"),
         py::arg("thread_number"),
         py::arg("available_labels") = std::vector<setstring>());
@@ -75,7 +75,7 @@ void shortest_path(py::module_ &m) {
         py::arg("graph"),
         py::arg("origins"),
         py::arg("destinations"),
-        py::arg("map_label_costs"),
+        py::arg("label_to_cost_family"),
         py::arg("cost_metric"),
         py::arg("thread_number"),
         py::arg("pair_mandatory_labels"),
