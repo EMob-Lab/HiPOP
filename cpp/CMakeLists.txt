@@ -12,7 +12,7 @@ set(HIPOP_SRC
 
 add_library(hipoplib ${HIPOP_SRC})
 set_target_properties(hipoplib PROPERTIES
-    POSITION_INDEPENDENT_CODE ON # Needed to link the hipop static lib to the pybind dynamic one
+    POSITION_INDEPENDENT_CODE ON # Needed to link the hipop static lib to the nanobind dynamic one
 )
 target_include_directories(hipoplib PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
