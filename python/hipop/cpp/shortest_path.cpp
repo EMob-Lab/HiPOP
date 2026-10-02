@@ -16,7 +16,7 @@ void shortest_path(py::module_ &m) {
         py::arg("destination"),
         py::arg("cost_metric"),
         py::arg("label_to_cost_family"),
-        py::arg("available_labels") = setstring());
+        py::arg("accessible_link_labels") = setstring());
     m.def(
         "dijkstra_single_source",
         &hipop::dijkstraSingleSource,
@@ -24,14 +24,14 @@ void shortest_path(py::module_ &m) {
         py::arg("origin"),
         py::arg("cost_metric"),
         py::arg("label_to_cost_family"),
-        py::arg("available_labels") = setstring());
+        py::arg("accessible_link_labels") = setstring());
     m.def(
       "floyd_warshall",
       &hipop::floydWarshall,
       py::arg("graph"),
       py::arg("cost_metric"),
       py::arg("label_to_cost_family"),
-      py::arg("available_labels") = setstring()
+      py::arg("accessible_link_labels") = setstring()
     );
     m.def(
         "parallel_dijkstra",
@@ -42,7 +42,7 @@ void shortest_path(py::module_ &m) {
         py::arg("label_to_cost_family"),
         py::arg("cost_metric"),
         py::arg("thread_number"),
-        py::arg("available_labels") = std::vector<setstring>());
+        py::arg("accessible_link_labels") = std::vector<setstring>());
     m.def(
         "parallel_dijkstra_single_source",
         &hipop::parallelDijkstraSingleSource,
@@ -51,7 +51,7 @@ void shortest_path(py::module_ &m) {
         py::arg("label_to_cost_family"),
         py::arg("cost_metric"),
         py::arg("thread_number"),
-        py::arg("available_labels") = std::vector<setstring>());
+        py::arg("accessible_link_labels") = std::vector<setstring>());
     m.def(
         "parallel_dijkstra_heterogeneous_costs",
         &hipop::parallelDijkstraHeterogeneousCosts,
@@ -61,7 +61,7 @@ void shortest_path(py::module_ &m) {
         py::arg("label_to_cost_family"),
         py::arg("cost_metrics"),
         py::arg("thread_number"),
-        py::arg("available_labels") = std::vector<setstring>());
+        py::arg("accessible_link_labels") = std::vector<setstring>());
     m.def("k_shortest_path", &hipop::KShortestPath);
     m.def("parallel_k_shortest_path", &hipop::parallelKShortestPath);
     m.def("yen_k_shortest_path", &hipop::YenKShortestPath);
@@ -84,7 +84,7 @@ void shortest_path(py::module_ &m) {
         py::arg("cost_multiplier"),
         py::arg("max_retry"),
         py::arg("nb_paths"),
-        py::arg("available_labels") = std::vector<setstring>());
+        py::arg("accessible_link_labels") = std::vector<setstring>());
 }
 
 }

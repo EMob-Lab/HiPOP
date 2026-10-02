@@ -31,25 +31,25 @@ namespace hipop
         const std::string &destination,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels = {});
+        const setstring &accessibleLinkLabels = {});
     ShortestPathsTree dijkstraSingleSource(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels);
+        const setstring &accessibleLinkLabels);
     std::pair<std::vector<std::vector<int>>, std::unordered_map<int, std::string>> floydWarshall(
         const OrientedGraph &G,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels);
+        const setstring &accessibleLinkLabels);
     pathCost aStar(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels,
+        const setstring &accessibleLinkLabels,
         const std::function<double(const Node *, const Node *)> &heuristic);
     pathCost aStarEuclidianDist(
         const OrientedGraph &G,
@@ -57,7 +57,7 @@ namespace hipop
         const std::string &destination,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels);
+        const setstring &accessibleLinkLabels);
 
     std::vector<pathCost> parallelDijkstra(
         const OrientedGraph &G,
@@ -66,7 +66,7 @@ namespace hipop
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
         const std::string &costMetric,
         int threadNumber,
-        const std::vector<setstring> &vecAvailableLabels = {});
+        const std::vector<setstring> &accessibleLinkLabels = {});
 
     std::vector<ShortestPathsTree> parallelDijkstraSingleSource(
         const OrientedGraph &G,
@@ -74,7 +74,7 @@ namespace hipop
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
         const std::string &costMetric,
         int threadNumber,
-        const std::vector<setstring> &vecAvailableLabels = {});
+        const std::vector<setstring> &accessibleLinkLabels = {});
 
     std::vector<pathCost> parallelDijkstraHeterogeneousCosts(
         const OrientedGraph &G,
@@ -83,14 +83,14 @@ namespace hipop
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
         const std::vector<std::string> &costMetrics,
         int threadNumber,
-        const std::vector<setstring> &vecAvailableLabels = {});
+        const std::vector<setstring> &accessibleLinkLabels = {});
 
     std::vector<pathCost> YenKShortestPath(
         OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
         const std::string &costMetric,
-        const setstring &accessibleLabels,
+        const setstring &accessibleLinkLabels,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         int kPath);
     std::vector<pathCost> KShortestPath(
@@ -98,7 +98,7 @@ namespace hipop
         const std::string &origin,
         const std::string &destination,
         const std::string &costMetric,
-        const setstring &accessibleLabels,
+        const setstring &accessibleLinkLabels,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         double maxDiffCost,
         double maxDistInCommon,
@@ -113,7 +113,7 @@ namespace hipop
         const std::vector<std::string> &destinations,
         const std::string &costMetric,
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
-        const std::vector<setstring> &accessibleLabels,
+        const std::vector<setstring> &accessibleLinkLabels,
         double maxDiffCost,
         double maxDistInCommon,
         double costMultiplier,
@@ -134,6 +134,6 @@ namespace hipop
         double costMultiplier,
         int maxRetry,
         const std::vector<int> &kPaths,
-        const std::vector<setstring> &vecAvailableLabels = {});
+        const std::vector<setstring> &accessibleLinkLabels = {});
 
 } // namespace hipop

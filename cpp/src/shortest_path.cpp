@@ -124,7 +124,7 @@ namespace hipop
      * @param destination The destination
      * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param labelToCostFamily The cost family to use for each link label (multiple cost families can be defined on a Link)
-     * @param accessibleLabels The set of accessible label
+     * @param accessibleLinkLabels The set of accessible link labels
      * @return pathCost The list of Nodes defining the shortest path and the associated cost
      */
     pathCost dijkstra(
@@ -133,7 +133,7 @@ namespace hipop
         const std::string &destination,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels)
+        const setstring &accessibleLinkLabels)
     {
         const Node *origin_node = G.mnodes.at(origin);
         const Node *destination_node = G.mnodes.at(destination);
@@ -176,7 +176,7 @@ namespace hipop
             }
 
             u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
-                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
@@ -212,7 +212,7 @@ namespace hipop
      * @param origin The origin
      * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param labelToCostFamily The cost family to use for each link label (multiple cost families can be defined on a Link)
-     * @param accessibleLabels The set of accessible label
+     * @param accessibleLinkLabels The set of accessible link labels
      * @return prev The shortest paths tree from origin
      */
     ShortestPathsTree dijkstraSingleSource(
@@ -220,7 +220,7 @@ namespace hipop
         const std::string &origin,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels)
+        const setstring &accessibleLinkLabels)
     {
         const Node *origin_node = G.mnodes.at(origin);
 
@@ -243,7 +243,7 @@ namespace hipop
             pq.pop();
 
             u->forEachExit(prev.at(u->mid), [&](const Link *link) {
-                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
@@ -272,14 +272,14 @@ namespace hipop
      * @param G The OrientedGrah
      * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param labelToCostFamily The cost family to use for each link label (multiple cost families can be defined on a Link)
-     * @param accessibleLabels The set of accessible label
+     * @param accessibleLinkLabels The set of accessible link labels
      * @return prev The shortest paths tree
      */
     std::pair<std::vector<std::vector<int>>, std::unordered_map<int, std::string>> floydWarshall(
         const OrientedGraph &G,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels)
+        const setstring &accessibleLinkLabels)
     {
         int V = G.mnodes.size();
 
@@ -304,7 +304,7 @@ namespace hipop
         for (const auto& pair : G.mlinks)
         {
             Link*link = pair.second;
-            if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
+            if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end())
             {
                 const std::string &u = link->mup->mid;
                 const std::string &v = link->mdown->mid;
@@ -423,7 +423,7 @@ namespace hipop
      * @param labelToCostFamily For each OD, the cost family to use for each link label
      * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
-     * @param vecAvailableLabels The vector of available labels
+     * @param accessibleLinkLabels The vector of accessible link labels
      * @return std::vector<pathCost> The vector of computed shortest path
      */
     std::vector<pathCost> parallelDijkstra(
@@ -433,7 +433,7 @@ namespace hipop
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
         const std::string &costMetric,
         int threadNumber,
-        const std::vector<setstring> &vecAvailableLabels)
+        const std::vector<setstring> &accessibleLinkLabels)
     {
         omp_set_num_threads(threadNumber);
 
@@ -450,17 +450,17 @@ namespace hipop
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel for shared(res, vecAvailableLabels, labelToCostFamily) schedule(dynamic)
+        #pragma omp parallel for shared(res, accessibleLinkLabels, labelToCostFamily) schedule(dynamic)
         for (std::int64_t i = 0; i < nbUniqueIndices; i++)
         {
             int uniqueIdx = uniqueIndices[i];
-            if (vecAvailableLabels.empty())
+            if (accessibleLinkLabels.empty())
             {
                 res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetric, labelToCostFamily[uniqueIdx], {});
             }
             else
             {
-                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetric, labelToCostFamily[uniqueIdx], vecAvailableLabels[uniqueIdx]);
+                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetric, labelToCostFamily[uniqueIdx], accessibleLinkLabels[uniqueIdx]);
             }
         }
 
@@ -481,7 +481,7 @@ namespace hipop
      * @param labelToCostFamily For each OD, the cost family to use for each link label
      * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
-     * @param vecAvailableLabels The vector of available labels
+     * @param accessibleLinkLabels The vector of accessible link labels
      * @return std::vector<ShortestPathsTree> The vector of computed shortest paths trees
      */
     std::vector<ShortestPathsTree> parallelDijkstraSingleSource(
@@ -490,23 +490,23 @@ namespace hipop
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
         const std::string &costMetric,
         int threadNumber,
-        const std::vector<setstring> &vecAvailableLabels)
+        const std::vector<setstring> &accessibleLinkLabels)
     {
         omp_set_num_threads(threadNumber);
 
         int nbSPTs = origins.size();
         std::vector<ShortestPathsTree> res(nbSPTs);
 
-        #pragma omp parallel for shared(res, vecAvailableLabels, labelToCostFamily) schedule(dynamic)
+        #pragma omp parallel for shared(res, accessibleLinkLabels, labelToCostFamily) schedule(dynamic)
         for (int i = 0; i < nbSPTs; i++)
         {
-            if (vecAvailableLabels.empty())
+            if (accessibleLinkLabels.empty())
             {
                 res[i] = dijkstraSingleSource(G, origins[i], costMetric, labelToCostFamily[i], {});
             }
             else
             {
-                res[i] = dijkstraSingleSource(G, origins[i], costMetric, labelToCostFamily[i], vecAvailableLabels[i]);
+                res[i] = dijkstraSingleSource(G, origins[i], costMetric, labelToCostFamily[i], accessibleLinkLabels[i]);
             }
         }
 
@@ -522,7 +522,7 @@ namespace hipop
      * @param labelToCostFamily For each OD, the cost family to use for each link label
      * @param costMetrics The vector of cost metrics to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
-     * @param vecAvailableLabels The vector of available labels
+     * @param accessibleLinkLabels The vector of accessible link labels
      * @return std::vector<pathCost> The vector of computed shortest path
      */
     std::vector<pathCost> parallelDijkstraHeterogeneousCosts(
@@ -532,7 +532,7 @@ namespace hipop
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
         const std::vector<std::string> &costMetrics,
         int threadNumber,
-        const std::vector<setstring> &vecAvailableLabels)
+        const std::vector<setstring> &accessibleLinkLabels)
     {
         omp_set_num_threads(threadNumber);
 
@@ -548,17 +548,17 @@ namespace hipop
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel for shared(res, vecAvailableLabels, labelToCostFamily) schedule(dynamic)
+        #pragma omp parallel for shared(res, accessibleLinkLabels, labelToCostFamily) schedule(dynamic)
         for (std::int64_t i = 0; i < nbUniqueIndices; i++)
         {
             int uniqueIdx = uniqueIndices[i];
-            if (vecAvailableLabels.empty())
+            if (accessibleLinkLabels.empty())
             {
                 res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetrics[uniqueIdx], labelToCostFamily[uniqueIdx], {});
             }
             else
             {
-                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetrics[uniqueIdx], labelToCostFamily[uniqueIdx], vecAvailableLabels[uniqueIdx]);
+                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetrics[uniqueIdx], labelToCostFamily[uniqueIdx], accessibleLinkLabels[uniqueIdx]);
             }
         }
 
@@ -904,7 +904,7 @@ namespace hipop
      * @param origin The origin
      * @param destination The destination
      * @param costMetric The cost metric to consider
-     * @param accessibleLabels The set of accessible label
+     * @param accessibleLinkLabels The set of accessible link labels
      * @param labelToCostFamily The cost family to use for each link label
      * @param maxDiffCost The maximal difference between the cost of the first computed
      *        shortest path and the cost of the next ones, expressed as a percentage
@@ -926,7 +926,7 @@ namespace hipop
         const std::string &origin,
         const std::string &destination,
         const std::string &costMetric,
-        const setstring &accessibleLabels,
+        const setstring &accessibleLinkLabels,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         double maxDiffCost,
         double maxDistInCommon,
@@ -942,7 +942,7 @@ namespace hipop
         std::vector<pathCost> paths;
         linkMapCosts initial_costs;
 
-        pathCost firstPath = dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLabels);
+        pathCost firstPath = dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels);
         paths.push_back(firstPath);
 
         if (firstPath.first.empty()) // no path found
@@ -963,7 +963,7 @@ namespace hipop
 
         while (pathCounter < kPath && retry < maxRetry )
         {
-            pathCost newPath = dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLabels);
+            pathCost newPath = dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels);
             newPath.second = computePathCostWithInitialCostsDict(G, newPath.first, costMetric, labelToCostFamily, initial_costs);
 
             if (newPath.first.empty())
@@ -1026,7 +1026,7 @@ namespace hipop
      * @param origin The origin
      * @param destination The destination
      * @param costMetric The cost metric to consider
-     * @param accessibleLabels The set of accessible label
+     * @param accessibleLinkLabels The set of accessible link labels
      * @param labelToCostFamily The cost family to use for each link label
      * @param kPath The number of path to compute
      * @return std::vector<pathCost> The vector of computed paths
@@ -1036,13 +1036,13 @@ namespace hipop
         const std::string &origin,
         const std::string &destination,
         const std::string &costMetric,
-        const setstring &accessibleLabels,
+        const setstring &accessibleLinkLabels,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         int kPath)
     {
         std::vector<pathCost> A;
         std::vector<pathCost> B;
-        A.push_back(dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLabels));
+        A.push_back(dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels));
 
         double inf = std::numeric_limits<double>::infinity();
 
@@ -1076,7 +1076,7 @@ namespace hipop
                     }
                 }
 
-                pathCost spurPath = dijkstra(G, spurNode, destination, costMetric, labelToCostFamily, accessibleLabels);
+                pathCost spurPath = dijkstra(G, spurNode, destination, costMetric, labelToCostFamily, accessibleLinkLabels);
                 pathCost totalPath;
                 totalPath.first = rootPath.first;
 
@@ -1127,7 +1127,7 @@ namespace hipop
      * @param destinations The destinations
      * @param costMetric The cost metric to consider
      * @param labelToCostFamily For each OD, the cost family to use for each link label
-     * @param accessibleLabels The vector set of accessible label
+     * @param accessibleLinkLabels The vector set of accessible link labels
      * @param maxDiffCost The maximal difference between the cost of the first computed
      *                    shortest path and the cost of the next ones
      * @param maxDistInCommon The maximal distance in common between the first shortest
@@ -1145,7 +1145,7 @@ namespace hipop
         const std::vector<std::string> &destinations,
         const std::string &costMetric,
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
-        const std::vector<setstring> &accessibleLabels,
+        const std::vector<setstring> &accessibleLinkLabels,
         double maxDiffCost,
         double maxDistInCommon,
         double costMultiplier,
@@ -1167,7 +1167,7 @@ namespace hipop
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel shared(res, accessibleLabels, G, labelToCostFamily, origins, destinations, kPaths)
+        #pragma omp parallel shared(res, accessibleLinkLabels, G, labelToCostFamily, origins, destinations, kPaths)
         {
             OrientedGraph privateG = G;
 
@@ -1175,13 +1175,13 @@ namespace hipop
             for (std::int64_t i = 0; i < nbUniqueIndices; ++i)
             {
                 int uniqueIdx = uniqueIndices[i];
-                if (accessibleLabels.empty())
+                if (accessibleLinkLabels.empty())
                 {
                     res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], costMetric, {}, labelToCostFamily[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
                 }
                 else
                 {
-                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], costMetric, accessibleLabels[uniqueIdx], labelToCostFamily[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
+                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], costMetric, accessibleLinkLabels[uniqueIdx], labelToCostFamily[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
                 }
             }
         }
@@ -1218,7 +1218,7 @@ namespace hipop
      * @param destination The destination
      * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param labelToCostFamily The cost family to use for each link label
-     * @param accessibleLabels The set of accessible label
+     * @param accessibleLinkLabels The set of accessible link labels
      * @param heuristic An heuristic to speed up the shortest path computation
      * @return pathCost The computed path
      */
@@ -1228,7 +1228,7 @@ namespace hipop
         const std::string &destination,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels,
+        const setstring &accessibleLinkLabels,
         const std::function<double(const Node *, const Node *)> &heuristic)
     {
         const Node *origin_node = G.mnodes.at(origin);
@@ -1275,7 +1275,7 @@ namespace hipop
             }
 
             u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
-                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
@@ -1311,7 +1311,7 @@ namespace hipop
      * @param destination The destination
      * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param labelToCostFamily The cost family to use for each link label
-     * @param accessibleLabels The set of accessible label
+     * @param accessibleLinkLabels The set of accessible link labels
      * @return pathCost The computed path
      */
     pathCost aStarEuclidianDist(
@@ -1320,9 +1320,9 @@ namespace hipop
         const std::string &destination,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
-        const setstring &accessibleLabels)
+        const setstring &accessibleLinkLabels)
     {
-        return aStar(G, origin, destination, costMetric, labelToCostFamily, accessibleLabels,
+        return aStar(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels,
             [](const Node *current, const Node *dest) {
                 double dx = dest->mposition[0] - current->mposition[0];
                 double dy = dest->mposition[1] - current->mposition[1];
@@ -1350,7 +1350,7 @@ namespace hipop
      * @param costMultiplier The multiplier applied to the links costs of an
      *                       accepted shortest path
      * @param maxRetry Maximum number of times we retry to find an acceptable shorest path
-     * @param vecAvailableLabels The vector of available labels
+     * @param accessibleLinkLabels The vector of accessible link labels
      * @return std::vector<std::vector<pathCost>> The vector of computed shortest path
      */
     std::vector<std::vector<pathCost>> parallelKIntermodalShortestPath(
@@ -1366,7 +1366,7 @@ namespace hipop
         double costMultiplier,
         int maxRetry,
         const std::vector<int> &kPaths,
-        const std::vector<setstring> &vecAvailableLabels)
+        const std::vector<setstring> &accessibleLinkLabels)
     {
         // Create doubled graph two ways
         OrientedGraph doubledG1; // pass first on first elem of pairMandatoryLabels
@@ -1504,7 +1504,7 @@ namespace hipop
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel shared(res, vecAvailableLabels, labelToCostFamily, origins, destinationsTwin, kPaths, doubledG1, doubledG2)
+        #pragma omp parallel shared(res, accessibleLinkLabels, labelToCostFamily, origins, destinationsTwin, kPaths, doubledG1, doubledG2)
         {
           OrientedGraph privateDoubledG1 = doubledG1;
           OrientedGraph privateDoubledG2 = doubledG2;
@@ -1516,7 +1516,7 @@ namespace hipop
             std::vector<pathCost> resPath1;
             std::vector<pathCost> resPath2;
 
-            if (vecAvailableLabels.empty())
+            if (accessibleLinkLabels.empty())
             {
                 // Look for shortest paths on G1
                 resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], costMetric, {}, labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
@@ -1525,8 +1525,8 @@ namespace hipop
             }
             else
             {
-                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], costMetric, vecAvailableLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
-                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], costMetric, vecAvailableLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
             // Concat resPath1 and resPath2
             resPath1.insert(resPath1.end(), resPath2.begin(), resPath2.end());
