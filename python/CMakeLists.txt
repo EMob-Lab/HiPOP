@@ -4,6 +4,7 @@ pybind11_add_module(cpp
     hipop/cpp/shortest_path.cpp
 )
 target_link_libraries(cpp PRIVATE hipoplib)
+hipop_configure_target(cpp)
 
 # Only install the extension (and its type stubs) when the build is driven by scikit-build-core.
 if(DEFINED SKBUILD)

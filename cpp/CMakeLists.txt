@@ -19,6 +19,7 @@ target_include_directories(hipoplib PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(hipoplib PRIVATE OpenMP::OpenMP_CXX)
+hipop_configure_target(hipoplib)
 
 
 # ---------------------------------
