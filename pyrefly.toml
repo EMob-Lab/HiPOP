@@ -1,10 +1,12 @@
 project-includes = [
     "python/**/*.py",
+    "build-scikit/python/stubs/**/*.pyi", # Type stubs of the C++ extension, generated dynamically.
 ]
 search-path = [
     "python",
     "build-scikit/python/stubs",
 ]
+use-ignore-files = false # By default, files in .gitignore are not validated by Pyrefly.
 preset = "strict"
 
 [errors]
