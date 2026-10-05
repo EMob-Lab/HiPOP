@@ -4,9 +4,9 @@
 #include "hipop/string_util.h"
 
 #include <cstddef>
+#include <iterator>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
 #include <vector>
 
 
@@ -117,34 +117,110 @@ namespace hipop {
             return link(linkIndex)->mid;
         }
 
-        /**
-         * Invoke the given callback on each node of the path,
-         * in the order in which they are visited along the path.
-         *
-         * @param callback Must be a callable object with the following signature: `void(const Node *node)`.
-         */
-        template<typename Callback>
-        void forEachNode(Callback &&callback) const {
-            static_assert(
-                std::is_invocable_v<Callback, const Node *>,
-                "[OrientedGraphPath::forEachNode] Wrong callback signature"
-            );
-            callback(origin_);
-            for (const Link *link : links_) {
-                callback(link->mdown);
+        class NodeIterator {
+
+            const OrientedGraphPath *path_ = nullptr;
+            std::size_t nodeIndex_ = 0;
+
+        public:
+
+            using iterator_category = std::bidirectional_iterator_tag;
+            using difference_type = std::ptrdiff_t;
+            using value_type = const Node *;
+            using pointer = value_type const *;
+            using reference = value_type const &;
+
+            NodeIterator() = default;
+
+            NodeIterator(const OrientedGraphPath *path, std::size_t nodeIndex) :
+                path_{ path },
+                nodeIndex_{ nodeIndex } {}
+
+            [[nodiscard]] reference operator*() const {
+                return nodeIndex_ == 0 ? path_->origin_ : path_->links_[nodeIndex_ - 1]->mdown;
             }
-        }
+
+            [[nodiscard]] pointer operator->() const {
+                return &operator*();
+            }
+
+            NodeIterator &operator++() {
+                ++nodeIndex_;
+                return *this;
+            }
+
+            NodeIterator operator++(int) {
+                NodeIterator previous = *this;
+                ++nodeIndex_;
+                return previous;
+            }
+
+            NodeIterator &operator--() {
+                --nodeIndex_;
+                return *this;
+            }
+
+            NodeIterator operator--(int) {
+                NodeIterator previous = *this;
+                --nodeIndex_;
+                return previous;
+            }
+
+            [[nodiscard]] bool operator==(const NodeIterator &other) const {
+                return path_ == other.path_ && nodeIndex_ == other.nodeIndex_;
+            }
+
+            [[nodiscard]] bool operator!=(const NodeIterator &other) const {
+                return !operator==(other);
+            }
+        };
+
+        /**
+         * Lightweight view over the nodes of a path, to be used in range-based for loops.
+         */
+        class NodeRange {
+
+            const OrientedGraphPath *path_;
+
+        public:
+
+            using iterator = NodeIterator;
+            using reverse_iterator = std::reverse_iterator<iterator>;
+
+            explicit NodeRange(const OrientedGraphPath *path) : path_{ path } {}
+
+            [[nodiscard]] bool empty() const {
+                return path_->empty();
+            }
+
+            [[nodiscard]] std::size_t size() const {
+                return path_->size() + 1; // Number of nodes in the path.
+            }
+
+            [[nodiscard]] iterator begin() const {
+                return { path_, 0 };
+            }
+
+            [[nodiscard]] iterator end() const {
+                return { path_, path_->size() + 1 };
+            }
+
+            [[nodiscard]] reverse_iterator rbegin() const {
+                return reverse_iterator{ end() };
+            }
+
+            [[nodiscard]] reverse_iterator rend() const {
+                return reverse_iterator{ begin() };
+            }
+        };
 
         /**
          * Sequence of nodes visited along the path.
          *
          * @return Guaranteed to be non-empty.
          */
-        [[nodiscard]] std::vector<const Node *> nodes() const {
-            std::vector<const Node *> result;
-            result.reserve(size() + 1);
-            forEachNode([&result](const Node *node) { result.emplace_back(node); });
-            return result;
+        [[nodiscard]] NodeRange nodes() const {
+            return NodeRange{ this };
         }
 
         /**
@@ -155,25 +231,10 @@ namespace hipop {
         [[nodiscard]] std::vector<std::string> nodeIds() const {
             std::vector<std::string> result;
             result.reserve(size() + 1);
-            forEachNode([&result](const Node *node) { result.emplace_back(node->mid); });
-            return result;
-        }
-
-        /**
-         * Invoke the given callback on each link of the path,
-         * in the order in which they are visited along the path.
-         *
-         * @param callback Must be a callable object with the following signature: `void(const Link *link)`.
-         */
-        template<typename Callback>
-        void forEachLink(Callback &&callback) const {
-            static_assert(
-                std::is_invocable_v<Callback, const Link *>,
-                "[OrientedGraphPath::forEachLink] Wrong callback signature"
-            );
-            for (const Link *link : links_) {
-                callback(link);
+            for (const Node *node : nodes()) {
+                result.emplace_back(node->mid);
             }
+            return result;
         }
 
         /**
@@ -189,7 +250,9 @@ namespace hipop {
         [[nodiscard]] std::vector<std::string> linkIds() const {
             std::vector<std::string> result;
             result.reserve(size());
-            forEachLink([&result](const Link *link) { result.emplace_back(link->mid); });
+            for (const Link *link : links_) {
+                result.emplace_back(link->mid);
+            }
             return result;
         }
 
