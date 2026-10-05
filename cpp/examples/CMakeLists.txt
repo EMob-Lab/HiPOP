@@ -1,2 +1,3 @@
 add_executable(HipopExample ParallelKShortestPath.cpp)
 target_link_libraries(HipopExample hipoplib)
+hipop_configure_target(HipopExample)
