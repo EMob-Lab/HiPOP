@@ -176,7 +176,7 @@ namespace hipop {
         };
 
         /**
-         * Lightweight view over the nodes of a path, to be used in range-based for loops.
+         * Lightweight view over the nodes of a path, to be used in range-based for-loops.
          */
         class NodeRange {
 
