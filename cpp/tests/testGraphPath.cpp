@@ -198,8 +198,8 @@ static void test_Equality() {
     assertTrue(path1 != path4, "Paths with different sizes should differ");
     assertTrue(emptyPathA != emptyPathB, "Empty paths with different origins should differ");
 
-    // Paths are compared by Node/Link identity: identical IDs in a copy of the graph do not make equal paths.
-    const OrientedGraph copyG = G;
+    // Paths are compared by Node/Link identity: identical IDs in a copy of the graph do not result in equal paths.
+    const OrientedGraph copyG = G; // NOLINT (performance-unnecessary-copy-initialization)
     const OrientedGraphPath path1InCopyG = makePath(copyG, {"A_B", "B_C"});
     assertTrue(path1 != path1InCopyG, "Paths built on different graph instances should differ");
 }

@@ -135,7 +135,7 @@ namespace hipop
         }
 
         const Node *origin = links[0]->mup;
-        return OrientedGraphPath(origin, std::move(links));
+        return { origin, std::move(links) };
     }
 
 
