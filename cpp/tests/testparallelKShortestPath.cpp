@@ -3,11 +3,12 @@
 #include <hipop/graph.h>
 #include <hipop/shortest_path.h>
 
+using namespace hipop;
 
 
 int testparallelKShortestPath(int, char**)
 {
-    hipop::OrientedGraph G;
+    OrientedGraph G;
 
     G.AddNode("0", 0, 0);
     G.AddNode("1", 1, 1);
@@ -35,7 +36,7 @@ int testparallelKShortestPath(int, char**)
         {{"CAR", "PersonalVehicle"}}
     };
 
-    auto paths = hipop::parallelKShortestPath(G, origins, destinations, "time", vecMapLabelCosts, {}, 0.1, 0.95, 1.2, 10, kPaths, 4);
+    auto paths = parallelKShortestPath(G, origins, destinations, "time", vecMapLabelCosts, {}, 0.1, 0.95, 1.2, 10, kPaths, 4);
 
 
     return 0;

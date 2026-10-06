@@ -4,10 +4,12 @@
 
 #include <memory>
 
+using namespace hipop;
 
-std::unique_ptr<hipop::OrientedGraph> makeInitialGraph() {
 
-    auto G = std::make_unique<hipop::OrientedGraph>();
+std::unique_ptr<OrientedGraph> makeInitialGraph() {
+
+    auto G = std::make_unique<OrientedGraph>();
 
     G->AddNode("0", 0, 0);
     G->AddNode("1", 1, 0);
@@ -28,7 +30,7 @@ void test_CopyConstructor() {
     auto G = makeInitialGraph();
 
     // Object copy in C++ is a deep copy, thus both instances are expected to be independent.
-    hipop::OrientedGraph copyG = *G;
+    OrientedGraph copyG = *G;
     G->mlinks["0_1"]->mcosts["PersonalVehicle"]["time"] = 42;
 
     assertTrue(
@@ -47,7 +49,7 @@ void test_CopyAssignmentOperator() {
 
     auto G = makeInitialGraph();
 
-    hipop::OrientedGraph copyG;
+    OrientedGraph copyG;
     copyG.AddNode("abcd", 0, 0);
 
     assertTrue(

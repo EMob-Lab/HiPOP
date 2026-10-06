@@ -3,11 +3,12 @@
 #include <hipop/graph.h>
 #include <hipop/shortest_path.h>
 
+using namespace hipop;
 
 
 int testKShortestPath(int, char**)
 {
-    hipop::OrientedGraph G;
+    OrientedGraph G;
 
     G.AddNode("0", 0, 0);
     G.AddNode("1", 1, 1);
@@ -23,7 +24,7 @@ int testKShortestPath(int, char**)
     G.AddLink("0_4", "0", "4", 11, {{"PersonalVehicle", {{"time", 14}}}}, "CAR");
     G.AddLink("4_3", "4", "3", 11, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");
 
-    auto paths = hipop::KShortestPath(G, "0", "3", "time", {}, {{"CAR", "PersonalVehicle"}}, 5, 100, 2.2, 10, 3, false);
+    auto paths = KShortestPath(G, "0", "3", "time", {}, {{"CAR", "PersonalVehicle"}}, 5, 100, 2.2, 10, 3, false);
     std::cout << paths.size() << std::endl;
     std::cout << paths[0].first[0] << paths[0].first[1] << std::endl;
     assertTrue(paths.size()==3, "Did not found 3 paths");
