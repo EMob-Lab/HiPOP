@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -16,6 +17,26 @@ inline void assertTrue(bool test, std::string_view message) {
         std::cerr << "[ERROR] " << message << '\n';
         throw std::runtime_error(static_cast<std::string>(message));
     }
+}
+
+
+/**
+ * Check that invoking `callable` throws an exception of type `Exception` (or of a derived type).
+ */
+template<typename Exception>
+void assertThrows(const std::function<void()> &callable, std::string_view message) {
+    try {
+        callable();
+    }
+    catch (const Exception &) {
+        return;
+    }
+    catch (...) {
+        std::cerr << "[ERROR] " << message << " (unexpected exception type)\n";
+        throw std::runtime_error(static_cast<std::string>(message));
+    }
+    std::cerr << "[ERROR] " << message << " (no exception thrown)\n";
+    throw std::runtime_error(static_cast<std::string>(message));
 }
 
 
