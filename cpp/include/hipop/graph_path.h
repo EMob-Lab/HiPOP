@@ -219,7 +219,7 @@ namespace hipop {
             explicit NodeRange(const OrientedGraphPath *path) : path_{ path } {}
 
             [[nodiscard]] bool empty() const {
-                return path_->empty();
+                return false; // There is always at least 1 node in the path.
             }
 
             [[nodiscard]] std::size_t size() const {
