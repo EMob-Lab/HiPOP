@@ -250,6 +250,10 @@ static void test_PathWithLoop() {
     assertTrue(path.size() == 5, "Wrong size");
     assertTrue(path.link(1) == path.link(3), "Repeated link should be the same object");
     checkPathInvariant(path);
+
+    const OrientedGraphPath loopStartingOnL1 = makePath(G, {"L1_L2", "L2_L1"});
+    const OrientedGraphPath loopStartingOnL2 = makePath(G, {"L2_L1", "L1_L2"});
+    assertTrue(loopStartingOnL1 != loopStartingOnL2, "Loop L1 -> L1 is not the same as loop L2 -> L2");
 }
 
 
@@ -264,6 +268,12 @@ static void test_PathWithSelfLink() {
     assertTrue(path.size() == 4, "Wrong size");
     assertTrue(path.link(1) == path.link(2), "Repeated link should be the same object");
     checkPathInvariant(path);
+
+    const OrientedGraphPath emptyPathOnL = makeEmptyPath(G, "L");
+    const OrientedGraphPath oneLoopOnL = makePath(G, {"L_L"});
+    const OrientedGraphPath twoLoopsOnL = makePath(G, {"L_L", "L_L"});
+    assertTrue(oneLoopOnL != emptyPathOnL, "Loop L -> L is not the same as empty path on L");
+    assertTrue(oneLoopOnL != twoLoopsOnL, "Loop L -> L is not the same as double-loop L -> L");
 }
 
 
