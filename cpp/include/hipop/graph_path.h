@@ -7,6 +7,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 
@@ -49,6 +50,34 @@ namespace hipop {
     public:
 
         explicit OrientedGraphPath(const Node *origin) : origin_{ origin } {}
+
+        /**
+         * @param links May be empty.
+         * @throws std::invalid_argument if `links[i - 1]->down() != links[i]->up()` for some index i,
+         *                               or if links is non-empty and `origin != links[0]->up()`.
+         */
+        OrientedGraphPath(const Node *origin, std::vector<const Link *> links) :
+            origin_(origin),
+            links_(std::move(links))
+        {
+            const Node *expectedUpNode = origin_;
+            for (const Link *link : links_) {
+                if (link->mup != expectedUpNode) {
+                    throw std::invalid_argument(
+                        StrCat(
+                            "[OrientedGraphPath::OrientedGraphPath] Inconsistent path continuation: link-ID=[",
+                            link->mid,
+                            "] link-origin=[",
+                            link->mup->mid,
+                            "] current-path-destination=[",
+                            expectedUpNode->mid,
+                            "]"
+                        )
+                    );
+                }
+                expectedUpNode = link->mdown;
+            }
+        }
 
         [[nodiscard]] bool operator==(const OrientedGraphPath &other) const {
             return origin_ == other.origin_ && links_ == other.links_;
@@ -266,12 +295,12 @@ namespace hipop {
             if (link->mup != destination()) {
                 throw std::invalid_argument(
                     StrCat(
-                        "[OrientedGraphPath::add] Inconsistent path continuation: path-destination=[",
-                        destination()->mid,
+                        "[OrientedGraphPath::add] Inconsistent path continuation: link-ID=[",
+                        link->mid,
                         "] link-origin=[",
                         link->mup->mid,
-                        "] link-ID=[",
-                        link->mid,
+                        "] path-destination=[",
+                        destination()->mid,
                         "]"
                     )
                 );
@@ -279,27 +308,7 @@ namespace hipop {
             links_.emplace_back(link);
         }
 
-        /**
-         * Append all the given links, in the same order as the input vector.
-         */
-        void add(const std::vector<const Link *> &links) {
-            links_.reserve(links_.size() + links.size());
-            for (const Link *link : links) {
-                add(link);
-            }
-        }
-
-        /**
-         * Append all the given links, in the reverse order with respect to the input vector.
-         */
-        void addReversed(const std::vector<const Link *> &links) {
-            links_.reserve(links_.size() + links.size());
-            for (auto it = links.rbegin(); it != links.rend(); ++it) {
-                add(*it);
-            }
-        }
-
     };
 
 
-}
+} // namespace hipop

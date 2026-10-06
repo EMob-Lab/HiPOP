@@ -1,8 +1,10 @@
-#include "hipop/graph.h"
+#include "hipop/create.h"
+
 #include "hipop/string_util.h"
 
+#include <stdexcept>
 #include <unordered_map>
-#include <string>
+#include <utility>
 
 
 namespace hipop
@@ -118,5 +120,23 @@ namespace hipop
 
         return G;
     }
+
+
+    OrientedGraphPath makePath(const OrientedGraph &graph, const std::vector<std::string> &linkIds) {
+
+        if (linkIds.empty()) {
+            throw std::invalid_argument("[makePath] Link list cannot be empty.");
+        }
+
+        std::vector<const Link *> links;
+        links.reserve(linkIds.size());
+        for (const std::string &linkId : linkIds) {
+            links.emplace_back(graph.mlinks.at(linkId));
+        }
+
+        const Node *origin = links[0]->mup;
+        return OrientedGraphPath(origin, std::move(links));
+    }
+
 
 } // namespace hipop
