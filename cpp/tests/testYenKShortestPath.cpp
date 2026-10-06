@@ -3,11 +3,12 @@
 #include <hipop/graph.h>
 #include <hipop/shortest_path.h>
 
+using namespace hipop;
 
 
 int testYenKShortestPath(int, char**)
 {
-    hipop::OrientedGraph G;
+    OrientedGraph G;
 
     G.AddNode("C", 0, 0);
     G.AddNode("D", 1, 0);
@@ -27,7 +28,7 @@ int testYenKShortestPath(int, char**)
     G.AddLink("G_H", "G", "H", 1, {{"PersonalVehicle", {{"time", 2}}}}, "CAR");
 
 
-    auto paths = hipop::YenKShortestPath(G, "C", "H", "time", {}, {{"CAR", "PersonalVehicle"}}, 3);
+    auto paths = YenKShortestPath(G, "C", "H", "time", {}, {{"CAR", "PersonalVehicle"}}, 3);
     assertTrue(paths.size()==3, "Did not found 3 paths");
 
 
