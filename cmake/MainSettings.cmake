@@ -15,31 +15,45 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON) # Treat C++ standard as a requirement.
 # Some IDEs and tools also rely on this file for code analysis and navigation.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Turn all compiler warnings into errors, unless otherwise specified.
-# Remark: this requires CMake >= 3.24.
-set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+# Enable compiler warnings for the given target, and turn them into errors.
+function(hipop_enable_warnings target)
 
-# Enable compiler warnings.
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # Turn all compiler warnings into errors, unless otherwise specified.
+    # Remark: this requires CMake >= 3.24.
+    set_target_properties(${target} PROPERTIES COMPILE_WARNING_AS_ERROR ON)
 
-    # Reference: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level
-    add_compile_options(
-        /W4  # Recommended default setting
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 
-        # FIXME Significant legacy code refactoring would be necessary to address these warnings properly
-        # (in particular, it would require to carefully review the integral types used to encode
-        # the inputs and outputs of graph algorithm functions).
-        /wd4244  # Type conversion with possible loss of precision
-        /wd4267  # Conversion from 'size_t' to smaller integral type
-    )
+        # Reference: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level
+        target_compile_options(${target} PRIVATE
+            /W4  # Recommended default setting
 
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|.*Clang")
+            # FIXME Significant legacy code refactoring would be necessary to address these warnings properly
+            # (in particular, it would require to carefully review the integral types used to encode
+            # the inputs and outputs of graph algorithm functions).
+            /wd4244  # Type conversion with possible loss of precision
+            /wd4267  # Conversion from 'size_t' to smaller integral type
+        )
 
-    # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
-    add_compile_options(
-        -Wall       # Recommended default setting
-        -Wextra     # Additional warnings, also recommended by default
-        -Wpedantic  # Enforce strict ISO C++ compliance
-    )
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|.*Clang")
 
-endif()
+        # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+        target_compile_options(${target} PRIVATE
+            -Wall       # Recommended default setting
+            -Wextra     # Additional warnings, also recommended by default
+            -Wpedantic  # Enforce strict ISO C++ compliance
+        )
+
+    endif()
+
+endfunction()
+
+# Other settings
+include(cmake/ClangTidySettings.cmake)
+
+# Unified target configuration function.
+# Must be called explicitly on each target defined in the project.
+function(hipop_configure_target target)
+    hipop_enable_warnings(${target})
+    hipop_enable_clang_tidy_if_requested(${target})
+endfunction()
