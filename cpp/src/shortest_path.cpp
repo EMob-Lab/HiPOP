@@ -122,18 +122,18 @@ namespace hipop
      * @param G The OrientedGrah used for the shortest path
      * @param origin The origin
      * @param destination The destination
-     * @param cost The costs to consider in the shortest path algorithm
-     * @param mapLabelCost The type of cost map to choose on each label (mulitple set of costs can be defined on a Link)
-     * @param accessibleLabels The set of accessible label
+     * @param costMetric The cost metric to consider in the shortest path algorithm
+     * @param labelToCostFamily The cost family to use for each link label (multiple cost families can be defined on a Link)
+     * @param accessibleLinkLabels The set of accessible link labels
      * @return pathCost The list of Nodes defining the shortest path and the associated cost
      */
     pathCost dijkstra(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
-        const std::unordered_map<std::string, std::string> &mapLabelCost,
-        const setstring &accessibleLabels)
+        const std::string &costMetric,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily,
+        const setstring &accessibleLinkLabels)
     {
         const Node *origin_node = G.mnodes.at(origin);
         const Node *destination_node = G.mnodes.at(destination);
@@ -176,14 +176,14 @@ namespace hipop
             }
 
             u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
-                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
                     // However, having link costs equal to +infinity is allowed:
                     // the corresponding links are never visited.
 
-                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                    double cost_on_link = link->cost(labelToCostFamily.at(link->mlabel), costMetric);
                     double new_dist = dist_u + cost_on_link;
                     const Node *neighbor = link->mdown;
 
@@ -210,17 +210,17 @@ namespace hipop
      *
      * @param G The OrientedGrah used for the shortest path
      * @param origin The origin
-     * @param cost The costs to consider in the shortest path algorithm
-     * @param mapLabelCost The type of cost map to choose on each label (mulitple set of costs can be defined on a Link)
-     * @param accessibleLabels The set of accessible label
+     * @param costMetric The cost metric to consider in the shortest path algorithm
+     * @param labelToCostFamily The cost family to use for each link label (multiple cost families can be defined on a Link)
+     * @param accessibleLinkLabels The set of accessible link labels
      * @return prev The shortest paths tree from origin
      */
     ShortestPathsTree dijkstraSingleSource(
         const OrientedGraph &G,
         const std::string &origin,
-        const std::string &cost,
-        const std::unordered_map<std::string, std::string> &mapLabelCost,
-        const setstring &accessibleLabels)
+        const std::string &costMetric,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily,
+        const setstring &accessibleLinkLabels)
     {
         const Node *origin_node = G.mnodes.at(origin);
 
@@ -243,14 +243,14 @@ namespace hipop
             pq.pop();
 
             u->forEachExit(prev.at(u->mid), [&](const Link *link) {
-                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
                     // However, having link costs equal to +infinity is allowed:
                     // the corresponding links are never visited.
 
-                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                    double cost_on_link = link->cost(labelToCostFamily.at(link->mlabel), costMetric);
                     double new_dist = dist_u + cost_on_link;
                     const Node *neighbor = link->mdown;
 
@@ -270,16 +270,16 @@ namespace hipop
      * @brief Compute the shortest paths between all pairs of vertices
      *
      * @param G The OrientedGrah
-     * @param cost The costs to consider in the shortest path algorithm
-     * @param mapLabelCost The type of cost map to choose on each label (mulitple set of costs can be defined on a Link)
-     * @param accessibleLabels The set of accessible label
+     * @param costMetric The cost metric to consider in the shortest path algorithm
+     * @param labelToCostFamily The cost family to use for each link label (multiple cost families can be defined on a Link)
+     * @param accessibleLinkLabels The set of accessible link labels
      * @return prev The shortest paths tree
      */
     std::pair<std::vector<std::vector<int>>, std::unordered_map<int, std::string>> floydWarshall(
         const OrientedGraph &G,
-        const std::string &cost,
-        const std::unordered_map<std::string, std::string> &mapLabelCost,
-        const setstring &accessibleLabels)
+        const std::string &costMetric,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily,
+        const setstring &accessibleLinkLabels)
     {
         int V = G.mnodes.size();
 
@@ -304,11 +304,11 @@ namespace hipop
         for (const auto& pair : G.mlinks)
         {
             Link*link = pair.second;
-            if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end())
+            if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end())
             {
                 const std::string &u = link->mup->mid;
                 const std::string &v = link->mdown->mid;
-                dist[nodevMap.at(u)][nodevMap.at(v)] = link->cost(mapLabelCost.at(link->mlabel), cost);
+                dist[nodevMap.at(u)][nodevMap.at(v)] = link->cost(labelToCostFamily.at(link->mlabel), costMetric);
                 prev[nodevMap.at(u)][nodevMap.at(v)] = nodevMap.at(u);
             }
         }
@@ -339,24 +339,24 @@ namespace hipop
     }
 
     /**
-     * @brief Find duplicated origin - destination - mapLabelCost - Cost to prevent
+     * @brief Find duplicated origin - destination - labelToCostFamily - costMetric to prevent
      *        computing several times the same shortest paths
      *
      * @param origins The vector of origins
      * @param destinations The vector of destinations
-     * @param vecMapLabelCosts The vector of type of cost map to choose on each label
-     * @param costs The vector of costs to consider in the shortest path algoithm
+     * @param labelToCostFamily For each OD, the cost family to use for each link label
+     * @param costMetrics The vector of cost metrics to consider in the shortest path algorithm
      * @return r The tuple with a vector of unique elements indices
      *         as first element,  a map of correspondance between non unique index and the unique
-     *         index with the same origin - destination - mapLabelCost as second element,
+     *         index with the same origin - destination - labelToCostFamily as second element,
      *         and a map of correspondance between unique index and the number of
      *         shortest paths to compute for it
      */
     std::tuple<std::vector<int>, std::unordered_map<int, int>, std::unordered_map<int, int>> find_duplicates(
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
-        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::vector<std::string> & costs,
+        const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
+        const std::vector<std::string> & costMetrics,
         const std::vector<int> &kPaths)
     {
         int nbODs = origins.size();
@@ -365,14 +365,14 @@ namespace hipop
         {
             const std::string &o = origins[i];
             const std::string &d = destinations[i];
-            const std::string &cost = costs[i];
-            const std::unordered_map<std::string, std::string> &mapLabelCosts = vecMapLabelCosts[i];
-            std::vector<std::pair<std::string, std::string>> vecLabelCosts = std::vector<std::pair<std::string, std::string>>(mapLabelCosts.begin(), mapLabelCosts.end());
+            const std::string &costMetric = costMetrics[i];
+            const std::unordered_map<std::string, std::string> &currentLabelToCostFamily = labelToCostFamily[i];
+            std::vector<std::pair<std::string, std::string>> vecLabelCosts = std::vector<std::pair<std::string, std::string>>(currentLabelToCostFamily.begin(), currentLabelToCostFamily.end());
             std::sort(vecLabelCosts.begin(), vecLabelCosts.end(), [](const std::pair<std::string,std::string> &left, const std::pair<std::string,std::string> &right) {
                 return left.first < right.first;
             });
 
-            std::string ODLabelCosts = StrCat(o, d, cost);
+            std::string ODLabelCosts = StrCat(o, d, costMetric);
             for (const auto &labelCosts : vecLabelCosts)
             {
                 StrAppend(ODLabelCosts, "-", labelCosts.first, ":", labelCosts.second);
@@ -420,47 +420,47 @@ namespace hipop
      * @param G The OrientedGrah used for the shortest paths
      * @param origins The vector of origins
      * @param destinations The vector of destinations
-     * @param vecMapLabelCosts The vector of type of cost map to choose on each label
-     * @param cost The cost to consider in the shortest path algorithm
+     * @param labelToCostFamily For each OD, the cost family to use for each link label
+     * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
-     * @param vecAvailableLabels The vector of available labels
+     * @param accessibleLinkLabels The vector of accessible link labels
      * @return std::vector<pathCost> The vector of computed shortest path
      */
     std::vector<pathCost> parallelDijkstra(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
-        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::string &cost,
+        const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
+        const std::string &costMetric,
         int threadNumber,
-        const std::vector<setstring> &vecAvailableLabels)
+        const std::vector<setstring> &accessibleLinkLabels)
     {
         omp_set_num_threads(threadNumber);
 
         int nbPath = origins.size();
         std::vector<int> emptyV;
         std::vector<int> uniqueIndices;
-        std::vector<std::string> costs(nbPath, cost);
+        std::vector<std::string> costMetrics(nbPath, costMetric);
         std::unordered_map<int, int> duplicateIndices;
         std::unordered_map<int, int> nbPathsPerOD;
-        tie(uniqueIndices, duplicateIndices, nbPathsPerOD) = find_duplicates(origins, destinations, vecMapLabelCosts, costs, emptyV);
+        tie(uniqueIndices, duplicateIndices, nbPathsPerOD) = find_duplicates(origins, destinations, labelToCostFamily, costMetrics, emptyV);
 
         std::vector<pathCost> res(nbPath);
 
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel for shared(res, vecAvailableLabels, vecMapLabelCosts) schedule(dynamic)
+        #pragma omp parallel for shared(res, accessibleLinkLabels, labelToCostFamily) schedule(dynamic)
         for (std::int64_t i = 0; i < nbUniqueIndices; i++)
         {
             int uniqueIdx = uniqueIndices[i];
-            if (vecAvailableLabels.empty())
+            if (accessibleLinkLabels.empty())
             {
-                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], cost, vecMapLabelCosts[uniqueIdx], {});
+                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetric, labelToCostFamily[uniqueIdx], {});
             }
             else
             {
-                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], cost, vecMapLabelCosts[uniqueIdx], vecAvailableLabels[uniqueIdx]);
+                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetric, labelToCostFamily[uniqueIdx], accessibleLinkLabels[uniqueIdx]);
             }
         }
 
@@ -478,35 +478,35 @@ namespace hipop
      *
      * @param G The OrientedGrah used for the shortest paths
      * @param origins The vector of origins
-     * @param vecMapLabelCosts The vector of type of cost map to choose on each label
-     * @param cost The cost to consider in the shortest path algorithm
+     * @param labelToCostFamily For each OD, the cost family to use for each link label
+     * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
-     * @param vecAvailableLabels The vector of available labels
+     * @param accessibleLinkLabels The vector of accessible link labels
      * @return std::vector<ShortestPathsTree> The vector of computed shortest paths trees
      */
     std::vector<ShortestPathsTree> parallelDijkstraSingleSource(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
-        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::string &cost,
+        const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
+        const std::string &costMetric,
         int threadNumber,
-        const std::vector<setstring> &vecAvailableLabels)
+        const std::vector<setstring> &accessibleLinkLabels)
     {
         omp_set_num_threads(threadNumber);
 
         int nbSPTs = origins.size();
         std::vector<ShortestPathsTree> res(nbSPTs);
 
-        #pragma omp parallel for shared(res, vecAvailableLabels, vecMapLabelCosts) schedule(dynamic)
+        #pragma omp parallel for shared(res, accessibleLinkLabels, labelToCostFamily) schedule(dynamic)
         for (int i = 0; i < nbSPTs; i++)
         {
-            if (vecAvailableLabels.empty())
+            if (accessibleLinkLabels.empty())
             {
-                res[i] = dijkstraSingleSource(G, origins[i], cost, vecMapLabelCosts[i], {});
+                res[i] = dijkstraSingleSource(G, origins[i], costMetric, labelToCostFamily[i], {});
             }
             else
             {
-                res[i] = dijkstraSingleSource(G, origins[i], cost, vecMapLabelCosts[i], vecAvailableLabels[i]);
+                res[i] = dijkstraSingleSource(G, origins[i], costMetric, labelToCostFamily[i], accessibleLinkLabels[i]);
             }
         }
 
@@ -519,20 +519,20 @@ namespace hipop
      * @param G The OrientedGrah used for the shortest paths
      * @param origins The vector of origins
      * @param destinations The vector of destinations
-     * @param vecMapLabelCosts The vector of type of cost map to choose on each label
-     * @param costs The vector of costs to consider in the shortest path algorithm
+     * @param labelToCostFamily For each OD, the cost family to use for each link label
+     * @param costMetrics The vector of cost metrics to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
-     * @param vecAvailableLabels The vector of available labels
+     * @param accessibleLinkLabels The vector of accessible link labels
      * @return std::vector<pathCost> The vector of computed shortest path
      */
     std::vector<pathCost> parallelDijkstraHeterogeneousCosts(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
-        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::vector<std::string> &costs,
+        const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
+        const std::vector<std::string> &costMetrics,
         int threadNumber,
-        const std::vector<setstring> &vecAvailableLabels)
+        const std::vector<setstring> &accessibleLinkLabels)
     {
         omp_set_num_threads(threadNumber);
 
@@ -540,7 +540,7 @@ namespace hipop
         std::vector<int> uniqueIndices;
         std::unordered_map<int, int> duplicateIndices;
         std::unordered_map<int, int> nbPathsPerOD;
-        tie(uniqueIndices, duplicateIndices, nbPathsPerOD) = find_duplicates(origins, destinations, vecMapLabelCosts, costs, emptyV);
+        tie(uniqueIndices, duplicateIndices, nbPathsPerOD) = find_duplicates(origins, destinations, labelToCostFamily, costMetrics, emptyV);
 
         int nbPath = origins.size();
         std::vector<pathCost> res(nbPath);
@@ -548,17 +548,17 @@ namespace hipop
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel for shared(res, vecAvailableLabels, vecMapLabelCosts) schedule(dynamic)
+        #pragma omp parallel for shared(res, accessibleLinkLabels, labelToCostFamily) schedule(dynamic)
         for (std::int64_t i = 0; i < nbUniqueIndices; i++)
         {
             int uniqueIdx = uniqueIndices[i];
-            if (vecAvailableLabels.empty())
+            if (accessibleLinkLabels.empty())
             {
-                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costs[uniqueIdx], vecMapLabelCosts[uniqueIdx], {});
+                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetrics[uniqueIdx], labelToCostFamily[uniqueIdx], {});
             }
             else
             {
-                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costs[uniqueIdx], vecMapLabelCosts[uniqueIdx], vecAvailableLabels[uniqueIdx]);
+                res[uniqueIdx] = dijkstra(G, origins[uniqueIdx], destinations[uniqueIdx], costMetrics[uniqueIdx], labelToCostFamily[uniqueIdx], accessibleLinkLabels[uniqueIdx]);
             }
         }
 
@@ -739,16 +739,16 @@ namespace hipop
      *
      * @param G The OrientedGraph on which the path is computed
      * @param paths The paths grouped in batches
-     * @param cost The cost to consider
-     * @param mapLabelCost The type of cost map to choose on each label
+     * @param costMetric The cost metric to consider
+     * @param labelToCostFamily The cost family to use for each link label
      * @param threadNumber Number of threads to use
      * @return std::vector<double> The total costs of the paths
      */
     std::vector<std::vector<double>> computePathsCosts(
         OrientedGraph &G,
         const std::vector<std::vector<std::vector<std::string>>> &paths,
-        const std::string &cost,
-        const std::unordered_map<std::string, std::string> &mapLabelCost,
+        const std::string &costMetric,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily,
         int threadNumber)
     {
         omp_set_num_threads(threadNumber);
@@ -756,7 +756,7 @@ namespace hipop
 
         std::vector<std::vector<double>> res(nbBatches);
 
-        #pragma omp parallel shared(res, G, paths, cost, mapLabelCost)
+        #pragma omp parallel shared(res, G, paths, costMetric, labelToCostFamily)
         {
             OrientedGraph privateG = G;
 
@@ -767,7 +767,7 @@ namespace hipop
                 std::vector<double> res_(nbPaths);
                 for (int j = 0; j < nbPaths; j++)
                 {
-                  res_[j] = computePathCost(privateG, paths[i][j], cost, mapLabelCost);
+                  res_[j] = computePathCost(privateG, paths[i][j], costMetric, labelToCostFamily);
                 }
                 res[i] = res_;
             }
@@ -781,15 +781,15 @@ namespace hipop
      *
      * @param G The OrientedGraph on which the path is computed
      * @param path The path
-     * @param cost The cost to consider
-     * @param mapLabelCost The type of cost map to choose on each label
+     * @param costMetric The cost metric to consider
+     * @param labelToCostFamily The cost family to use for each link label
      * @return double The total cost of the path
      */
     double computePathCost(
         OrientedGraph &G,
         const std::vector<std::string> &path,
-        const std::string &cost,
-        const std::unordered_map<std::string, std::string> &mapLabelCost)
+        const std::string &costMetric,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily)
     {
         double c = 0;
 
@@ -802,7 +802,7 @@ namespace hipop
           for (size_t i = 0; i < path.size() - 1; i++)
           {
               Link *link = G.mnodes[path[i]]->madj[path[i + 1]];
-              c += link->cost(mapLabelCost.at(link->mlabel), cost);
+              c += link->cost(labelToCostFamily.at(link->mlabel), costMetric);
           }
           return c;
         }
@@ -813,16 +813,16 @@ namespace hipop
      *
      * @param G The OrientedGraph on which the path is computed
      * @param path The path
-     * @param cost The cost to consider
-     * @param mapLabelCost The type of cost map to choose on each label
+     * @param costMetric The cost metric to consider
+     * @param labelToCostFamily The cost family to use for each link label
      * @param initialCosts The effective costs values to use for some links
      * @return double The total cost of the path
      */
     double computePathCostWithInitialCostsDict(
         OrientedGraph &G,
         const std::vector<std::string> &path,
-        const std::string &cost,
-        const std::unordered_map<std::string, std::string> &mapLabelCost,
+        const std::string &costMetric,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily,
         linkMapCosts initialCosts)
     {
         double c = 0;
@@ -838,11 +838,11 @@ namespace hipop
               Link *link = G.mnodes[path[i]]->madj[path[i + 1]];
               if (initialCosts.find(link->mid) != initialCosts.end())
               {
-                  c += initialCosts[link->mid][mapLabelCost.at(link->mlabel)][cost];
+                  c += initialCosts[link->mid][labelToCostFamily.at(link->mlabel)][costMetric];
               }
               else
               {
-                  c += link->cost(mapLabelCost.at(link->mlabel), cost);
+                  c += link->cost(labelToCostFamily.at(link->mlabel), costMetric);
               }
           }
           return c;
@@ -903,9 +903,9 @@ namespace hipop
      * @param G The OrientedGraph on which we compute the paths
      * @param origin The origin
      * @param destination The destination
-     * @param cost The cost to consider
-     * @param accessibleLabels The set of accessible label
-     * @param mapLabelCost The type of cost map to choose on each label
+     * @param costMetric The cost metric to consider
+     * @param accessibleLinkLabels The set of accessible link labels
+     * @param labelToCostFamily The cost family to use for each link label
      * @param maxDiffCost The maximal difference between the cost of the first computed
      *        shortest path and the cost of the next ones, expressed as a percentage
      *        (e.g. 0.1 means that the cost of the next path should be less than 101%
@@ -925,9 +925,9 @@ namespace hipop
         OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
-        const setstring &accessibleLabels,
-        const std::unordered_map<std::string, std::string> &mapLabelCost,
+        const std::string &costMetric,
+        const setstring &accessibleLinkLabels,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily,
         double maxDiffCost,
         double maxDistInCommon,
         double costMultiplier,
@@ -942,7 +942,7 @@ namespace hipop
         std::vector<pathCost> paths;
         linkMapCosts initial_costs;
 
-        pathCost firstPath = dijkstra(G, origin, destination, cost, mapLabelCost, accessibleLabels);
+        pathCost firstPath = dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels);
         paths.push_back(firstPath);
 
         if (firstPath.first.empty()) // no path found
@@ -963,8 +963,8 @@ namespace hipop
 
         while (pathCounter < kPath && retry < maxRetry )
         {
-            pathCost newPath = dijkstra(G, origin, destination, cost, mapLabelCost, accessibleLabels);
-            newPath.second = computePathCostWithInitialCostsDict(G, newPath.first, cost, mapLabelCost, initial_costs);
+            pathCost newPath = dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels);
+            newPath.second = computePathCostWithInitialCostsDict(G, newPath.first, costMetric, labelToCostFamily, initial_costs);
 
             if (newPath.first.empty())
             {
@@ -1025,9 +1025,9 @@ namespace hipop
      * @param G The OrientedGraph on which we compute the paths
      * @param origin The origin
      * @param destination The destination
-     * @param cost The cost to consider
-     * @param accessibleLabels The set of accessible label
-     * @param mapLabelCost The type of cost map to choose on each label
+     * @param costMetric The cost metric to consider
+     * @param accessibleLinkLabels The set of accessible link labels
+     * @param labelToCostFamily The cost family to use for each link label
      * @param kPath The number of path to compute
      * @return std::vector<pathCost> The vector of computed paths
      */
@@ -1035,14 +1035,14 @@ namespace hipop
         OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
-        const setstring &accessibleLabels,
-        const std::unordered_map<std::string, std::string> &mapLabelCost,
+        const std::string &costMetric,
+        const setstring &accessibleLinkLabels,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily,
         int kPath)
     {
         std::vector<pathCost> A;
         std::vector<pathCost> B;
-        A.push_back(dijkstra(G, origin, destination, cost, mapLabelCost, accessibleLabels));
+        A.push_back(dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels));
 
         double inf = std::numeric_limits<double>::infinity();
 
@@ -1059,7 +1059,7 @@ namespace hipop
                 for (std::size_t j = 0; j + 1 < rootPath.first.size(); j++)
                 {
                     Link *l = G.mnodes[rootPath.first[j]]->madj[rootPath.first[j + 1]];
-                    rootPath.second += l->mcosts[mapLabelCost.at(l->mlabel)][cost];
+                    rootPath.second += l->mcosts[labelToCostFamily.at(l->mlabel)][costMetric];
                 }
 
                 for (const pathCost &pc : A)
@@ -1070,13 +1070,13 @@ namespace hipop
 
                         if (initial_costs.find(l->mid) == initial_costs.end())
                         {
-                            initial_costs[l->mid] = {mapLabelCost.at(l->mlabel), l->mcosts[mapLabelCost.at(l->mlabel)][cost]};
+                            initial_costs[l->mid] = {labelToCostFamily.at(l->mlabel), l->mcosts[labelToCostFamily.at(l->mlabel)][costMetric]};
                         }
-                        l->mcosts[mapLabelCost.at(l->mlabel)][cost] = inf;
+                        l->mcosts[labelToCostFamily.at(l->mlabel)][costMetric] = inf;
                     }
                 }
 
-                pathCost spurPath = dijkstra(G, spurNode, destination, cost, mapLabelCost, accessibleLabels);
+                pathCost spurPath = dijkstra(G, spurNode, destination, costMetric, labelToCostFamily, accessibleLinkLabels);
                 pathCost totalPath;
                 totalPath.first = rootPath.first;
 
@@ -1085,7 +1085,7 @@ namespace hipop
 
                 for (const auto &keyVal : initial_costs)
                 {
-                    G.mlinks[keyVal.first]->mcosts[keyVal.second.first][cost] = keyVal.second.second;
+                    G.mlinks[keyVal.first]->mcosts[keyVal.second.first][costMetric] = keyVal.second.second;
                 }
 
                 bool toAdd = true;
@@ -1125,9 +1125,9 @@ namespace hipop
      * @param G The OrientedGraph on which we compute the paths
      * @param origins The origins
      * @param destinations The destinations
-     * @param cost The cost to consider
-     * @param vecMapLabelCosts The vector of type of cost map to choose on each label
-     * @param accessibleLabels The vector set of accessible label
+     * @param costMetric The cost metric to consider
+     * @param labelToCostFamily For each OD, the cost family to use for each link label
+     * @param accessibleLinkLabels The vector set of accessible link labels
      * @param maxDiffCost The maximal difference between the cost of the first computed
      *                    shortest path and the cost of the next ones
      * @param maxDistInCommon The maximal distance in common between the first shortest
@@ -1143,9 +1143,9 @@ namespace hipop
         OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
-        const std::string &cost,
-        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::vector<setstring> &accessibleLabels,
+        const std::string &costMetric,
+        const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
+        const std::vector<setstring> &accessibleLinkLabels,
         double maxDiffCost,
         double maxDistInCommon,
         double costMultiplier,
@@ -1161,13 +1161,13 @@ namespace hipop
         std::vector<int> uniqueIndices;
         std::unordered_map<int, int> duplicateIndices;
         std::unordered_map<int, int> nbPaths;
-        std::vector<std::string> costs(nbODs, cost);
-        tie(uniqueIndices, duplicateIndices, nbPaths) = find_duplicates(origins, destinations, vecMapLabelCosts, costs, kPaths);
+        std::vector<std::string> costMetrics(nbODs, costMetric);
+        tie(uniqueIndices, duplicateIndices, nbPaths) = find_duplicates(origins, destinations, labelToCostFamily, costMetrics, kPaths);
 
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel shared(res, accessibleLabels, G, vecMapLabelCosts, origins, destinations, kPaths)
+        #pragma omp parallel shared(res, accessibleLinkLabels, G, labelToCostFamily, origins, destinations, kPaths)
         {
             OrientedGraph privateG = G;
 
@@ -1175,13 +1175,13 @@ namespace hipop
             for (std::int64_t i = 0; i < nbUniqueIndices; ++i)
             {
                 int uniqueIdx = uniqueIndices[i];
-                if (accessibleLabels.empty())
+                if (accessibleLinkLabels.empty())
                 {
-                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, {}, vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
+                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], costMetric, {}, labelToCostFamily[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
                 }
                 else
                 {
-                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], cost, accessibleLabels[uniqueIdx], vecMapLabelCosts[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
+                    res[uniqueIdx] = KShortestPath(privateG, origins[uniqueIdx], destinations[uniqueIdx], costMetric, accessibleLinkLabels[uniqueIdx], labelToCostFamily[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
                 }
             }
         }
@@ -1216,9 +1216,9 @@ namespace hipop
      * @param G The OrientedGraph on which we compute the path
      * @param origin The origin
      * @param destination The destination
-     * @param cost The cost to consider in the shortest path algoritm
-     * @param mapLabelCost The type of cost map to choose on each label
-     * @param accessibleLabels The set of accessible label
+     * @param costMetric The cost metric to consider in the shortest path algorithm
+     * @param labelToCostFamily The cost family to use for each link label
+     * @param accessibleLinkLabels The set of accessible link labels
      * @param heuristic An heuristic to speed up the shortest path computation
      * @return pathCost The computed path
      */
@@ -1226,9 +1226,9 @@ namespace hipop
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
-        const std::unordered_map<std::string, std::string> &mapLabelCost,
-        const setstring &accessibleLabels,
+        const std::string &costMetric,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily,
+        const setstring &accessibleLinkLabels,
         const std::function<double(const Node *, const Node *)> &heuristic)
     {
         const Node *origin_node = G.mnodes.at(origin);
@@ -1275,14 +1275,14 @@ namespace hipop
             }
 
             u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
-                if (accessibleLabels.empty() || accessibleLabels.find(link->mlabel) != accessibleLabels.end()) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
                     // However, having link costs equal to +infinity is allowed:
                     // the corresponding links are never visited.
 
-                    double cost_on_link = link->cost(mapLabelCost.at(link->mlabel), cost);
+                    double cost_on_link = link->cost(labelToCostFamily.at(link->mlabel), costMetric);
                     double new_dist = dist_u + cost_on_link;
                     const Node *neighbor = link->mdown;
 
@@ -1309,20 +1309,20 @@ namespace hipop
      * @param G The OrientedGraph on which we compute the path
      * @param origin The origin
      * @param destination The destination
-     * @param cost The cost to consider in the shortest path algoritm
-     * @param mapLabelCost The type of cost map to choose on each label
-     * @param accessibleLabels The set of accessible label
+     * @param costMetric The cost metric to consider in the shortest path algorithm
+     * @param labelToCostFamily The cost family to use for each link label
+     * @param accessibleLinkLabels The set of accessible link labels
      * @return pathCost The computed path
      */
     pathCost aStarEuclidianDist(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
-        const std::string &cost,
-        const std::unordered_map<std::string, std::string> &mapLabelCost,
-        const setstring &accessibleLabels)
+        const std::string &costMetric,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily,
+        const setstring &accessibleLinkLabels)
     {
-        return aStar(G, origin, destination, cost, mapLabelCost, accessibleLabels,
+        return aStar(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels,
             [](const Node *current, const Node *dest) {
                 double dx = dest->mposition[0] - current->mposition[0];
                 double dy = dest->mposition[1] - current->mposition[1];
@@ -1338,8 +1338,8 @@ namespace hipop
      * @param G The OrientedGrah used for the shortest paths
      * @param origins The vector of origins
      * @param destinations The vector of destinations
-     * @param vecMapLabelCosts The vector of type of cost map to choose on each label
-     * @param cost The cost to consider in the shortest path algorithm
+     * @param labelToCostFamily For each OD, the cost family to use for each link label
+     * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
      * @param pairMandatoryLabels The pair of labels groups the shortest paths must contain
      * @param kPaths The number of paths to compute
@@ -1350,15 +1350,15 @@ namespace hipop
      * @param costMultiplier The multiplier applied to the links costs of an
      *                       accepted shortest path
      * @param maxRetry Maximum number of times we retry to find an acceptable shorest path
-     * @param vecAvailableLabels The vector of available labels
+     * @param accessibleLinkLabels The vector of accessible link labels
      * @return std::vector<std::vector<pathCost>> The vector of computed shortest path
      */
     std::vector<std::vector<pathCost>> parallelKIntermodalShortestPath(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
-        const std::vector<std::unordered_map<std::string, std::string>> &vecMapLabelCosts,
-        const std::string &cost,
+        const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
+        const std::string &costMetric,
         int threadNumber,
         const std::pair<std::unordered_set<std::string>, std::unordered_set<std::string>> &pairMandatoryLabels,
         double maxDiffCost,
@@ -1366,7 +1366,7 @@ namespace hipop
         double costMultiplier,
         int maxRetry,
         const std::vector<int> &kPaths,
-        const std::vector<setstring> &vecAvailableLabels)
+        const std::vector<setstring> &accessibleLinkLabels)
     {
         // Create doubled graph two ways
         OrientedGraph doubledG1; // pass first on first elem of pairMandatoryLabels
@@ -1498,13 +1498,13 @@ namespace hipop
         std::vector<int> uniqueIndices;
         std::unordered_map<int, int> duplicateIndices;
         std::unordered_map<int, int> nbPaths;
-        std::vector<std::string> costs(nbOD, cost);
-        tie(uniqueIndices, duplicateIndices, nbPaths) = find_duplicates(origins, destinations, vecMapLabelCosts, costs, kPaths);
+        std::vector<std::string> costMetrics(nbOD, costMetric);
+        tie(uniqueIndices, duplicateIndices, nbPaths) = find_duplicates(origins, destinations, labelToCostFamily, costMetrics, kPaths);
 
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel shared(res, vecAvailableLabels, vecMapLabelCosts, origins, destinationsTwin, kPaths, doubledG1, doubledG2)
+        #pragma omp parallel shared(res, accessibleLinkLabels, labelToCostFamily, origins, destinationsTwin, kPaths, doubledG1, doubledG2)
         {
           OrientedGraph privateDoubledG1 = doubledG1;
           OrientedGraph privateDoubledG2 = doubledG2;
@@ -1516,17 +1516,17 @@ namespace hipop
             std::vector<pathCost> resPath1;
             std::vector<pathCost> resPath2;
 
-            if (vecAvailableLabels.empty())
+            if (accessibleLinkLabels.empty())
             {
                 // Look for shortest paths on G1
-                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], costMetric, {}, labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
                 // Look for shortest paths on G2
-                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], cost, {}, vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], costMetric, {}, labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
             else
             {
-                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
-                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], cost, vecAvailableLabels[idx], vecMapLabelCosts[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath1 = KShortestPath(privateDoubledG1, origins[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath2 = KShortestPath(privateDoubledG2, origins[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
             // Concat resPath1 and resPath2
             resPath1.insert(resPath1.end(), resPath2.begin(), resPath2.end());
