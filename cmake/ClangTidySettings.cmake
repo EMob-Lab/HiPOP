@@ -12,16 +12,21 @@ if(HIPOP_USE_CLANG_TIDY)
     # Search the `clang-tidy` executable in the system.
     # Aside from the standard system paths, this search also considers
     # the directory specified by the environment variable `CLANG_TIDY_ROOT`.
-    find_program(CLANG_TIDY
+    find_program(HIPOP_CLANG_TIDY
         NAMES clang-tidy
         HINTS ENV CLANG_TIDY_ROOT
         PATH_SUFFIXES bin
         REQUIRED
     )
-
-    # The configuration of the clang-tidy tool is in the `.clang-tidy` files (base configuration
-    # in the repository root, and incremental overrides in subdirectories where needed).
-    # Thus, no additional configuration is needed here.
-    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY}")
-
 endif()
+
+# Enable static analysis with clang-tidy for the given target if `HIPOP_USE_CLANG_TIDY` is ON.
+function(hipop_enable_clang_tidy_if_requested target)
+    if(HIPOP_USE_CLANG_TIDY)
+
+        # The configuration of the clang-tidy tool is in the `.clang-tidy` files (base configuration
+        # in the repository root, and incremental overrides in subdirectories where needed).
+        # Thus, no additional configuration is needed here.
+        set_target_properties(${target} PROPERTIES CXX_CLANG_TIDY "${HIPOP_CLANG_TIDY}")
+    endif()
+endfunction()
