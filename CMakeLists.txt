@@ -8,19 +8,18 @@ project(HiPOP
     LANGUAGES CXX
 )
 
-option(HIPOP_WITH_PYTHON "Compile Python wrapper" OFF) # Disabled by default, so that pybind11 is not required then.
+option(HIPOP_WITH_PYTHON "Compile Python wrapper" OFF) # Disabled by default, so that nanobind is not required then.
 option(HIPOP_WITH_TESTS "Compile HiPOP tests (for core library)" ON)
 option(HIPOP_WITH_EXAMPLES "Compile HiPOP examples (for core library)" ON)
 
 # Miscellaneous CMake and compiler settings.
 include(cmake/MainSettings.cmake)
-include(cmake/ClangTidySettings.cmake)
 
 # 3rd-party dependencies.
 find_package(OpenMP REQUIRED)
 if(HIPOP_WITH_PYTHON)
-    set(PYBIND11_FINDPYTHON ON) # See: https://pybind11.readthedocs.io/en/stable/cmake/#modes
-    find_package(pybind11 REQUIRED)
+    find_package(Python 3.10 REQUIRED COMPONENTS Interpreter Development.Module)
+    find_package(nanobind REQUIRED)
 endif()
 
 # Enable CTest and related testing features if requested
