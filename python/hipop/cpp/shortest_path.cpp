@@ -6,6 +6,7 @@
 #include <nanobind/stl/unordered_set.h>
 #include <nanobind/stl/vector.h>
 
+#include <hipop/graph_path_cost.h>
 #include <hipop/shortest_path.h>
 
 namespace nb = nanobind;

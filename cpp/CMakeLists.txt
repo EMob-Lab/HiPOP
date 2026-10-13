@@ -1,6 +1,7 @@
 set(HIPOP_SRC
     src/create.cpp
     src/graph.cpp
+    src/graph_path_cost.cpp
     src/shortest_path.cpp
 )
 
