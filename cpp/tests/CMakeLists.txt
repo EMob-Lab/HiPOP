@@ -12,6 +12,7 @@ set(Tests
     testYenKShortestPath.cpp
     testODPairDedup_accessibleLinkLabelIssue.cpp
     testODPairDedup_nodeIDConcatenationIssue.cpp
+    testODPairDedup_kPathsIssue.cpp
 )
 
 # Create a single executable (aka. the driver) capable of running each registered test.
