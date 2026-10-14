@@ -36,7 +36,7 @@
  * Consequence: the paths returned for an OD pair may differ from the ones obtained with a call
  * to `parallelKShortestPath()` (or `KShortestPath()`) with this OD pair alone.
  */
-int testODPairDedup_kPathsIssue(int, char**)
+int testODPairDedup_issue_3_kPaths(int, char**)
 {
 
     hipop::OrientedGraph G;

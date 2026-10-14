@@ -18,7 +18,7 @@
  * - Same issue with all the other functions that use `find_duplicates()`,
  *   especially `parallelKShortestPath()`.
  */
-int testODPairDedup_nodeIDConcatenationIssue(int, char**)
+int testODPairDedup_issue_2_nodeIDConcatenation(int, char**)
 {
     std::unique_ptr<hipop::OrientedGraph> G(hipop::makeManhattan(12, 1));
 

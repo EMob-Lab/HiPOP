@@ -16,7 +16,7 @@
  * - Same issue with all the other functions that use `find_duplicates()`,
  *   especially `parallelKShortestPath()`.
  */
-int testODPairDedup_accessibleLinkLabelIssue(int, char**)
+int testODPairDedup_issue_1_accessibleLinkLabel(int, char**)
 {
     hipop::OrientedGraph G = simple_graph(true);
 
