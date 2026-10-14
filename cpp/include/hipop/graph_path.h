@@ -1,7 +1,7 @@
 #pragma once
 
-#include "hipop/graph.h"
-#include "hipop/string_util.h"
+#include <hipop/graph.h>
+#include <hipop/string_util.h>
 
 #include <cstddef>
 #include <iterator>
