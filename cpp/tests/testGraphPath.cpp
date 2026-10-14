@@ -8,6 +8,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -310,6 +311,23 @@ static void test_PathWithExcludedMovement() {
 }
 
 
+static void test_StreamOperator() {
+
+    const OrientedGraph G = simple_graph(true);
+
+    {
+        std::ostringstream oss;
+        oss << makePath(G, {"A_B", "B_E", "E_I"});
+        assertTrue(oss.str() == "from=A links=[A_B B_E E_I] to=I", "Wrong output for non-empty path");
+    }
+    {
+        std::ostringstream oss;
+        oss << makeEmptyPath(G, "C");
+        assertTrue(oss.str() == "from=C links=[] to=C", "Wrong output for empty path");
+    }
+}
+
+
 int testGraphPath(int, char**) {
     testCase("Empty path", test_EmptyPath);
     testCase("makePath", test_MakePath);
@@ -321,6 +339,7 @@ int testGraphPath(int, char**) {
     testCase("Path with loop", test_PathWithLoop);
     testCase("Path with self-link", test_PathWithSelfLink);
     testCase("Path with excluded movement", test_PathWithExcludedMovement);
+    testCase("Stream operator", test_StreamOperator);
     std::cout << "DONE" << std::endl;
     return 0;
 }

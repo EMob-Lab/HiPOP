@@ -575,37 +575,6 @@ namespace hipop
 
 
     /**
-     * @brief Print a path
-     *
-     * @param path The path to print
-     */
-    void showPath(const pathCost &path)
-    {
-        std::cout << path.second << " [";
-        for (const auto &p : path.first)
-        {
-            std::cout << p << ", ";
-        }
-        std::cout << "]\n" << std::flush;
-    }
-
-    /**
-     * @brief Print a path
-     *
-     * @param path The path to print
-     */
-    void showPathNodes(const std::vector<std::string> &path)
-    {
-        std::cout << " [";
-        for (const auto &p : path)
-        {
-            std::cout << p << ", ";
-        }
-        std::cout << "]\n" << std::flush;
-    }
-
-
-    /**
      * @brief Function that decodes an intermodal path computed on a tripled graph
      *
      * @param path The path to decode

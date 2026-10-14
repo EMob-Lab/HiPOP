@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <iterator>
+#include <ostream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -309,6 +310,24 @@ namespace hipop {
         }
 
     };
+
+
+    /**
+     * Print the path as `from=<origin-ID> links=[<link-ID> <link-ID> ...] to=<destination-ID>`.
+     */
+    inline std::ostream &operator<<(std::ostream &stream, const OrientedGraphPath &path) {
+        stream << "from=" << path.origin()->mid << " links=[";
+        bool isFirstLink = true;
+        for (const Link *link : path.links()) {
+            if (!isFirstLink) {
+                stream << " ";
+            }
+            stream << link->mid;
+            isFirstLink = false;
+        }
+        stream << "] to=" << path.destination()->mid;
+        return stream;
+    }
 
 
 } // namespace hipop
