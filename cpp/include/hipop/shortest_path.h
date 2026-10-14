@@ -211,7 +211,7 @@ namespace hipop {
         const std::vector<setstring> &accessibleLinkLabels = {});
 
     std::vector<pathCost> YenKShortestPath(
-        OrientedGraph &G,
+        const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
         const std::string &costMetric,

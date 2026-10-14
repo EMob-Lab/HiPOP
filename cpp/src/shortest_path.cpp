@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <tuple>
+#include <unordered_set>
 
 
 namespace { // Anonymous namespace
@@ -772,7 +773,7 @@ namespace hipop
      * @return std::vector<pathCost> The vector of computed paths
      */
     std::vector<pathCost> YenKShortestPath(
-        OrientedGraph &G,
+        const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
         const std::string &costMetric,
@@ -780,53 +781,45 @@ namespace hipop
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         int kPath)
     {
+        LabelToCostFamilyLinkCostFunction costFunction(labelToCostFamily, costMetric);
         std::vector<pathCost> A;
         std::vector<pathCost> B;
-        A.push_back(dijkstra(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels));
-
-        double inf = std::numeric_limits<double>::infinity();
+        A.emplace_back(dijkstraGeneric(G, origin, destination, costFunction, accessibleLinkLabels));
 
         for (int k = 1; k < kPath; k++)
         {
             for (size_t i = 0; i < A[k - 1].first.size() - 2; i++)
             {
-                std::unordered_map<std::string, std::pair<std::string, double> > initial_costs;
                 std::string spurNode = A[k - 1].first[i];
                 pathCost rootPath;
-                rootPath.second = 0;
                 rootPath.first.insert(rootPath.first.begin(), A[k - 1].first.begin(), A[k - 1].first.begin() + i + 1);
+                rootPath.second = computePathCostGeneric(G, rootPath.first, costFunction);
 
-                for (std::size_t j = 0; j + 1 < rootPath.first.size(); j++)
-                {
-                    Link *l = G.mnodes[rootPath.first[j]]->madj[rootPath.first[j + 1]];
-                    rootPath.second += l->mcosts[labelToCostFamily.at(l->mlabel)][costMetric];
-                }
-
+                // The links that are part of the previous shortest paths which share the same root path
+                // must not be considered to search a path from spur node to destination,
+                // thus they are flagged as "forbidden".
+                std::unordered_set<const Link*> forbiddenLinks;
                 for (const pathCost &pc : A)
                 {
                     if (std::equal(pc.first.begin(), pc.first.begin() + i, rootPath.first.begin()))
                     {
-                        Link *l = G.mnodes[pc.first[i]]->madj[pc.first[i + 1]];
-
-                        if (initial_costs.find(l->mid) == initial_costs.end())
-                        {
-                            initial_costs[l->mid] = {labelToCostFamily.at(l->mlabel), l->mcosts[labelToCostFamily.at(l->mlabel)][costMetric]};
-                        }
-                        l->mcosts[labelToCostFamily.at(l->mlabel)][costMetric] = inf;
+                        const Link *link = G.mnodes.at(pc.first[i])->madj.at(pc.first[i + 1]);
+                        forbiddenLinks.emplace(link);
                     }
                 }
 
-                pathCost spurPath = dijkstra(G, spurNode, destination, costMetric, labelToCostFamily, accessibleLinkLabels);
+                // Cost is assigned to +infinity on forbidden links, making them impassable.
+                auto overridenCostFunction = [&forbiddenLinks, &costFunction](const Link *link) -> double {
+                    auto it = forbiddenLinks.find(link);
+                    return it != forbiddenLinks.end() ? INFINITY : costFunction(link);
+                };
+
+                pathCost spurPath = dijkstraGeneric(G, spurNode, destination, overridenCostFunction, accessibleLinkLabels);
                 pathCost totalPath;
                 totalPath.first = rootPath.first;
 
                 totalPath.first.insert(totalPath.first.end(), spurPath.first.begin() + 1, spurPath.first.end());
                 totalPath.second = rootPath.second + spurPath.second;
-
-                for (const auto &keyVal : initial_costs)
-                {
-                    G.mlinks[keyVal.first]->mcosts[keyVal.second.first][costMetric] = keyVal.second.second;
-                }
 
                 bool toAdd = true;
                 for (const auto &prevPath : B)
