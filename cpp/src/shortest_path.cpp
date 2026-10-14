@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <stdexcept>
 #include <string_view>
 #include <tuple>
 
@@ -530,48 +531,38 @@ namespace hipop
 
 
     /**
-     * @brief Compute the relative distances in common between path and paths
-     *
-     * @param G The OrientedGraph
-     * @param path The path to compare to paths
-     * @param paths The paths
-     * @return std::vector<double> The relative distances in common
+     * Compute the maximum relative distance in common between the new path
+     * and the pre-existing paths.
      */
-    std::vector<double> computeRelativeDistancesInCommon(
+    double computeMaxRelativeDistanceInCommon(
         const OrientedGraph &G,
-        const std::vector<std::string> &path,
-        const std::vector<pathCost> &paths)
+        const std::vector<std::string> &newPath,
+        const std::vector<pathCost> &existingPaths)
     {
-        //assert path.size() > 0;
-        std::size_t nbPaths = paths.size();
-        std::vector<double> relDists(nbPaths);
+        double newPathLength = computePathLength(G, newPath);
+        double result = 0;
+        for (const pathCost &existingPath : existingPaths) {
 
-        for (std::size_t i = 0; i < nbPaths; i++)
-        {
-            std::vector<std::string> compared_p = paths[i].first;
-            //assert compared_p.size() > 0;
-            double path_length = computePathLength(G, path);
-            double compared_p_length = computePathLength(G, compared_p);
-            int compared_p_size = compared_p.size();
-            std::vector<std::string> compared_p_links(compared_p_size);
-            for (int j = 0; j < compared_p_size - 1; j++)
-            {
-                const Link *link = G.mnodes.at(compared_p[j])->madj.at(compared_p[j + 1]);
-                compared_p_links[j] = link->mid;
+            double existingPathLength = computePathLength(G, existingPath.first);
+
+            std::unordered_set<const Link *> linksInExistingPath;
+            for (std::size_t j = 0; j + 1 < existingPath.first.size(); j++) {
+                linksInExistingPath.emplace(G.mnodes.at(existingPath.first[j])->madj.at(existingPath.first[j + 1]));
             }
+
             double commonDist = 0;
-            for (std::size_t j = 0; j + 1 < path.size(); j++)
-            {
-                const Link *link = G.mnodes.at(path[j])->madj.at(path[j + 1]);
-                if (std::find(compared_p_links.begin(), compared_p_links.end(), link->mid) != compared_p_links.end())
-                {
-                  commonDist += link->mlength;
+            for (std::size_t j = 0; j + 1 < newPath.size(); j++) {
+                const Link *link = G.mnodes.at(newPath[j])->madj.at(newPath[j + 1]);
+                if (linksInExistingPath.find(link) != linksInExistingPath.end()) {
+                    commonDist += link->mlength;
                 }
             }
-            relDists[i] = commonDist / fmax(path_length, compared_p_length);
-        }
 
-        return relDists;
+            double maxLength = std::fmax(newPathLength, existingPathLength);
+            double currentRelativeDist = maxLength == 0 ? INFINITY : commonDist / maxLength;
+            result = std::fmax(result, currentRelativeDist);
+        }
+        return result;
     }
 
 
@@ -661,14 +652,28 @@ namespace hipop
         int kPath,
         bool intermodal)
     {
+        if (kPath <= 0) {
+            throw std::invalid_argument("[KShortestPath] kPath must be >= 1.");
+        }
+        if (maxRetry <= 0) {
+            throw std::invalid_argument("[KShortestPath] maxRetry must be >= 1.");
+        }
+
         LabelToCostFamilyLinkCostFunction costFunction(labelToCostFamily, costMetric);
         std::vector<pathCost> paths;
 
         pathCost firstPath = dijkstraGeneric(G, origin, destination, costFunction, accessibleLinkLabels);
-        paths.push_back(firstPath);
+        paths.emplace_back(firstPath);
 
-        if (firstPath.first.empty()) // no path found
-        {
+        // Stop here if any of these special cases occurs:
+        // 1) no path is found from origin to destination,
+        // 2) origin == destination,
+        // 3) only 1 path is requested by the caller (i.e. kPath == 1).
+        //
+        // FIXME 1) and 2) are covered by condition `firstPath.first.empty()`.
+        // Still, in case of 1), it would be better to return an empty container,
+        // to clearly indicate that there is no feasible path from origin to destination.
+        if (firstPath.first.empty() || kPath == 1) {
             return paths;
         }
 
@@ -694,10 +699,9 @@ namespace hipop
             increaseCostsFromPath(G, firstPath.first, costFunction, overridenCosts, costMultiplier);
         }
 
-        int pathCounter = 1, retry = 0;
+        int retry = 0;
+        while (true) {
 
-        while (pathCounter < kPath && retry < maxRetry )
-        {
             pathCost newPath = dijkstraGeneric(G, origin, destination, overridenCostFunction, accessibleLinkLabels);
 
             // The path cost returned by Dijkstra is computed using the overriden costs,
@@ -711,9 +715,9 @@ namespace hipop
             }
 
             // Check conditions to accept this new path
-            std::vector<double> relDistancesInCommon = computeRelativeDistancesInCommon(G, newPath.first, paths); // relative distances in common between newPath and the already found ones
-            bool maxDistInCommonChecked = (std::all_of(relDistancesInCommon.cbegin(), relDistancesInCommon.cend(), [maxDistInCommon](double rd){ return rd  <= maxDistInCommon; }));
-            bool maxDiffCostChecked = ( (newPath.second - firstPath.second) / firstPath.second <= maxDiffCost);
+            double distInCommon = computeMaxRelativeDistanceInCommon(G, newPath.first, paths);
+            bool maxDistInCommonChecked = distInCommon <= maxDistInCommon;
+            bool maxDiffCostChecked = (newPath.second - firstPath.second) / firstPath.second <= maxDiffCost;
             bool isNew = true;
             if (intermodal)
             {
@@ -730,13 +734,16 @@ namespace hipop
 
             if (maxDistInCommonChecked && maxDiffCostChecked && isNew)
             {
-                paths.push_back(newPath);
+                paths.emplace_back(newPath);
                 retry = 0;
-                pathCounter += 1;
             }
             else
             {
                 retry += 1;
+            }
+
+            if (paths.size() >= static_cast<unsigned int>(kPath) || retry >= maxRetry) {
+                break; // The target number of paths is reached, or the maximum number of attempts.
             }
 
             if (intermodal)
