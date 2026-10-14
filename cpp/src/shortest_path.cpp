@@ -6,8 +6,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
-#include <limits>
 #include <stdexcept>
 #include <string_view>
 #include <tuple>
@@ -17,73 +15,82 @@
 namespace { // Anonymous namespace
 
     /**
-     * Suffixes added to the node IDs when building an intermodal graph.
+     * Suffix codes added to the node IDs when building an intermodal graph.
+     *
+     * No suffix code may end with another suffix code (e.g. "_BB" would be incompatible with "_AA_BB"),
+     * otherwise the suffix removal logic implemented in removeIntermodalNodeSuffix(..) would fail.
+     *
+     * The "_N_" prefix (for "node") ensures that no node suffix ends with a link suffix, or the other way around.
+     * The path search algorithms do not need this non-overlap property, but it makes some bugs easier to spot,
+     * e.g. calling removeIntermodalNodeSuffix(..) where removeIntermodalLinkSuffix(..) was intended, or vice versa.
      */
     namespace IntermodalNodeSuffix {
-        constexpr std::string_view TWIN = "_TWIN";
-        constexpr std::string_view TRIPLE = "_TRPL";
+        constexpr std::string_view ORIGINAL = "_N_ORIG";
+        constexpr std::string_view TWIN = "_N_TWIN";
+        constexpr std::string_view TRIPLE = "_N_TRPL";
     }
 
+
     /**
-     * Suffixes added to the link IDs when building an intermodal graph.
+     * Suffix codes added to the link IDs when building an intermodal graph.
+     *
+     * No suffix code may end with another suffix code (e.g. "_TWIN" would be incompatible with "_ORIG_TWIN"),
+     * otherwise the suffix removal logic implemented in removeIntermodalLinkSuffix(..) would fail.
      */
     namespace IntermodalLinkSuffix {
-        constexpr std::string_view TWIN_TWIN = "_TWIN";                 // Between twin nodes
-        constexpr std::string_view TRIPLE_TRIPLE = "_TRPL";             // Between triple nodes
-        constexpr std::string_view ORIGINAL_TWIN = "_ORIGINAL_TO_TWIN"; // From an original node to a twin node
-        constexpr std::string_view TWIN_TRIPLE = "_TWIN_TO_TRPL";       // From a twin node to a triple node
+        constexpr std::string_view ORGINAL_ORIGINAL = "_ORIG_ORIG"; // Between original nodes
+        constexpr std::string_view TWIN_TWIN = "_TWIN_TWIN";        // Between twin nodes
+        constexpr std::string_view TRIPLE_TRIPLE = "_TRPL_TRPL";    // Between triple nodes
+        constexpr std::string_view ORIGINAL_TWIN = "_ORIG_TWIN";    // From an original node to a twin node
+        constexpr std::string_view TWIN_TRIPLE = "_TWIN_TRPL";      // From a twin node to a triple node
     }
 
 
     /**
-     * If the given node ID ends with one of the {@link IntermodalNodeSuffix}, remove it.
+     * Remove the intermodal suffix (one of {@link IntermodalNodeSuffix}) from the given node ID.
      *
-     * FIXME This function may not work properly if any node ID in the original graph accidentally ends
-     *       with one of the intermodal suffixes. Could be easily fixed by adding a suffix to the original nodes.
+     * @param nodeId - Must be a node ID from an intermodal graph (i.e. it must end with one of the searched suffixes).
+     *                 Otherwise, an exception is thrown.
      */
     std::string removeIntermodalNodeSuffix(std::string_view nodeId) {
         std::size_t sz = nodeId.size();
-        for (const std::string_view &suffix : { IntermodalNodeSuffix::TWIN, IntermodalNodeSuffix::TRIPLE }) {
-
-            // FIXME Why `sz > suffix.size()` and not `sz >= suffix.size()`?
-            // Using `>=` would be more logical for the suffix removing task implemented here,
-            // but since the current implementation is not correct with respect to the original node IDs,
-            // maybe using `>` avoids accidental removal of original node ID suffixes. But in that case,
-            // this is just a fix "by chance" rather than a logically correct implementation.
-            if (sz > suffix.size() && nodeId.substr(sz - suffix.size()) == suffix) {
+        for (const std::string_view &suffix : {
+            IntermodalNodeSuffix::ORIGINAL,
+            IntermodalNodeSuffix::TWIN,
+            IntermodalNodeSuffix::TRIPLE,
+        }) {
+            if (sz >= suffix.size() && nodeId.substr(sz - suffix.size()) == suffix) {
                 return static_cast<std::string>(nodeId.substr(0, sz - suffix.size()));
             }
         }
-        return static_cast<std::string>(nodeId);
+        throw std::invalid_argument(
+            hipop::StrCat("[removeIntermodalNodeSuffix] No intermodal suffix found in node ID [", nodeId, "].")
+        );
     }
 
 
     /**
-     * If the given link ID ends with one of the {@link IntermodalLinkSuffix}, remove it.
+     * Remove the intermodal suffix (one of {@link IntermodalLinkSuffix}) from the given link ID.
      *
-     * FIXME This function do not work properly **EVEN IN STANDARD CASES**, because suffix `TWIN_TWIN`
-     * is itself a suffix of `ORIGINAL_TWIN` (and `TRIPLE_TRIPLE` is also itself a suffix of `TWIN_TRIPLE`).
-     * And second bug, as for `removeIntermodalNodeSuffix(..)`, if any link ID in the original graph accidentally ends
-     * with one of the intermodal suffixes, such link ID is incorrectly truncated by this function.
-     * All these issues can be easily fixed by 1) modifying the link suffixes to avoid overlaps,
-     * and 2) adding a suffix to the original link IDs to distinguish them from intermodal suffixes.
+     * @param linkId - Must be a link ID from an intermodal graph (i.e. it must end with one of the searched suffixes).
+     *                 Otherwise, an exception is thrown.
      */
     std::string removeIntermodalLinkSuffix(std::string_view linkId) {
         std::size_t sz = linkId.size();
         for (const std::string_view &suffix : {
+            IntermodalLinkSuffix::ORGINAL_ORIGINAL,
             IntermodalLinkSuffix::TWIN_TWIN,
             IntermodalLinkSuffix::TRIPLE_TRIPLE,
             IntermodalLinkSuffix::ORIGINAL_TWIN,
             IntermodalLinkSuffix::TWIN_TRIPLE,
         }) {
-
-            // FIXME Why `sz > suffix.size()` and not `sz >= suffix.size()`?
-            // Same remark as for `removeIntermodalNodeSuffix(..)`.
-            if (sz > suffix.size() && linkId.substr(sz - suffix.size()) == suffix) {
+            if (sz >= suffix.size() && linkId.substr(sz - suffix.size()) == suffix) {
                 return static_cast<std::string>(linkId.substr(0, sz - suffix.size()));
             }
         }
-        return static_cast<std::string>(linkId);
+        throw std::invalid_argument(
+            hipop::StrCat("[removeIntermodalLinkSuffix] No intermodal suffix found in link ID [", linkId, "].")
+        );
     }
 
 
@@ -506,7 +513,7 @@ namespace hipop
             std::string decoded_link_id = removeIntermodalLinkSuffix(visited_link->mid);
 
             for (std::string_view link_suffix : {
-                std::string_view(""),
+                IntermodalLinkSuffix::ORGINAL_ORIGINAL,
                 IntermodalLinkSuffix::TWIN_TWIN,
                 IntermodalLinkSuffix::TRIPLE_TRIPLE,
                 IntermodalLinkSuffix::ORIGINAL_TWIN,
@@ -1099,7 +1106,7 @@ namespace hipop
         OrientedGraph doubledG1; // pass first on first elem of pairMandatoryLabels
         OrientedGraph doubledG2; // pass first on second elem of pairMandatoryLabels
         for(const auto &keyVal: G.mnodes) {
-            doubledG1.AddNode(keyVal.second->mid,
+            doubledG1.AddNode(StrCat(keyVal.second->mid, IntermodalNodeSuffix::ORIGINAL),
                             keyVal.second->mposition[0],
                             keyVal.second->mposition[1],
                             keyVal.second->mlabel,
@@ -1114,7 +1121,7 @@ namespace hipop
                             keyVal.second->mposition[1],
                             keyVal.second->mlabel,
                             keyVal.second->mexclude_movements);
-            doubledG2.AddNode(keyVal.second->mid,
+            doubledG2.AddNode(StrCat(keyVal.second->mid, IntermodalNodeSuffix::ORIGINAL),
                             keyVal.second->mposition[0],
                             keyVal.second->mposition[1],
                             keyVal.second->mlabel,
@@ -1131,9 +1138,9 @@ namespace hipop
                             keyVal.second->mexclude_movements);
         }
         for(const auto &keyVal: G.mlinks) {
-            doubledG1.AddLink(keyVal.second->mid,
-                            keyVal.second->mup->mid,
-                            keyVal.second->mdown->mid,
+            doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORGINAL_ORIGINAL),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::ORIGINAL),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::ORIGINAL),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1149,9 +1156,9 @@ namespace hipop
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
-            doubledG2.AddLink(keyVal.second->mid,
-                            keyVal.second->mup->mid,
-                            keyVal.second->mdown->mid,
+            doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORGINAL_ORIGINAL),
+                            StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::ORIGINAL),
+                            StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::ORIGINAL),
                             keyVal.second->mlength,
                             keyVal.second->mcosts,
                             keyVal.second->mlabel);
@@ -1171,7 +1178,7 @@ namespace hipop
             bool original_to_twin_G1 = pairMandatoryLabels.first.count(keyVal.second->mlabel);
             if (original_to_twin_G1) {
                 doubledG1.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
-                                keyVal.second->mup->mid,
+                                StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::ORIGINAL),
                                 StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
@@ -1181,7 +1188,7 @@ namespace hipop
             bool original_to_twin_G2 = pairMandatoryLabels.second.count(keyVal.second->mlabel);
             if (original_to_twin_G2) {
                 doubledG2.AddLink(StrCat(keyVal.second->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
-                                keyVal.second->mup->mid,
+                                StrCat(keyVal.second->mup->mid, IntermodalNodeSuffix::ORIGINAL),
                                 StrCat(keyVal.second->mdown->mid, IntermodalNodeSuffix::TWIN),
                                 keyVal.second->mlength,
                                 keyVal.second->mcosts,
@@ -1209,9 +1216,14 @@ namespace hipop
             }
         }
 
-        // Set destinations as nodes of the trpl graph
+        // Set origins (resp. destinations) as nodes of the original (resp. triple) graph
+        std::vector<std::string> originsTwin;
         std::vector<std::string> destinationsTwin;
+        originsTwin.reserve(origins.size());
         destinationsTwin.reserve(destinations.size());
+        for (const auto &origin : origins) {
+            originsTwin.emplace_back(StrCat(origin, IntermodalNodeSuffix::ORIGINAL));
+        }
         for (const auto &destination : destinations) {
             destinationsTwin.emplace_back(StrCat(destination, IntermodalNodeSuffix::TRIPLE));
         }
@@ -1231,7 +1243,7 @@ namespace hipop
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
-        #pragma omp parallel for shared(res, accessibleLinkLabels, labelToCostFamily, origins, destinationsTwin, kPaths, doubledG1, doubledG2)
+        #pragma omp parallel for shared(res, accessibleLinkLabels, labelToCostFamily, originsTwin, destinationsTwin, kPaths, doubledG1, doubledG2)
         for (std::int64_t i = 0; i < nbUniqueIndices; i++)
         {
             int idx = uniqueIndices[i];
@@ -1241,14 +1253,14 @@ namespace hipop
             if (accessibleLinkLabels.empty())
             {
                 // Look for shortest paths on G1
-                resPath1 = KShortestPath(doubledG1, origins[idx], destinationsTwin[idx], costMetric, {}, labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath1 = KShortestPath(doubledG1, originsTwin[idx], destinationsTwin[idx], costMetric, {}, labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
                 // Look for shortest paths on G2
-                resPath2 = KShortestPath(doubledG2, origins[idx], destinationsTwin[idx], costMetric, {}, labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath2 = KShortestPath(doubledG2, originsTwin[idx], destinationsTwin[idx], costMetric, {}, labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
             else
             {
-                resPath1 = KShortestPath(doubledG1, origins[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
-                resPath2 = KShortestPath(doubledG2, origins[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath1 = KShortestPath(doubledG1, originsTwin[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
+                resPath2 = KShortestPath(doubledG2, originsTwin[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
             // Concat resPath1 and resPath2
             resPath1.insert(resPath1.end(), resPath2.begin(), resPath2.end());
