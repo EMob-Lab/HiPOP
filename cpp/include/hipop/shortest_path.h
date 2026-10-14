@@ -219,7 +219,7 @@ namespace hipop {
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         int kPath);
     std::vector<pathCost> KShortestPath(
-        OrientedGraph &G,
+        const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
         const std::string &costMetric,
@@ -233,7 +233,7 @@ namespace hipop {
         bool intermodal);
 
     std::vector<std::vector<pathCost>> parallelKShortestPath(
-        OrientedGraph &G,
+        const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
         const std::string &costMetric,
