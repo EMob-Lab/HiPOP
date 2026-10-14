@@ -1,12 +1,7 @@
-set(HIPOP_HEADERS
-    include/hipop/create.h
-    include/hipop/graph.h
-    include/hipop/shortest_path.h
-)
-
 set(HIPOP_SRC
     src/create.cpp
     src/graph.cpp
+    src/graph_path_cost.cpp
     src/shortest_path.cpp
 )
 
