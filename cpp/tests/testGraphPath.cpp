@@ -133,7 +133,7 @@ static void test_MakePathErrors() {
 }
 
 
-static void test_Add() {
+static void test_AddLink() {
 
     const OrientedGraph G = simple_graph(true);
 
@@ -154,6 +154,81 @@ static void test_Add() {
     assertTrue(path.size() == 2, "Path should be unchanged after a failed add");
     assertTrue(path.destination() == G.mnodes.at("E"), "Destination should be unchanged after a failed add");
     checkPathInvariant(path, " (after rejected insertion)");
+}
+
+
+static void test_AddPath() {
+
+    const OrientedGraph G = simple_graph(true);
+
+    { // Base case
+        OrientedGraphPath path = makePath(G, {"A_B"});
+        path.add(makePath(G, {"B_E", "E_F"}));
+        checkPathInvariant(path, " (base case)");
+        assertTrue(path == makePath(G, {"A_B", "B_E", "E_F"}), "Wrong path after concatenation (base case)");
+    }
+
+    { // path + empty path
+        OrientedGraphPath path = makePath(G, {"A_B", "B_E"});
+        path.add(makeEmptyPath(G, "E"));
+        checkPathInvariant(path, " (path + empty path)");
+        assertTrue(path == makePath(G, {"A_B", "B_E"}), "Wrong path after concatenation (path + empty path)");
+    }
+
+    { // empty path + path
+        OrientedGraphPath emptyPath = makeEmptyPath(G, "A");
+        emptyPath.add(makePath(G, {"A_D", "D_E"}));
+        checkPathInvariant(emptyPath, " (empty path + path)");
+        assertTrue(emptyPath == makePath(G, {"A_D", "D_E"}), "Wrong path concatenation (empty path + path)");
+    }
+
+    { // empty path + empty path
+        OrientedGraphPath emptyPath = makeEmptyPath(G, "A");
+        emptyPath.add(makeEmptyPath(G, "A"));
+        checkPathInvariant(emptyPath, " (empty path + empty path)");
+        assertTrue(emptyPath == makeEmptyPath(G, "A"), "Wrong path concatenation (empty path + empty path)");
+    }
+
+    // Adding a path that does not start from the current destination must throw, and leave the path unchanged.
+    {
+        OrientedGraphPath path = makePath(G, {"A_B", "B_E"});
+        assertThrows<std::invalid_argument>([&]() {
+            path.add(makePath(G, {"B_C"}));
+        }, "Inconsistent non-empty path should throw");
+        assertThrows<std::invalid_argument>([&]() {
+            path.add(makeEmptyPath(G, "A"));
+        }, "Inconsistent empty path should throw");
+        assertTrue(path == makePath(G, {"A_B", "B_E"}), "Path should be unchanged after a failed add");
+    }
+}
+
+
+static void test_AddPathToItself() {
+
+    const OrientedGraph G = graph_with_loop();
+
+    { // Loop
+        OrientedGraphPath path = makePath(G, {"L1_L2", "L2_L1"});
+        path.add(path);
+        checkPathInvariant(path, " (loop)");
+        assertTrue(path == makePath(G, {"L1_L2", "L2_L1", "L1_L2", "L2_L1"}), "Wrong path after self-concatenation (loop)");
+    }
+
+    { // Empty path
+        OrientedGraphPath path = makeEmptyPath(G, "A");
+        path.add(path);
+        checkPathInvariant(path, " (empty path)");
+        assertTrue(path == makeEmptyPath(G, "A"), "Wrong path after self-concatenation (empty path)");
+    }
+
+    // Adding a non-loop path to itself must throw, and leave the path unchanged.
+    {
+        OrientedGraphPath path = makePath(G, {"A_L1", "L1_L2"});
+        assertThrows<std::invalid_argument>([&]() {
+            path.add(path);
+        }, "Self-concatenation of a non-loop path should throw");
+        assertTrue(path == makePath(G, {"A_L1", "L1_L2"}), "Path should be unchanged after a failed add");
+    }
 }
 
 
@@ -311,6 +386,113 @@ static void test_PathWithExcludedMovement() {
 }
 
 
+static void test_SubPath() {
+
+    const OrientedGraph G = simple_graph(true);
+    const OrientedGraphPath path = makePath(G, {"A_B", "B_E", "E_F"});
+
+    // Default link count: up to the end of the path.
+    assertTrue(path.subPath(0) == path, "subPath(0) should be the whole path");
+    assertTrue(path.subPath(1) == makePath(G, {"B_E", "E_F"}), "Wrong subPath(1)");
+    assertTrue(path.subPath(3) == makeEmptyPath(G, "F"), "subPath(size()) should be the empty path on destination");
+
+    // Explicit link count.
+    assertTrue(path.subPath(0, 0) == makeEmptyPath(G, "A"), "Wrong subPath(0, 0)");
+    assertTrue(path.subPath(1, 0) == makeEmptyPath(G, "B"), "Wrong subPath(1, 0)");
+    assertTrue(path.subPath(0, 2) == makePath(G, {"A_B", "B_E"}), "Wrong subPath(0, 2)");
+    assertTrue(path.subPath(1, 1) == makePath(G, {"B_E"}), "Wrong subPath(1, 1)");
+    assertTrue(path.subPath(1, 2) == makePath(G, {"B_E", "E_F"}), "Wrong subPath(1, 2)");
+
+    // Link count exceeding the remaining number of links is truncated.
+    assertTrue(path.subPath(1, 10) == makePath(G, {"B_E", "E_F"}), "Wrong subPath(1, 10)");
+    assertTrue(path.subPath(3, 10) == makeEmptyPath(G, "F"), "Wrong subPath(3, 10)");
+
+    for (std::size_t pos = 0; pos <= path.size(); ++pos) {
+        for (std::size_t linkCount = 0; linkCount <= path.size() + 1; ++linkCount) {
+            checkPathInvariant(path.subPath(pos, linkCount), StrCat(
+                " (for subPath(", std::to_string(pos), ", ", std::to_string(linkCount), "))"
+            ));
+        }
+    }
+
+    // Sub-path of an empty path.
+    const OrientedGraphPath emptyPath = makeEmptyPath(G, "C");
+    assertTrue(emptyPath.subPath(0) == emptyPath, "subPath(0) of an empty path should be the path itself");
+
+    // Expecting `pos <= size()`.
+    assertThrows<std::out_of_range>([&]() {
+        [[maybe_unused]] auto p = path.subPath(4);
+    }, "subPath(size() + 1) should throw");
+    assertThrows<std::out_of_range>([&]() {
+        [[maybe_unused]] auto p = emptyPath.subPath(1, 0);
+    }, "subPath(1, 0) of an empty path should throw");
+}
+
+
+static void test_StartsWith() {
+
+    const OrientedGraph G = simple_graph(true);
+    const OrientedGraphPath path = makePath(G, {"A_B", "B_E", "E_F"});
+
+    assertTrue(path.startsWith(path), "A path should start with itself");
+    assertTrue(path.startsWith(makePath(G, {"A_B"})), "Path should start with [A_B]");
+    assertTrue(path.startsWith(makePath(G, {"A_B", "B_E"})), "Path should start with [A_B, B_E]");
+    assertTrue(path.startsWith(makeEmptyPath(G, "A")), "Path should start with the empty path on its origin");
+
+    assertTrue(!path.startsWith(makeEmptyPath(G, "B")), "Path should not start with an empty path on another node");
+    assertTrue(!path.startsWith(makePath(G, {"B_E"})), "Path should not start with [B_E]");
+    assertTrue(!path.startsWith(makePath(G, {"A_B", "B_C"})), "Path should not start with [A_B, B_C]");
+
+    assertTrue(!makePath(G, {"A_B"}).startsWith(path), "A path should not start with a longer path");
+
+    // Empty current path.
+    const OrientedGraphPath emptyPath = makeEmptyPath(G, "A");
+    assertTrue(emptyPath.startsWith(emptyPath), "An empty path should start with itself");
+    assertTrue(!emptyPath.startsWith(makeEmptyPath(G, "B")), "Empty path should not start with an empty path on another node");
+    assertTrue(!emptyPath.startsWith(makePath(G, {"A_B"})), "Empty path should not start with a non-empty path");
+
+    // Consistency with subPath.
+    for (std::size_t linkCount = 0; linkCount <= path.size(); ++linkCount) {
+        assertTrue(
+            path.startsWith(path.subPath(0, linkCount)),
+            StrCat("Path should start with subPath(0, ", std::to_string(linkCount), ")")
+        );
+    }
+}
+
+
+static void test_EndsWith() {
+
+    const OrientedGraph G = simple_graph(true);
+    const OrientedGraphPath path = makePath(G, {"A_B", "B_E", "E_F"});
+
+    assertTrue(path.endsWith(path), "A path should end with itself");
+    assertTrue(path.endsWith(makePath(G, {"E_F"})), "Path should end with [E_F]");
+    assertTrue(path.endsWith(makePath(G, {"B_E", "E_F"})), "Path should end with [B_E, E_F]");
+    assertTrue(path.endsWith(makeEmptyPath(G, "F")), "Path should end with the empty path on its destination");
+
+    assertTrue(!path.endsWith(makeEmptyPath(G, "E")), "Path should not end with an empty path on another node");
+    assertTrue(!path.endsWith(makePath(G, {"B_E"})), "Path should not end with [B_E]");
+    assertTrue(!path.endsWith(makePath(G, {"D_E", "E_F"})), "Path should not end with [D_E, E_F]");
+
+    assertTrue(!makePath(G, {"E_F"}).endsWith(path), "A path should not end with a longer path");
+
+    // Empty current path.
+    const OrientedGraphPath emptyPath = makeEmptyPath(G, "F");
+    assertTrue(emptyPath.endsWith(emptyPath), "An empty path should end with itself");
+    assertTrue(!emptyPath.endsWith(makeEmptyPath(G, "E")), "Empty path should not end with an empty path on another node");
+    assertTrue(!emptyPath.endsWith(makePath(G, {"E_F"})), "Empty path should not end with a non-empty path");
+
+    // Consistency with subPath.
+    for (std::size_t pos = 0; pos <= path.size(); ++pos) {
+        assertTrue(
+            path.endsWith(path.subPath(pos)),
+            StrCat("Path should end with subPath(", std::to_string(pos), ")")
+        );
+    }
+}
+
+
 static void test_StreamOperator() {
 
     const OrientedGraph G = simple_graph(true);
@@ -332,13 +514,18 @@ int testGraphPath(int, char**) {
     testCase("Empty path", test_EmptyPath);
     testCase("makePath", test_MakePath);
     testCase("makePath errors", test_MakePathErrors);
-    testCase("add", test_Add);
+    testCase("Add link", test_AddLink);
+    testCase("Add path", test_AddPath);
+    testCase("Add path to itself", test_AddPathToItself);
     testCase("Constructor", test_Constructor);
     testCase("Equality", test_Equality);
     testCase("Node iteration", test_NodeIteration);
     testCase("Path with loop", test_PathWithLoop);
     testCase("Path with self-link", test_PathWithSelfLink);
     testCase("Path with excluded movement", test_PathWithExcludedMovement);
+    testCase("subPath", test_SubPath);
+    testCase("startsWith", test_StartsWith);
+    testCase("endsWith", test_EndsWith);
     testCase("Stream operator", test_StreamOperator);
     std::cout << "DONE" << std::endl;
     return 0;

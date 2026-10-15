@@ -3,8 +3,10 @@
 #include <hipop/graph.h>
 #include <hipop/string_util.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <iterator>
+#include <limits>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -296,7 +298,8 @@ namespace hipop {
             if (link->mup != destination()) {
                 throw std::invalid_argument(
                     StrCat(
-                        "[OrientedGraphPath::add] Inconsistent path continuation: link-ID=[",
+                        "[OrientedGraphPath::add(const Link *)] ",
+                        "Inconsistent path continuation: link-ID=[",
                         link->mid,
                         "] link-origin=[",
                         link->mup->mid,
@@ -307,6 +310,73 @@ namespace hipop {
                 );
             }
             links_.emplace_back(link);
+        }
+
+        /**
+         * Append the given path to the current one, from the current destination node.
+         *
+         * @param other Must have the same origin node as the current path destination node.
+         * @throws std::invalid_argument if `other.origin() != destination()`.
+         */
+        void add(const OrientedGraphPath &other) {
+            if (other.origin() != destination()) {
+                throw std::invalid_argument(
+                    StrCat(
+                        "[OrientedGraphPath::add(const OrientedGraphPath &)] ",
+                        "Inconsistent path continuation: other-path-origin=[",
+                        other.origin()->mid,
+                        "] path-destination=[",
+                        destination()->mid,
+                        "]"
+                    )
+                );
+            }
+            std::size_t sz = other.links_.size();
+            links_.reserve(links_.size() + sz);
+            for (std::size_t i = 0; i < sz; ++i) {
+                // WARNING: do not use a foreach loop or a bulk insert here, as that would not work properly
+                // if `this` and `other` are the same instance (i.e. path added to itself).
+                links_.emplace_back(other.links_[i]);
+            }
+        }
+
+        /**
+         * Extract a sub-path out of the current path.
+         *
+         * The extracted sub-path starts at the node corresponding to index `pos`,
+         * and contains `linkCount` links, or fewer if the current path ends before that.
+         *
+         * @param pos Must be <= size().
+         * @param linkCount If omitted, the returned sub-path extends to the end of the current path.
+         */
+        [[nodiscard]] OrientedGraphPath subPath(
+            std::size_t pos,
+            std::size_t linkCount = std::numeric_limits<std::size_t>::max()
+        ) const {
+            OrientedGraphPath result(node(pos));
+            std::size_t newSize = std::min(linkCount, size() - pos);
+            result.links_.insert(result.links_.end(), links_.begin() + pos, links_.begin() + pos + newSize);
+            return result;
+        }
+
+        /**
+         * Whether the current path starts with `p` or not.
+         */
+        [[nodiscard]] bool startsWith(const OrientedGraphPath &p) const {
+            std::size_t psz = p.size();
+            return psz == 0 ?
+                origin() == p.origin() :
+                links_.size() >= psz && std::equal(p.links_.begin(), p.links_.end(), links_.begin());
+        }
+
+        /**
+         * Whether the current path ends with `p` or not.
+         */
+        [[nodiscard]] bool endsWith(const OrientedGraphPath &p) const {
+            std::size_t psz = p.size();
+            return psz == 0 ?
+                destination() == p.destination() :
+                size() >= psz && std::equal(p.links_.begin(), p.links_.end(), links_.begin() + (size() - psz));
         }
 
     };
