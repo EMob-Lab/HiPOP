@@ -106,6 +106,9 @@ def test_equality() -> None:
     assert make_path(G, ["A_B", "B_C"]) != make_path(G, ["A_C"])
     assert make_empty_path(G, "A") != make_empty_path(G, "B")
 
+    # Support comparison with other object types
+    assert make_path(G, ["A_B", "B_C"]) != "I'm not a path"
+
 
 def test_hash() -> None:
 

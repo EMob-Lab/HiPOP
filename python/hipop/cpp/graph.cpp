@@ -64,12 +64,13 @@ void graph(nb::module_ &m) {
         "Otherwise, using the path results in undefined behavior (likely a crash).")
         .def(nb::init<const hipop::Node *>(), "origin"_a)
         .def(nb::init<const hipop::Node *, std::vector<const hipop::Link *>>(), "origin"_a, "links"_a)
-        .def(nb::self == nb::self)
-        .def(nb::self != nb::self)
+        .def(nb::self == nb::self,
+            nb::sig("def __eq__(self, arg: object, /) -> bool")) // Overridden signature, to accept any obj type.
+        // Remark: operator != is not bound, as Python deduces it from operator ==.
         .def(nb::hash(nb::self))
         .def("__len__", &hipop::OrientedGraphPath::size)
         .def("__bool__", [](const hipop::OrientedGraphPath &) {
-            // An empty path must be not treated as an empty container, even if `__len__()` returns 0.
+            // An empty path must not be treated as an empty container, even if `__len__()` returns 0.
             return true;
         })
         .def("copy", [](const hipop::OrientedGraphPath &path) {
@@ -78,7 +79,7 @@ void graph(nb::module_ &m) {
         .def("__copy__", [](const hipop::OrientedGraphPath &path) {
             return hipop::OrientedGraphPath(path);
         })
-        .def("__deepcopy__", [](const hipop::OrientedGraphPath &path, const nb::dict &) {
+        .def("__deepcopy__", [](const hipop::OrientedGraphPath &path, const nb::typed<nb::dict, int, nb::any> &) {
             // Nodes and links belong to the graph, not to the path: they must not be copied, even for a deep copy.
             // Thus, same behavior for __copy__ and __deepcopy__ in case of OrientedGraphPath.
             return hipop::OrientedGraphPath(path);
