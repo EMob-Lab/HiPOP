@@ -1,8 +1,8 @@
 #pragma once
 
 #include <hipop/graph.h>
+#include <hipop/graph_path.h>
 
-#include <cstddef>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -22,18 +22,13 @@ namespace hipop {
      *                     Should be a pure function (i.e. no side effects).
      */
     template<typename CostFunction>
-    double computePathCostGeneric(
-        const OrientedGraph &G,
-        const std::vector<std::string> &path,
-        const CostFunction &costFunction
-    ) {
+    double computePathCostGeneric(const OrientedGraphPath &path, const CostFunction &costFunction) {
         static_assert(
             std::is_invocable_r_v<double, CostFunction, const Link *>,
             "Cost function must have signature: double(const Link *link)"
         );
         double result = 0;
-        for (std::size_t i = 0; i + 1 < path.size(); ++i) {
-            const Link *link = G.mnodes.at(path[i])->madj.at(path[i + 1]);
+        for (const Link *link : path.links()) {
             result += costFunction(link);
         }
         return result;
@@ -98,8 +93,8 @@ namespace hipop {
     /**
      * Total length of a path, i.e. sum of all link length that composed it.
      */
-    inline double computePathLength(const OrientedGraph &G, const std::vector<std::string> &path) {
-        return computePathCostGeneric(G, path, LengthLinkCostFunction());
+    inline double computePathLength(const OrientedGraphPath &path) {
+        return computePathCostGeneric(path, LengthLinkCostFunction());
     }
 
 
@@ -110,12 +105,11 @@ namespace hipop {
      * @param labelToCostFamily Cost family to use for each link label.
      */
     inline double computePathCost(
-        const OrientedGraph &G,
-        const std::vector<std::string> &path,
+        const OrientedGraphPath &path,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily
     ) {
-        return computePathCostGeneric(G, path, LabelToCostFamilyLinkCostFunction(labelToCostFamily, costMetric));
+        return computePathCostGeneric(path, LabelToCostFamilyLinkCostFunction(labelToCostFamily, costMetric));
     }
 
 
@@ -123,8 +117,7 @@ namespace hipop {
      * Batch computation of path costs.
      */
     std::vector<std::vector<double>> computePathsCosts(
-        const OrientedGraph &G,
-        const std::vector<std::vector<std::vector<std::string>>> &paths,
+        const std::vector<std::vector<OrientedGraphPath>> &paths,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         int threadNumber);
