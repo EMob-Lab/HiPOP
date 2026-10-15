@@ -98,10 +98,24 @@ namespace hipop {
         }
 
         /**
+         * ID of the origin - aka. first node - of the path.
+         */
+        [[nodiscard]] const std::string &originId() const {
+            return origin()->mid;
+        }
+
+        /**
          * Destination - aka. last node - of the path.
          */
         [[nodiscard]] const Node *destination() const {
             return links_.empty() ? origin_ : links_.back()->mdown;
+        }
+
+        /**
+         * ID of the destination - aka. last node - of the path.
+         */
+        [[nodiscard]] const std::string &destinationId() const {
+            return destination()->mid;
         }
 
         /**

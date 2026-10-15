@@ -54,7 +54,9 @@ static void test_EmptyPath() {
     assertTrue(path.empty(), "Path should be empty");
     assertTrue(path.size() == 0, "Path size should be 0");
     assertTrue(path.origin() == A, "Wrong origin");
+    assertTrue(path.originId() == "A", "Wrong origin ID");
     assertTrue(path.destination() == A, "Destination should be identical to origin");
+    assertTrue(path.destinationId() == "A", "Wrong destination ID");
     assertTrue(path.node(0) == A, "Wrong node #0");
     assertTrue(path.nodeId(0) == "A", "Wrong node ID #0");
     assertTrue(!path.nodes().empty(), "Node range should never be empty");
@@ -84,7 +86,9 @@ static void test_MakePath() {
     assertTrue(!path.empty(), "Path should not be empty");
     assertTrue(path.size() == 3, "Path size should be 3");
     assertTrue(path.origin() == G.mnodes.at("A"), "Wrong origin");
+    assertTrue(path.originId() == "A", "Wrong origin ID");
     assertTrue(path.destination() == G.mnodes.at("I"), "Wrong destination");
+    assertTrue(path.destinationId() == "I", "Wrong destination ID");
     assertTrue(!path.nodes().empty(), "Node range should never be empty");
     assertTrue(path.nodes().size() == 4, "Path should have exactly 4 nodes");
     assertTrue(!path.links().empty(), "Link list should not be empty");

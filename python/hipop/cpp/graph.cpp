@@ -85,7 +85,9 @@ void graph(nb::module_ &m) {
             return stream.str();
         })
         .def_prop_ro("origin", &hipop::OrientedGraphPath::origin, nb::rv_policy::reference)
+        .def_prop_ro("origin_id", &hipop::OrientedGraphPath::originId)
         .def_prop_ro("destination", &hipop::OrientedGraphPath::destination, nb::rv_policy::reference)
+        .def_prop_ro("destination_id", &hipop::OrientedGraphPath::destinationId)
         .def("node", &hipop::OrientedGraphPath::node, "node_index"_a, nb::rv_policy::reference)
         .def("node_id", &hipop::OrientedGraphPath::nodeId, "node_index"_a)
         .def("link", &hipop::OrientedGraphPath::link, "link_index"_a, nb::rv_policy::reference)

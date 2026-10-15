@@ -41,7 +41,9 @@ def test_empty_path() -> None:
     assert len(path) == 0
     assert path, "An empty path must be truthy"
     assert path.origin.id == "A"
+    assert path.origin_id == "A"
     assert path.destination.id == "A"
+    assert path.destination_id == "A"
     assert path.node(0).id == "A"
     assert path.node_id(0) == "A"
     assert [node.id for node in path.nodes] == ["A"]
@@ -62,7 +64,9 @@ def test_make_path() -> None:
 
     assert len(path) == 3
     assert path.origin.id == "A"
+    assert path.origin_id == "A"
     assert path.destination.id == "D"
+    assert path.destination_id == "D"
     assert path.node(1).id == "B"
     assert path.node_id(1) == "B"
     assert path.link(1).id == "B_C"
