@@ -71,6 +71,9 @@ void graph(nb::module_ &m) {
             // An empty path must be not treated as an empty container, even if `__len__()` returns 0.
             return true;
         })
+        .def("copy", [](const hipop::OrientedGraphPath &path) {
+            return hipop::OrientedGraphPath(path);
+        })
         .def("__copy__", [](const hipop::OrientedGraphPath &path) {
             return hipop::OrientedGraphPath(path);
         })

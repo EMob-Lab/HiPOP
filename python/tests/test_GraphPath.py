@@ -143,7 +143,7 @@ def test_copy() -> None:
     G = _make_graph()
     path = make_path(G, ["A_B"])
 
-    for path_copy in (copy.copy(path), copy.deepcopy(path)):
+    for path_copy in (path.copy(), copy.copy(path), copy.deepcopy(path)):
         assert path_copy == path
         path_copy.add(G.links["B_C"])
         assert path_copy == make_path(G, ["A_B", "B_C"])
