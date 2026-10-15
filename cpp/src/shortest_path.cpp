@@ -320,7 +320,6 @@ namespace hipop
      * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
      * @param accessibleLinkLabels The vector of accessible link labels
-     * @return std::vector<pathCost> The vector of computed shortest path
      */
     std::vector<std::optional<PathCost>> parallelDijkstra(
         const OrientedGraph &G,
@@ -419,7 +418,6 @@ namespace hipop
      * @param costMetrics The vector of cost metrics to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
      * @param accessibleLinkLabels The vector of accessible link labels
-     * @return std::vector<pathCost> The vector of computed shortest path
      */
     std::vector<std::optional<PathCost>> parallelDijkstraHeterogeneousCosts(
         const OrientedGraph &G,
@@ -1044,7 +1042,6 @@ namespace hipop
      *                       accepted shortest path
      * @param maxRetry Maximum number of times we retry to find an acceptable shorest path
      * @param accessibleLinkLabels The vector of accessible link labels
-     * @return std::vector<std::vector<pathCost>> The vector of computed shortest path
      */
     std::vector<std::vector<PathCost>> parallelKIntermodalShortestPath(
         const OrientedGraph &G,

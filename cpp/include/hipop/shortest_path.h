@@ -16,7 +16,6 @@
 #include <vector>
 
 
-using pathCost = std::pair<std::vector<std::string>, double>; // TODO remove
 using ShortestPathsTree = std::unordered_map<std::string, std::string>; // TODO remove
 
 namespace hipop {
