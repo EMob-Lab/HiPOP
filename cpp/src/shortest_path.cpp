@@ -565,21 +565,39 @@ namespace hipop
     }
 
 
-    /**
-     * @brief Function that decodes an intermodal path computed on a tripled graph
-     *
-     * @param path The path to decode
-     * @return decodedPath The decoded path
-     */
-    std::vector<std::string> decodeIntermodalPath(const std::vector<std::string> &path)
-    {
-        std::vector<std::string> decodedPath;
-        decodedPath.reserve(path.size());
-        for (const std::string &pathNodeId : path) {
-            decodedPath.emplace_back(removeIntermodalNodeSuffix(pathNodeId));
+    bool areIntermodalPathsIdenticalWithoutSuffixes(const OrientedGraphPath &a, const OrientedGraphPath &b) {
+        std::size_t sz = a.size();
+        if (sz != b.size()) {
+            return false;
         }
-        return decodedPath;
+        if (sz == 0) {
+            return removeIntermodalNodeSuffix(a.origin()->mid) == removeIntermodalNodeSuffix(b.origin()->mid);
+        }
+        else {
+            // No need to check the origin in case of non-empty paths.
+            for (std::size_t i = 0; i < sz; ++i) {
+                if (removeIntermodalLinkSuffix(a.link(i)->mid) != removeIntermodalLinkSuffix(b.link(i)->mid)) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
+
+
+    /**
+     * Decode an intermodal path computed on a tripled graph, and return a OrientedGraphPath instance
+     * valid for the original graph.
+     */
+    OrientedGraphPath decodeIntermodalPath(const OrientedGraph &graph, const OrientedGraphPath &path) {
+        OrientedGraphPath result(graph.mnodes.at(removeIntermodalNodeSuffix(path.origin()->mid)));
+        result.reserve(path.size());
+        for (const Link *link : path.links()) {
+            result.add(graph.mlinks.at(removeIntermodalLinkSuffix(link->mid)));
+        }
+        return result;
+    }
+
 
     /**
      * @brief Compute K shortest paths for an origin/destination. The first path is normally computed, then we increase the costs of the first path and perform a Dijkstra again.
@@ -687,9 +705,9 @@ namespace hipop
             bool isNew = true;
             if (intermodal)
             {
-                // TODO replug isNew = std::all_of(paths.cbegin(), paths.cend(), [&newPath](const pathCost &p){
-                //     return decodeIntermodalPath(p.first) != decodeIntermodalPath(newPath->first);
-                // });
+                isNew = std::all_of(paths.cbegin(), paths.cend(), [&newPath](const PathCost &p) {
+                    return !areIntermodalPathsIdenticalWithoutSuffixes(p.first, newPath->first);
+                });
             }
             else
             {
@@ -1218,30 +1236,40 @@ namespace hipop
                 resPath1 = KShortestPath(doubledG1, originsTwin[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
                 resPath2 = KShortestPath(doubledG2, originsTwin[idx], destinationsTwin[idx], costMetric, accessibleLinkLabels[idx], labelToCostFamily[idx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[idx], true);
             }
-            /* TODO replug // Concat resPath1 and resPath2
-            resPath1.insert(resPath1.end(), resPath2.begin(), resPath2.end());
-            // Decode paths
-            for (auto &path1 : resPath1) {
-                path1.first = decodeIntermodalPath(path1.first);
+
+            // Merge the shortest paths from G1 and G2 + transfer them as path instances of the original graph.
+            std::vector<PathCost> resPathAll;
+            for (const PathCost &path : resPath1) {
+                resPathAll.emplace_back(decodeIntermodalPath(G, path.first), path.second);
             }
-            // Keep only unique paths
-            sort( resPath1.begin(), resPath1.end() );
-            resPath1.erase(std::unique( resPath1.begin(), resPath1.end() ), resPath1.end() );
+            for (const PathCost &path : resPath2) {
+                OrientedGraphPath decodedPath = decodeIntermodalPath(G, path.first);
+
+                // Warning: there might be duplicated paths (1 found from G1, the other from G2),
+                bool isNonDuplicated = std::all_of(resPathAll.begin(), resPathAll.begin() + resPath1.size(),
+                    [&decodedPath](const PathCost &p) {
+                        return p.first != decodedPath;
+                    }
+                );
+                if (isNonDuplicated) {
+                    resPathAll.emplace_back(std::move(decodedPath), path.second);
+                }
+            }
 
             // Keep the k best paths found
-            std::sort(resPath1.begin(), resPath1.end(), [](const pathCost &a, const pathCost &b) {
+            std::sort(resPathAll.begin(), resPathAll.end(), [](const PathCost &a, const PathCost &b) {
                 return a.second < b.second;
             });
             std::size_t currentNbPaths = nbPaths[idx];
-            if (resPath1.size() >= currentNbPaths)
+            if (resPathAll.size() >= currentNbPaths)
             {
-                std::vector<pathCost> resPath(resPath1.begin(), resPath1.begin() + currentNbPaths);
+                std::vector<PathCost> resPath(resPathAll.begin(), resPathAll.begin() + currentNbPaths);
                 res[idx] = resPath;
             }
             else
             {
-                res[idx] = resPath1;
-            }*/
+                res[idx] = resPathAll;
+            }
         }
 
       // Set shortest paths of duplicates
