@@ -729,13 +729,13 @@ namespace hipop
             bool isNew = true;
             if (intermodal)
             {
-                isNew = std::all_of(paths.cbegin(), paths.cend(), [newPath](const pathCost &p){
+                isNew = std::all_of(paths.cbegin(), paths.cend(), [&newPath](const pathCost &p){
                     return decodeIntermodalPath(p.first) != decodeIntermodalPath(newPath.first);
                 });
             }
             else
             {
-                isNew = std::all_of(paths.cbegin(), paths.cend(), [newPath](const pathCost &p){
+                isNew = std::all_of(paths.cbegin(), paths.cend(), [&newPath](const pathCost &p){
                     return p.first != newPath.first;
                 });
             }
