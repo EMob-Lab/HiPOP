@@ -960,9 +960,11 @@ namespace hipop
             return PathCost{ OrientedGraphPath(origin_node), 0 };
         }
 
-        // TODO doc
-        std::unordered_map<const Node*, double> dist; // No nullptr keys in this map.
-        std::unordered_map<const Node*, const Link*> prev; // No nullptr (neither as key nor as value) in this map.
+        // `dist[n]` is the best cost achieved so far to reach node n from origin.
+        // `prev[n]` is the last link of the best path achieved so far from origin to node n.
+        // No null pointers in these maps (neither as keys nor as values).
+        std::unordered_map<const Node*, double> dist;
+        std::unordered_map<const Node*, const Link*> prev;
         dist.reserve(G.mnodes.size());
         prev.reserve(G.mnodes.size());
         dist[origin_node] = 0;
