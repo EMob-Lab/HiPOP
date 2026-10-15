@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 using namespace hipop;
@@ -285,6 +286,34 @@ static void test_Equality() {
 }
 
 
+static void test_Hash() {
+
+    const OrientedGraph G = simple_graph(true);
+    const OrientedGraphPath path1 = makePath(G, {"A_B", "B_C"});
+    const OrientedGraphPath path2 = makePath(G, {"A_B", "B_C"});
+    const OrientedGraphPath path3 = makePath(G, {"A_B", "B_E"});
+    const OrientedGraphPath path4 = makePath(G, {"A_B"});
+    const OrientedGraphPath emptyPathA = makeEmptyPath(G, "A");
+    const OrientedGraphPath emptyPathB = makeEmptyPath(G, "B");
+    const std::hash<OrientedGraphPath> hasher;
+
+    assertTrue(hasher(path1) == hasher(path2), "Identical paths should have the same hash");
+
+    // Different paths may collide in theory, but not on these simple cases.
+    assertTrue(hasher(path1) != hasher(path3), "Paths with different links should have different hashes");
+    assertTrue(hasher(path1) != hasher(path4), "Paths with different sizes should have different hashes");
+    assertTrue(hasher(emptyPathA) != hasher(emptyPathB), "Empty paths with different origins should have different hashes");
+
+    // Paths are hashed by Node/Link identity: identical IDs in a copy of the graph do not result in equal hashes.
+    const OrientedGraph copyG = G; // NOLINT (performance-unnecessary-copy-initialization)
+    const OrientedGraphPath path1InCopyG = makePath(copyG, {"A_B", "B_C"});
+    assertTrue(hasher(path1) != hasher(path1InCopyG), "Paths built on different graph instances should have different hashes");
+
+    const std::unordered_set<OrientedGraphPath> paths = { path1, path2, path3 }; // path1 and path2 are identical
+    assertTrue(paths.size() == 2, "Identical paths should be deduplicated in an unordered_set");
+}
+
+
 static void test_NodeIteration() {
 
     const OrientedGraph G = simple_graph(true);
@@ -523,6 +552,7 @@ int testGraphPath(int, char**) {
     testCase("Add path to itself", test_AddPathToItself);
     testCase("Constructor", test_Constructor);
     testCase("Equality", test_Equality);
+    testCase("Hash", test_Hash);
     testCase("Node iteration", test_NodeIteration);
     testCase("Path with loop", test_PathWithLoop);
     testCase("Path with self-link", test_PathWithSelfLink);

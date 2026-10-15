@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <limits>
 #include <ostream>
@@ -444,3 +445,26 @@ namespace hipop {
 
 
 } // namespace hipop
+
+
+/**
+ * Hash of a path, consistent with equality operator.
+ *
+ * The hash value changes when the path is mutated (e.g. with `add(..)`).
+ */
+template<>
+struct std::hash<hipop::OrientedGraphPath> {
+    std::size_t operator()(const hipop::OrientedGraphPath &path) const noexcept {
+
+        // Same combination heuristic as boost::hash_combine.
+        constexpr std::size_t goldenRatio = 0x9e3779b9;
+        constexpr int leftShift = 6;
+        constexpr int rightShift = 2;
+
+        std::size_t seed = std::hash<const hipop::Node *>{}(path.origin());
+        for (const hipop::Link *link : path.links()) {
+            seed ^= std::hash<const hipop::Link *>{}(link) + goldenRatio + (seed << leftShift) + (seed >> rightShift);
+        }
+        return seed;
+    }
+};

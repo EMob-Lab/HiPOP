@@ -66,6 +66,7 @@ void graph(nb::module_ &m) {
         .def(nb::init<const hipop::Node *, std::vector<const hipop::Link *>>(), "origin"_a, "links"_a)
         .def(nb::self == nb::self)
         .def(nb::self != nb::self)
+        .def(nb::hash(nb::self))
         .def("__len__", &hipop::OrientedGraphPath::size)
         .def("__bool__", [](const hipop::OrientedGraphPath &) {
             // An empty path must be not treated as an empty container, even if `__len__()` returns 0.

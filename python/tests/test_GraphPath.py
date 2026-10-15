@@ -107,6 +107,17 @@ def test_equality() -> None:
     assert make_empty_path(G, "A") != make_empty_path(G, "B")
 
 
+def test_hash() -> None:
+
+    G = _make_graph()
+    path1 = make_path(G, ["A_B", "B_C"])
+    path2 = make_path(G, ["A_B", "B_C"])
+    assert path1 == path2
+
+    assert hash(path1) == hash(path2), "Equal paths must have the same hash value"
+    assert len({path1, path2}) == 1, "Equal paths must be deduplicated in a set"
+
+
 def test_add() -> None:
 
     G = _make_graph()
