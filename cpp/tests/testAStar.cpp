@@ -1,13 +1,17 @@
 #include "helpers.h"
 #include "sample_graphs.h"
 
+#include <hipop/create.h>
 #include <hipop/graph.h>
+#include <hipop/graph_path.h>
+#include <hipop/graph_path_cost.h>
 #include <hipop/shortest_path.h>
 
 #include <algorithm>
 #include <cmath>
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <string_view>
 
 using namespace hipop;
@@ -49,33 +53,33 @@ int testAStar(int, char**) {
         // Standard cases
         {
             auto path = aStar(G, "A", "E", "time", {{"CarLayer", "CAR"}}, {}, penalty);
-            assertEqualPaths(path, pathCost{{"A", "D", "E"}, 8}, "A -> E");
+            assertEqualPaths(path, PathCost{makePath(G, {"A_D", "D_E"}), 8}, "A -> E");
         }
         {
             auto path = aStar(G, "B", "F", "time", {{"CarLayer", "CAR"}}, {}, penalty);
-            assertEqualPaths(path, pathCost{{"B", "C", "F"}, 5.5}, "B -> F");
+            assertEqualPaths(path, PathCost{makePath(G, {"B_C", "C_F"}), 5.5}, "B -> F");
         }
         {
             auto path = aStar(G, "A", "F", "time", {{"CarLayer", "CAR"}}, {}, penalty);
-            assertEqualPaths(path, pathCost{{"A", "B", "C", "F"}, 10.5}, "A -> F");
+            assertEqualPaths(path, PathCost{makePath(G, {"A_B", "B_C", "C_F"}), 10.5}, "A -> F");
         }
 
         // Edge cases
         {
             auto path = aStar(G, "A", "A", "time", {{"CarLayer", "CAR"}}, {}, penalty);
-            assertEqualPaths(path, pathCost{{}, 0}, "Empty path A -> A");
+            assertEqualPaths(path, PathCost{makeEmptyPath(G, "A"), 0}, "Empty path A -> A");
         }
         {
             auto path = aStar(G, "B", "B", "time", {{"CarLayer", "CAR"}}, {}, penalty);
-            assertEqualPaths(path, pathCost{{}, 0}, "Empty path B -> B");
+            assertEqualPaths(path, PathCost{makeEmptyPath(G, "B"), 0}, "Empty path B -> B");
         }
         {
             auto path = aStar(G, "A", "I", "time", {{"CarLayer", "CAR"}}, {}, penalty);
-            assertEqualPaths(path, pathCost{{}, INFINITY}, "Non-feasible path A -> I");
+            assertEqualPaths(path, std::nullopt, "Non-feasible path A -> I");
         }
         {
             auto path = aStar(G, "D", "A", "time", {{"CarLayer", "CAR"}}, {}, penalty);
-            assertEqualPaths(path, pathCost{{}, INFINITY}, "Non-feasible path D -> A");
+            assertEqualPaths(path, std::nullopt, "Non-feasible path D -> A");
         }
     });
 
@@ -88,43 +92,43 @@ int testAStar(int, char**) {
         // Cases with both layers accessible
         {
             auto path = aStar(G, "A", "E", "time", {{"CarLayer", "CAR"}, {"BusLayer", "BUS"}}, {}, car_bus_penalty);
-            assertEqualPaths(path, pathCost{{"A", "E"}, 7}, "A -> E");
+            assertEqualPaths(path, PathCost{makePath(G, {"A_E"}), 7}, "A -> E");
         }
         {
             auto path = aStar(G, "D", "I", "time", {{"CarLayer", "CAR"}, {"BusLayer", "BUS"}}, {}, car_bus_penalty);
-            assertEqualPaths(path, pathCost{{"D", "E", "I"}, 3}, "D -> I");
+            assertEqualPaths(path, PathCost{makePath(G, {"D_E", "E_I"}), 3}, "D -> I");
         }
         {
             auto path = aStar(G, "A", "I", "time", {{"CarLayer", "CAR"}, {"BusLayer", "BUS"}}, {}, car_bus_penalty);
-            assertEqualPaths(path, pathCost{{"A", "E", "I"}, 8}, "A -> I");
+            assertEqualPaths(path, PathCost{makePath(G, {"A_E", "E_I"}), 8}, "A -> I");
         }
 
         // Cases with only the car layer accessible (equivalent to test case "Simple graph (car layer only)")
         {
             auto path = aStar(G, "A", "E", "time", {{"CarLayer", "CAR"}}, {"CarLayer"}, car_only_penalty);
-            assertEqualPaths(path, pathCost{{"A", "D", "E"}, 8}, "A -> E with car layer only");
+            assertEqualPaths(path, PathCost{makePath(G, {"A_D", "D_E"}), 8}, "A -> E with car layer only");
         }
         {
             auto path = aStar(G, "A", "I", "time", {{"CarLayer", "CAR"}}, {"CarLayer"}, car_only_penalty);
-            assertEqualPaths(path, pathCost{{}, INFINITY}, "A -> I with car layer only");
+            assertEqualPaths(path, std::nullopt, "A -> I with car layer only");
         }
         {
             auto path = aStar(G, "A", "A", "time", {{"CarLayer", "CAR"}}, {"CarLayer"}, car_only_penalty);
-            assertEqualPaths(path, pathCost{{}, 0}, "Empty path A -> A with car layer only");
+            assertEqualPaths(path, PathCost{makeEmptyPath(G, "A"), 0}, "Empty path A -> A with car layer only");
         }
 
         // Cases with only the bus layer accessible
         {
             auto path = aStar(G, "A", "E", "time", {{"BusLayer", "BUS"}}, {"BusLayer"}, bus_only_penalty);
-            assertEqualPaths(path, pathCost{{"A", "E"}, 7}, "A -> E with bus layer only");
+            assertEqualPaths(path, PathCost{makePath(G, {"A_E"}), 7}, "A -> E with bus layer only");
         }
         {
             auto path = aStar(G, "D", "I", "time", {{"BusLayer", "BUS"}}, {"BusLayer"}, bus_only_penalty);
-            assertEqualPaths(path, pathCost{{"D", "I"}, 4}, "D -> I with bus layer only");
+            assertEqualPaths(path, PathCost{makePath(G, {"D_I"}), 4}, "D -> I with bus layer only");
         }
         {
             auto path = aStar(G, "A", "A", "time", {{"BusLayer", "BUS"}}, {"BusLayer"}, bus_only_penalty);
-            assertEqualPaths(path, pathCost{{}, 0}, "Empty path A -> A with bus layer only");
+            assertEqualPaths(path, PathCost{makeEmptyPath(G, "A"), 0}, "Empty path A -> A with bus layer only");
         }
     });
 

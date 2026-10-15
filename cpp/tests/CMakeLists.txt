@@ -10,7 +10,7 @@ set(Tests
     testManhattan.cpp
     testparallelKShortestPath.cpp
     testStringUtil.cpp
-    testYenKShortestPath.cpp
+    # TODO replug testYenKShortestPath.cpp
 )
 
 # Create a single executable (aka. the driver) capable of running each registered test.

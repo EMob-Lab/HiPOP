@@ -1,4 +1,6 @@
 #include <hipop/graph.h>
+#include <hipop/graph_path.h>
+#include <hipop/graph_path_cost.h>
 #include <hipop/shortest_path.h>
 
 #include <cstdlib>
@@ -41,15 +43,12 @@ int main()
 
     //auto paths = hipop::parallelKShortestPath(G, origins, destinations, "time", vecMapLabelCosts, {}, 0.1, 0.95, 10, 10, kPaths, 4);
     auto paths = hipop::parallelDijkstra(G, origins, destinations, vecMapLabelCosts, "time", 1, {});
+    const std::optional<hipop::PathCost> &path = paths[0];
 
-    std::cout << paths.size() << std::endl;
-    //std::cout << paths[0].first << std::endl;
-
-    if (paths.size()>0)
-    {
-        std::cout << "Cost: " << paths[0].second << std::endl;
-
-        std::cout << "Path size: " << paths[0].first.size()<< std::endl;
+    if (path.has_value()) {
+        std::cout << "Cost: " << path->second << std::endl;
+        std::cout << "Path size (i.e. number of links): " << path->first.size() << std::endl;
+        std::cout << "Path: " << path->first << std::endl;
     }
 
     // Update costs
@@ -58,15 +57,12 @@ int main()
     G.UpdateCosts( maplinkcosts );
 
     auto paths2 = hipop::parallelDijkstra(G, origins, destinations, vecMapLabelCosts, "time", 1, {});
+    const std::optional<hipop::PathCost> &path2 = paths2[0];
 
-    std::cout << paths2.size() << std::endl;
-    //std::cout << paths[0].first << std::endl;
-
-    if (paths2.size()>0)
-    {
-        std::cout << "Cost: " << paths2[0].second << std::endl;
-
-        std::cout << "Path size: " << paths2[0].first.size()<< std::endl;
+    if (path2.has_value()) {
+        std::cout << "Cost: " << path2->second << std::endl;
+        std::cout << "Path size (i.e. number of links): " << path2->first.size() << std::endl;
+        std::cout << "Path: " << path2->first << std::endl;
     }
 
     return EXIT_SUCCESS;
