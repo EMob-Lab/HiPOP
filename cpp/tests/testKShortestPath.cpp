@@ -25,18 +25,11 @@ int testKShortestPath(int, char**)
     G.AddLink("4_3", "4", "3", 11, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");
 
     auto paths = KShortestPath(G, "0", "3", "time", {}, {{"CAR", "PersonalVehicle"}}, 5, 100, 2.2, 10, 3, false);
-    std::cout << paths.size() << std::endl;
-    std::cout << paths[0].first[0] << paths[0].first[1] << std::endl;
-    assertTrue(paths.size()==3, "Did not found 3 paths");
 
-
-    assertTrue(paths[0].second==12, "First path cost not equal 12");
-    assertTrue(paths[0].first==std::vector<std::string>{"0", "3"}, "First path nodes not equal 0, 3");
-    assertTrue(paths[1].second==24, "Second path cost not equal 24");
-    assertTrue(paths[1].first==std::vector<std::string>{"0", "2", "3"}, "Second path nodes not equal 0, 2, 3");
-    assertTrue(paths[2].second==26, "Third path cost not equal 26");
-    assertTrue(paths[2].first==std::vector<std::string>{"0", "1", "3"}, "Third path nodes not equal 0, 1, 3");
-
+    assertTrue(paths.size() == 3, "Did not found 3 paths");
+    assertEqualPaths(paths[0], pathCost{{"0", "3"}, 12}, "Wrong path #0");
+    assertEqualPaths(paths[1], pathCost{{"0", "2", "3"}, 24}, "Wrong path #1");
+    assertEqualPaths(paths[2], pathCost{{"0", "1", "3"}, 26}, "Wrong path #2");
 
     return 0;
 }
