@@ -1241,6 +1241,7 @@ namespace hipop
 
             // Merge the shortest paths from G1 and G2 + transfer them as path instances of the original graph.
             std::vector<PathCost> resPathAll;
+            resPathAll.reserve(resPath1.size() + resPath2.size());
             for (const PathCost &path : resPath1) {
                 resPathAll.emplace_back(decodeIntermodalPath(G, path.first), path.second);
             }
