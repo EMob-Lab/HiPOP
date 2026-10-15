@@ -737,9 +737,9 @@ namespace hipop
      * @param accessibleLinkLabels The set of accessible link labels
      * @param labelToCostFamily The cost family to use for each link label
      * @param kPath The number of path to compute
-     * @return std::vector<pathCost> The vector of computed paths
+     * @return Vector of length <= kPath (possibly empty), containing the found paths.
      */
-    /* TODO replug std::vector<pathCost> YenKShortestPath(
+    std::vector<PathCost> YenKShortestPath(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
@@ -749,29 +749,35 @@ namespace hipop
         int kPath)
     {
         LabelToCostFamilyLinkCostFunction costFunction(labelToCostFamily, costMetric);
-        std::vector<pathCost> A;
-        std::vector<pathCost> B;
-        A.emplace_back(dijkstraGeneric(G, origin, destination, costFunction, accessibleLinkLabels));
+        std::vector<PathCost> A;
+        std::vector<PathCost> B;
+
+        auto initialPath = dijkstraGeneric(G, origin, destination, costFunction, accessibleLinkLabels);
+
+        // Stop here if no path from origin to destination is found.
+        if (!initialPath.has_value()) {
+            return A;
+        }
+
+        A.emplace_back(std::move(*initialPath));
 
         for (int k = 1; k < kPath; k++)
         {
-            for (size_t i = 0; i < A[k - 1].first.size() - 2; i++)
-            {
-                std::string spurNode = A[k - 1].first[i];
-                pathCost rootPath;
-                rootPath.first.insert(rootPath.first.begin(), A[k - 1].first.begin(), A[k - 1].first.begin() + i + 1);
-                rootPath.second = computePathCostGeneric(G, rootPath.first, costFunction);
+            const OrientedGraphPath &previousPath = A[k - 1].first;
 
-                // The links that are part of the previous shortest paths which share the same root path
-                // must not be considered to search a path from spur node to destination,
-                // thus they are flagged as "forbidden".
+            // The spur node ranges is made of all the nodes in the previous path, except the last one.
+            for (std::size_t i = 0; i < previousPath.size(); i++) {
+                const Node *spurNode = previousPath.node(i);
+
+                OrientedGraphPath rootPath = previousPath.subPath(0, i);
+
+                // For each previous shortest path which shares the same root path,
+                // flag the link that comes just after spur node as "forbidden",
+                // to force the path search function to try another way.
                 std::unordered_set<const Link*> forbiddenLinks;
-                for (const pathCost &pc : A)
-                {
-                    if (std::equal(pc.first.begin(), pc.first.begin() + i, rootPath.first.begin()))
-                    {
-                        const Link *link = G.mnodes.at(pc.first[i])->madj.at(pc.first[i + 1]);
-                        forbiddenLinks.emplace(link);
+                for (const PathCost &pc : A) {
+                    if (pc.first.startsWith(rootPath)) {
+                        forbiddenLinks.emplace(pc.first.link(i));
                     }
                 }
 
@@ -781,17 +787,19 @@ namespace hipop
                     return it != forbiddenLinks.end() ? INFINITY : costFunction(link);
                 };
 
-                pathCost spurPath = dijkstraGeneric(G, spurNode, destination, overridenCostFunction, accessibleLinkLabels);
-                pathCost totalPath;
-                totalPath.first = rootPath.first;
+                auto spurPath = dijkstraGeneric(G, spurNode->mid, destination, overridenCostFunction, accessibleLinkLabels);
+                if (!spurPath.has_value()) {
+                    continue;
+                }
 
-                totalPath.first.insert(totalPath.first.end(), spurPath.first.begin() + 1, spurPath.first.end());
-                totalPath.second = rootPath.second + spurPath.second;
+                // Merge the spurPath to the root path to make a new candidate path from origin to destination.
+                // After that, `rootPath` becomes a candidate path from "origin" to "destination".
+                rootPath.add(spurPath->first);
 
                 bool toAdd = true;
                 for (const auto &prevPath : B)
                 {
-                    if (totalPath.first == prevPath.first)
+                    if (rootPath == prevPath.first)
                     {
                         toAdd = false;
                         break;
@@ -800,7 +808,8 @@ namespace hipop
 
                 if (toAdd)
                 {
-                    B.push_back(totalPath);
+                    double newPathCost = computePathCostGeneric(rootPath, costFunction);
+                    B.emplace_back(std::move(rootPath), newPathCost);
                 }
             }
 
@@ -809,7 +818,7 @@ namespace hipop
                 break;
             }
 
-            std::sort(B.begin(), B.end(), [](const pathCost &a, const pathCost &b) {
+            std::sort(B.begin(), B.end(), [](const PathCost &a, const PathCost &b) {
                 return a.second < b.second;
             });
             A.push_back(B[0]);
@@ -817,7 +826,7 @@ namespace hipop
         }
 
         return A;
-    }*/
+    }
 
     /**
      * @brief Batch computation of K shortest paths using openmp, each thread has its own deep copy of the OrientedGraph to ensure that the increase of the cost do not collapse with the other threads

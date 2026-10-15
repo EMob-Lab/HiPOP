@@ -211,7 +211,7 @@ namespace hipop {
         int threadNumber,
         const std::vector<setstring> &accessibleLinkLabels = {});
 
-    std::vector<pathCost> YenKShortestPath(
+    std::vector<PathCost> YenKShortestPath(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
