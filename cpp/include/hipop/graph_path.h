@@ -122,6 +122,35 @@ namespace hipop {
         }
 
         /**
+         * Maximum number of links that can be accomodated in the underlying container
+         * without memory re-allocation.
+         *
+         * This method is provided for optimization purpose only.
+         */
+        [[nodiscard]] std::size_t capacity() const {
+            return links_.capacity();
+        }
+
+        /**
+         * Increase the capacity of the underlying container so that it can accomodates
+         * at least `newCapacity` links without memory re-allocation.
+         *
+         * This method is provided for optimization purpose only.
+         */
+        void reserve(std::size_t newCapacity) {
+            links_.reserve(newCapacity);
+        }
+
+        /**
+         * Release the unused memory in the underlying link container.
+         *
+         * This method is provided for optimization purpose only.
+         */
+        void shrinkToFit() {
+            links_.shrink_to_fit();
+        }
+
+        /**
          * @param nodeIndex Must be <= size().
          */
         [[nodiscard]] const Node *node(std::size_t nodeIndex) const {
