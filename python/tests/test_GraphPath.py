@@ -55,6 +55,8 @@ def test_empty_path() -> None:
         path.node(1)
     with pytest.raises(IndexError):
         path.link(0)
+    with pytest.raises(ValueError, match=r"\[I'm not a node ID\]"):
+        make_empty_path(G, "I'm not a node ID")
 
 
 def test_make_path() -> None:
@@ -85,6 +87,8 @@ def test_make_path() -> None:
         make_path(G, [])
     with pytest.raises(ValueError):
         make_path(G, ["A_B", "C_D"])
+    with pytest.raises(ValueError, match=r"\[I'm not a link ID\]"):
+        make_path(G, ["A_B", "I'm not a link ID"])
 
 
 def test_constructors() -> None:

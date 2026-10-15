@@ -135,6 +135,14 @@ static void test_MakePathErrors() {
     assertThrows<std::invalid_argument>([&G]() {
         [[maybe_unused]] auto path = makePath(G, {"B_E", "A_B"});
     }, "Links in wrong order should throw");
+
+    assertThrows<std::invalid_argument>([&G]() {
+        [[maybe_unused]] auto path = makePath(G, {"A_B", "I'm not a link ID"});
+    }, "Unknown link ID should throw");
+
+    assertThrows<std::invalid_argument>([&G]() {
+        [[maybe_unused]] auto path = makeEmptyPath(G, "I'm not a node ID");
+    }, "Unknown node ID should throw");
 }
 
 
