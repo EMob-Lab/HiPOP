@@ -50,10 +50,10 @@ def test_empty_path() -> None:
     assert path.destination_id == "A"
     assert path.node(0).id == "A"
     assert path.node_id(0) == "A"
-    assert [node.id for node in path.nodes] == ["A"]
-    assert path.node_ids == ["A"]
-    assert path.links == []
-    assert path.link_ids == []
+    assert [node.id for node in path.nodes()] == ["A"]
+    assert path.node_ids() == ["A"]
+    assert path.links() == []
+    assert path.link_ids() == []
     assert not path.has_loop()
 
     with pytest.raises(IndexError):
@@ -78,10 +78,10 @@ def test_make_path() -> None:
     assert path.node_id(1) == "B"
     assert path.link(1).id == "B_C"
     assert path.link_id(1) == "B_C"
-    assert [node.id for node in path.nodes] == ["A", "B", "C", "D"]
-    assert path.node_ids == ["A", "B", "C", "D"]
-    assert [link.id for link in path.links] == ["A_B", "B_C", "C_D"]
-    assert path.link_ids == ["A_B", "B_C", "C_D"]
+    assert [node.id for node in path.nodes()] == ["A", "B", "C", "D"]
+    assert path.node_ids() == ["A", "B", "C", "D"]
+    assert [link.id for link in path.links()] == ["A_B", "B_C", "C_D"]
+    assert path.link_ids() == ["A_B", "B_C", "C_D"]
     assert not path.has_loop()
     assert make_path(G, ["A_B", "B_C", "C_D", "D_A"]).has_loop()
 

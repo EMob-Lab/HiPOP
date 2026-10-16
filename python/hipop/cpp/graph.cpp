@@ -97,13 +97,13 @@ void graph(nb::module_ &m) {
         .def("node_id", &hipop::OrientedGraphPath::nodeId, "node_index"_a)
         .def("link", &hipop::OrientedGraphPath::link, "link_index"_a, nb::rv_policy::reference)
         .def("link_id", &hipop::OrientedGraphPath::linkId, "link_index"_a)
-        .def_prop_ro("nodes", [](const hipop::OrientedGraphPath &path) {
+        .def("nodes", [](const hipop::OrientedGraphPath &path) {
             auto range = path.nodes();
             return std::vector<const hipop::Node *>(range.begin(), range.end());
         }, nb::rv_policy::reference)
-        .def_prop_ro("node_ids", &hipop::OrientedGraphPath::nodeIds)
-        .def_prop_ro("links", &hipop::OrientedGraphPath::links, nb::rv_policy::reference)
-        .def_prop_ro("link_ids", &hipop::OrientedGraphPath::linkIds)
+        .def("node_ids", &hipop::OrientedGraphPath::nodeIds)
+        .def("links", &hipop::OrientedGraphPath::links, nb::rv_policy::reference)
+        .def("link_ids", &hipop::OrientedGraphPath::linkIds)
         .def("has_loop", &hipop::OrientedGraphPath::hasLoop)
         .def("add", nb::overload_cast<const hipop::Link *>(&hipop::OrientedGraphPath::add), "link"_a)
         .def("add", nb::overload_cast<const hipop::OrientedGraphPath &>(&hipop::OrientedGraphPath::add), "other"_a)
