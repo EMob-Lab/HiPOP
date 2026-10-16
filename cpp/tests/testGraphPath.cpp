@@ -66,6 +66,7 @@ static void test_EmptyPath() {
     assertTrue(path.links().empty(), "Link list should be empty");
     assertTrue(path.links().size() == 0, "Link list size should be 0");
     assertTrue(path.linkIds() == std::vector<std::string>{}, "Link ID list should be empty");
+    assertTrue(!path.hasLoop(), "Empty path should have no loop");
     checkPathInvariant(path);
 
     assertThrows<std::out_of_range>([&path]() {
@@ -94,6 +95,7 @@ static void test_MakePath() {
     assertTrue(path.nodes().size() == 4, "Path should have exactly 4 nodes");
     assertTrue(!path.links().empty(), "Link list should not be empty");
     assertTrue(path.links().size() == 3, "Link list size should be 3");
+    assertTrue(!path.hasLoop(), "Path should have no loop");
     checkPathInvariant(path);
 
     const std::vector<std::string> expectedNodeIds = {"A", "B", "E", "I"};
@@ -366,11 +368,14 @@ static void test_PathWithLoop() {
     assertTrue(path.nodeIds() == expectedNodeIds, "Wrong node IDs");
     assertTrue(path.size() == 5, "Wrong size");
     assertTrue(path.link(1) == path.link(3), "Repeated link should be the same object");
+    assertTrue(path.hasLoop(), "Path should have a loop");
     checkPathInvariant(path);
 
     const OrientedGraphPath loopStartingOnL1 = makePath(G, {"L1_L2", "L2_L1"});
     const OrientedGraphPath loopStartingOnL2 = makePath(G, {"L2_L1", "L1_L2"});
     assertTrue(loopStartingOnL1 != loopStartingOnL2, "Loop L1 -> L1 is not the same as loop L2 -> L2");
+    assertTrue(loopStartingOnL1.hasLoop(), "Loop L1 -> L1 should have a loop");
+    assertTrue(!makePath(G, {"A_L1", "L1_L2", "L2_C"}).hasLoop(), "Path through L1 and L2 only once should have no loop");
 }
 
 
@@ -384,6 +389,7 @@ static void test_PathWithSelfLink() {
     assertTrue(path.nodeIds() == expectedNodeIds, "Wrong node IDs with self-link");
     assertTrue(path.size() == 4, "Wrong size");
     assertTrue(path.link(1) == path.link(2), "Repeated link should be the same object");
+    assertTrue(path.hasLoop(), "Path with self-link should have a loop");
     checkPathInvariant(path);
 
     const OrientedGraphPath emptyPathOnL = makeEmptyPath(G, "L");
@@ -391,6 +397,8 @@ static void test_PathWithSelfLink() {
     const OrientedGraphPath twoLoopsOnL = makePath(G, {"L_L", "L_L"});
     assertTrue(oneLoopOnL != emptyPathOnL, "Loop L -> L is not the same as empty path on L");
     assertTrue(oneLoopOnL != twoLoopsOnL, "Loop L -> L is not the same as double-loop L -> L");
+    assertTrue(oneLoopOnL.hasLoop(), "Self-link L -> L should be a loop");
+    assertTrue(!emptyPathOnL.hasLoop(), "Empty path on L should have no loop");
 }
 
 

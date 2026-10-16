@@ -11,6 +11,7 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -330,6 +331,19 @@ namespace hipop {
                 result.emplace_back(link->mid);
             }
             return result;
+        }
+
+        /**
+         * Whether the current path has a loop (i.e. a node that is visited at least twice) or not.
+         */
+        [[nodiscard]] bool hasLoop() const {
+            std::unordered_set<const Node *> alreadyVisited;
+            for (const Node *node : nodes()) {
+                if (!alreadyVisited.emplace(node).second) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /**

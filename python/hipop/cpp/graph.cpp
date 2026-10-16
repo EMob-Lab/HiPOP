@@ -104,6 +104,7 @@ void graph(nb::module_ &m) {
         .def_prop_ro("node_ids", &hipop::OrientedGraphPath::nodeIds)
         .def_prop_ro("links", &hipop::OrientedGraphPath::links, nb::rv_policy::reference)
         .def_prop_ro("link_ids", &hipop::OrientedGraphPath::linkIds)
+        .def("has_loop", &hipop::OrientedGraphPath::hasLoop)
         .def("add", nb::overload_cast<const hipop::Link *>(&hipop::OrientedGraphPath::add), "link"_a)
         .def("add", nb::overload_cast<const hipop::OrientedGraphPath &>(&hipop::OrientedGraphPath::add), "other"_a)
         .def("sub_path", &hipop::OrientedGraphPath::subPath,

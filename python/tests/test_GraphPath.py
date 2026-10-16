@@ -8,6 +8,9 @@ from hipop.graph import OrientedGraph, OrientedGraphPath, make_empty_path, make_
 # Small graph used in all the test cases:
 #
 # ```
+#   +-----------------------------------+
+#   |                                   |
+#   v                                   |
 #   A --------> B --------> C --------> D
 #   |                       ^
 #   |                       |
@@ -29,6 +32,7 @@ def _make_graph() -> OrientedGraph:
     G.add_link("B_C", "B", "C", 1, {"CAR": {"time": 1}}, "CarLayer")
     G.add_link("C_D", "C", "D", 1, {"CAR": {"time": 1}}, "CarLayer")
     G.add_link("A_C", "A", "C", 1, {"CAR": {"time": 1}}, "CarLayer")
+    G.add_link("D_A", "D", "A", 1, {"CAR": {"time": 1}}, "CarLayer")
 
     return G
 
@@ -50,6 +54,7 @@ def test_empty_path() -> None:
     assert path.node_ids == ["A"]
     assert path.links == []
     assert path.link_ids == []
+    assert not path.has_loop()
 
     with pytest.raises(IndexError):
         path.node(1)
@@ -77,6 +82,8 @@ def test_make_path() -> None:
     assert path.node_ids == ["A", "B", "C", "D"]
     assert [link.id for link in path.links] == ["A_B", "B_C", "C_D"]
     assert path.link_ids == ["A_B", "B_C", "C_D"]
+    assert not path.has_loop()
+    assert make_path(G, ["A_B", "B_C", "C_D", "D_A"]).has_loop()
 
     with pytest.raises(IndexError):
         path.node(4)
