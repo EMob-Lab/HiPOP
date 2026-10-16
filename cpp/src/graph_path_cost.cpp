@@ -9,8 +9,7 @@ namespace hipop {
 
 
     std::vector<std::vector<double>> computePathsCosts(
-        const OrientedGraph &G,
-        const std::vector<std::vector<std::vector<std::string>>> &paths,
+        const std::vector<std::vector<OrientedGraphPath>> &paths,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         int threadNumber
@@ -26,12 +25,12 @@ namespace hipop {
         #pragma omp parallel for
         for (std::int64_t i = 0; i < nbBatches; i++) {
 
-            const std::vector<std::vector<std::string>> &currentPaths = paths[i];
+            const std::vector<OrientedGraphPath> &currentPaths = paths[i];
             std::vector<double> &currentResult = result[i];
             currentResult.reserve(currentPaths.size());
 
-            for (const std::vector<std::string> &path : currentPaths) {
-                currentResult.emplace_back(computePathCostGeneric(G, path, costFunction));
+            for (const OrientedGraphPath &path : currentPaths) {
+                currentResult.emplace_back(computePathCostGeneric(path, costFunction));
             }
         }
 

@@ -1,4 +1,5 @@
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/optional.h>
 #include <nanobind/stl/pair.h>
 #include <nanobind/stl/set.h>
 #include <nanobind/stl/string.h>
@@ -141,14 +142,12 @@ void shortest_path(nb::module_ &m) {
     m.def(
         "compute_path_length",
         &hipop::computePathLength,
-        "graph"_a,
         "path"_a
     );
 
     m.def(
         "compute_path_cost",
         &hipop::computePathCost,
-        "graph"_a,
         "path"_a,
         "cost_metric"_a,
         "label_to_cost_family"_a
@@ -157,7 +156,6 @@ void shortest_path(nb::module_ &m) {
     m.def(
         "compute_paths_costs",
         &hipop::computePathsCosts,
-        "graph"_a,
         "paths"_a,
         "cost_metric"_a,
         "label_to_cost_family"_a,

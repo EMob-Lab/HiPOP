@@ -1,11 +1,13 @@
 #pragma once
 
 #include <hipop/graph.h>
+#include <hipop/graph_path.h>
 #include <hipop/graph_path_cost.h>
 
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <optional>
 #include <queue>
 #include <string>
 #include <type_traits>
@@ -14,10 +16,17 @@
 #include <vector>
 
 
-using pathCost = std::pair<std::vector<std::string>, double>;
-using ShortestPathsTree = std::unordered_map<std::string, std::string>;
+using ShortestPathsTree = std::unordered_map<std::string, std::string>; // TODO remove
 
 namespace hipop {
+
+
+    /**
+     * Helper alias for (graph-path, cost-value).
+     *
+     * Most path search functions use it as their return type.
+     */
+    using PathCost = std::pair<OrientedGraphPath, double>;
 
 
     /**
@@ -50,10 +59,10 @@ namespace hipop {
      *                     Should be a pure function (i.e. no side effects).
      * @param accessibleLinkLabels If non-empty, only the links whose label is in this set
      *                             are considered for the path search.
-     * @return The list of Nodes defining the shortest path and the associated cost.
+     * @return Shortest path + the associated cost, or std::nullopt if no path exist from origin to destination.
      */
     template<typename CostFunction>
-    pathCost dijkstraGeneric(
+    std::optional<PathCost> dijkstraGeneric(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
@@ -68,22 +77,19 @@ namespace hipop {
         const Node *origin_node = G.mnodes.at(origin);
         const Node *destination_node = G.mnodes.at(destination);
 
-        // Return a 0-node path with zero cost if origin and destination are identical.
-        // Remark: it would be more consistent with the general case to return 1-node path
-        // made of the single origin + destination node.
-        // Still, for compliance with legacy behavior, we return a 0-node path.
+        // Return an empty path (i.e. no link) with zero cost if origin and destination are identical.
         if (origin_node == destination_node) {
-            pathCost empty_path;
-            empty_path.second = 0;
-            return empty_path;
+            return PathCost{ OrientedGraphPath(origin_node), 0 };
         }
 
-        std::unordered_map<const Node*, double> dist; // No nullptr keys in this map.
-        std::unordered_map<const Node*, const Node*> prev; // No nullptr (neither as key nor as value) in this map.
+        // `dist[n]` is the best cost achieved so far to reach node n from origin.
+        // `prev[n]` is the last link of the best path achieved so far from origin to node n.
+        // No null pointers in these maps (neither as keys nor as values).
+        std::unordered_map<const Node*, double> dist;
+        std::unordered_map<const Node*, const Link*> prev;
         dist.reserve(G.mnodes.size());
         prev.reserve(G.mnodes.size());
         dist[origin_node] = 0;
-        // `prev[origin_node]` is intentionally left unset (the origin node has no predecessor).
 
         std::priority_queue<DijkstraQueueItem> pq;
         pq.emplace(DijkstraQueueItem{ 0, origin_node });
@@ -95,17 +101,18 @@ namespace hipop {
             pq.pop();
 
             if (u == destination_node) {
-                pathCost path;
-                for (auto it = prev.find(u); it != prev.end(); it = prev.find(it->second)) {
-                    path.first.emplace_back(it->first->mid);
+                std::vector<const Link*> links;
+                const Node *v = destination_node;
+                while (v != origin_node) {
+                    const Link *link_to_v = prev.at(v);
+                    links.emplace_back(link_to_v);
+                    v = link_to_v->mup;
                 }
-                path.first.emplace_back(origin_node->mid);
-                std::reverse(path.first.begin(), path.first.end());
-                path.second = dist_u;
-                return path;
+                std::reverse(links.begin(), links.end());
+                return PathCost{ OrientedGraphPath(origin_node, std::move(links)), dist_u };
             }
 
-            u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->mup->mid, [&](const Link *link) {
                 if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
@@ -121,17 +128,12 @@ namespace hipop {
                     if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
                         neighbor_it->second = new_dist;
                         pq.emplace(DijkstraQueueItem{ new_dist, neighbor });
-                        prev[neighbor] = u;
+                        prev[neighbor] = link;
                     }
                 }
             });
         }
-
-        // No path from origin to destination was found: return a 0-node path with infinite cost in this case.
-        // Remark: to make it more expicit, it would be better to return an optional<pathCost> instead.
-        pathCost invalid_path;
-        invalid_path.second = INFINITY;
-        return invalid_path;
+        return std::nullopt; // No path exists from origin to destination.
     }
 
 
@@ -142,9 +144,9 @@ namespace hipop {
      * @param labelToCostFamily Cost family to use for each link label.
      * @param accessibleLinkLabels If non-empty, only the links whose label is in this set
      *                             are considered for the path search.
-     * @return The list of Nodes defining the shortest path and the associated cost.
+     * @return Shortest path + the associated cost, or std::nullopt if no path exist from origin to destination.
      */
-    inline pathCost dijkstra(
+    inline std::optional<PathCost> dijkstra(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
@@ -168,7 +170,7 @@ namespace hipop {
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         const setstring &accessibleLinkLabels);
-    pathCost aStar(
+    std::optional<PathCost> aStar(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
@@ -176,7 +178,7 @@ namespace hipop {
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         const setstring &accessibleLinkLabels,
         const std::function<double(const Node *, const Node *)> &heuristic);
-    pathCost aStarEuclidianDist(
+    std::optional<PathCost> aStarEuclidianDist(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
@@ -184,7 +186,7 @@ namespace hipop {
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         const setstring &accessibleLinkLabels);
 
-    std::vector<pathCost> parallelDijkstra(
+    std::vector<std::optional<PathCost>> parallelDijkstra(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
@@ -201,7 +203,7 @@ namespace hipop {
         int threadNumber,
         const std::vector<setstring> &accessibleLinkLabels = {});
 
-    std::vector<pathCost> parallelDijkstraHeterogeneousCosts(
+    std::vector<std::optional<PathCost>> parallelDijkstraHeterogeneousCosts(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
@@ -210,7 +212,7 @@ namespace hipop {
         int threadNumber,
         const std::vector<setstring> &accessibleLinkLabels = {});
 
-    std::vector<pathCost> YenKShortestPath(
+    std::vector<PathCost> YenKShortestPath(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
@@ -218,7 +220,7 @@ namespace hipop {
         const setstring &accessibleLinkLabels,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         int kPath);
-    std::vector<pathCost> KShortestPath(
+    std::vector<PathCost> KShortestPath(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &destination,
@@ -232,7 +234,7 @@ namespace hipop {
         int kPath,
         bool intermodal);
 
-    std::vector<std::vector<pathCost>> parallelKShortestPath(
+    std::vector<std::vector<PathCost>> parallelKShortestPath(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,
@@ -246,7 +248,7 @@ namespace hipop {
         const std::vector<int> &kPaths,
         int threadNumber);
 
-    std::vector<std::vector<pathCost>> parallelKIntermodalShortestPath(
+    std::vector<std::vector<PathCost>> parallelKIntermodalShortestPath(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::string> &destinations,

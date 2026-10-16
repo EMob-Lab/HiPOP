@@ -157,6 +157,14 @@ namespace hipop
         std::unordered_map<std::string, Node* > mnodes;
         std::unordered_map<std::string, Link* > mlinks;
 
+        [[nodiscard]] const Node *node(const std::string &nodeId) const {
+            return mnodes.at(nodeId);
+        }
+
+        [[nodiscard]] const Link *link(const std::string &linkId) const {
+            return mlinks.at(linkId);
+        }
+
         /**
          * Add all the nodes and links from `graph` to the current OrientedGraph.
          *
@@ -175,10 +183,6 @@ namespace hipop
 
         void ShowNodes();
         void ShowLinks();
-
-        Link* getLink(const std::string &linkId) {
-            return mlinks[linkId];
-        }
 
         OrientedGraph() = default;
         OrientedGraph(const OrientedGraph &other);
