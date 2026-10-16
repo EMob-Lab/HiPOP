@@ -8,12 +8,14 @@
 #include <memory>
 #include <iostream>
 
+using namespace hipop;
+
 
 // Same test scenario as in python/tests/test_Graph.py.
 // WARNING: any modification in this test should be reflected in the python test as well.
 int testGraph(int, char**)
 {
-    auto G = new hipop::OrientedGraph();
+    auto G = new OrientedGraph();
     G->AddNode("a", 0, 0);
 
     std::unordered_map<std::string, std::set<std::string> > excludeMovements;
@@ -27,7 +29,7 @@ int testGraph(int, char**)
     G->AddLink("b_c", "b", "c", 12, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");
     G->AddLink("b_d", "b", "d", 12, {{"PersonalVehicle", {{"time", 12}}}}, "CAR");
 
-    std::vector<const hipop::Link*> exits = G->mnodes["b"]->getExits("a");
+    std::vector<const Link*> exits = G->mnodes["b"]->getExits("a");
 
     assertTrue(exits.size()==1, "Exits does not return one link");
     assertTrue(exits[0]->mdown->mid=="d", "Node should be d");

@@ -729,13 +729,13 @@ namespace hipop
             bool isNew = true;
             if (intermodal)
             {
-                isNew = std::all_of(paths.cbegin(), paths.cend(), [newPath](const pathCost &p){
+                isNew = std::all_of(paths.cbegin(), paths.cend(), [&newPath](const pathCost &p){
                     return decodeIntermodalPath(p.first) != decodeIntermodalPath(newPath.first);
                 });
             }
             else
             {
-                isNew = std::all_of(paths.cbegin(), paths.cend(), [newPath](const pathCost &p){
+                isNew = std::all_of(paths.cbegin(), paths.cend(), [&newPath](const pathCost &p){
                     return p.first != newPath.first;
                 });
             }
@@ -802,9 +802,9 @@ namespace hipop
                 rootPath.first.insert(rootPath.first.begin(), A[k - 1].first.begin(), A[k - 1].first.begin() + i + 1);
                 rootPath.second = computePathCostGeneric(G, rootPath.first, costFunction);
 
-                // The links that are part of the previous shortest paths which share the same root path
-                // must not be considered to search a path from spur node to destination,
-                // thus they are flagged as "forbidden".
+                // For each previous shortest path which shares the same root path,
+                // flag the link that comes just after spur node as "forbidden",
+                // to force the path search function to try another way.
                 std::unordered_set<const Link*> forbiddenLinks;
                 for (const pathCost &pc : A)
                 {
