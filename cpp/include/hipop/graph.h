@@ -157,11 +157,11 @@ namespace hipop
         std::unordered_map<std::string, Node* > mnodes;
         std::unordered_map<std::string, Link* > mlinks;
 
-        const Node *node(const std::string &nodeId) const {
+        [[nodiscard]] const Node *node(const std::string &nodeId) const {
             return mnodes.at(nodeId);
         }
 
-        const Link *link(const std::string &linkId) const {
+        [[nodiscard]] const Link *link(const std::string &linkId) const {
             return mlinks.at(linkId);
         }
 
