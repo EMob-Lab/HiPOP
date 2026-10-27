@@ -31,17 +31,15 @@ void test_CopyConstructor() {
 
     // Object copy in C++ is a deep copy, thus both instances are expected to be independent.
     OrientedGraph copyG = *G;
-    G->mlinks["0_1"]->mcosts["PersonalVehicle"]["time"] = 42;
+    G->link("0_1")->mcosts["PersonalVehicle"]["time"] = 42;
 
     assertTrue(
-        G->mlinks["0_1"]->mcosts["PersonalVehicle"]["time"] != copyG.mlinks["0_1"]->mcosts["PersonalVehicle"]["time"],
+        G->link("0_1")->mcosts["PersonalVehicle"]["time"] != copyG.link("0_1")->mcosts["PersonalVehicle"]["time"],
         "[Copy constructor] Cost of original and copy should be different on link '0_1'");
     assertTrue(
-        G->mlinks["0_3"]->mcosts["PersonalVehicle"]["time"] == copyG.mlinks["0_3"]->mcosts["PersonalVehicle"]["time"],
+        G->link("0_3")->mcosts["PersonalVehicle"]["time"] == copyG.link("0_3")->mcosts["PersonalVehicle"]["time"],
         "[Copy constructor] Cost of original and copy should be the same on link '0_3'");
-    assertTrue(
-        G->mlinks["0_3"] != copyG.mlinks["0_3"],
-        "[Copy constructor] Pointers on links must be different");
+    assertTrue(G->link("0_3") != copyG.link("0_3"), "[Copy constructor] Pointers on links must be different");
 }
 
 
@@ -52,26 +50,21 @@ void test_CopyAssignmentOperator() {
     OrientedGraph copyG;
     copyG.AddNode("abcd", 0, 0);
 
-    assertTrue(
-        copyG.mnodes.find("abcd") != copyG.mnodes.end(),
-        "[AddNode] Node 'abcd' should exist after being added");
+    assertTrue(copyG.hasNode("abcd"), "[AddNode] Node 'abcd' should exist after being added");
 
     // Assignment operator is expected to perform a deep copy as well,
     // and also to erase the pre-existing content of the target instance.
     copyG = *G;
-    G->mlinks["0_1"]->mcosts["PersonalVehicle"]["time"] = 42;
+    G->link("0_1")->mcosts["PersonalVehicle"]["time"] = 42;
 
-    assertTrue(copyG.mnodes.find("abcd") == copyG.mnodes.end(),
-        "[Copy assignment operator] Node 'abcd' should not exist after copying from G");
+    assertTrue(!copyG.hasNode("abcd"), "[Copy assignment operator] Node 'abcd' should not exist after copying from G");
     assertTrue(
-        G->mlinks["0_1"]->mcosts["PersonalVehicle"]["time"] != copyG.mlinks["0_1"]->mcosts["PersonalVehicle"]["time"],
+        G->link("0_1")->mcosts["PersonalVehicle"]["time"] != copyG.link("0_1")->mcosts["PersonalVehicle"]["time"],
         "[Copy assignment operator] Cost of original and copy should be different on link '0_1'");
     assertTrue(
-        G->mlinks["0_3"]->mcosts["PersonalVehicle"]["time"] == copyG.mlinks["0_3"]->mcosts["PersonalVehicle"]["time"],
+        G->link("0_3")->mcosts["PersonalVehicle"]["time"] == copyG.link("0_3")->mcosts["PersonalVehicle"]["time"],
         "[Copy assignment operator] Cost of original and copy should be the same on link '0_3'");
-    assertTrue(
-        G->mlinks["0_3"] != copyG.mlinks["0_3"],
-        "[Copy assignment operator] Pointers on links must be different");
+    assertTrue(G->link("0_3") != copyG.link("0_3"), "[Copy assignment operator] Pointers on links must be different");
 }
 
 

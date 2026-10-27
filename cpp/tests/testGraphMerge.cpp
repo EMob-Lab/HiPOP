@@ -3,7 +3,6 @@
 #include <hipop/graph.h>
 
 #include <string>
-#include <unordered_map>
 
 using namespace hipop;
 
@@ -36,8 +35,8 @@ int testGraphMerge(int, char**)
     auto mergeG = mergeOrientedGraph({G1, G2, G3});
 
 
-    assertTrue(mergeG->mnodes.size()==7, "Merge graph does not have 7 nodes");
-    assertTrue(mergeG->mlinks.size()==4, "Merge graph does not have 4 links");
+    assertTrue(mergeG->nodeCount()==7, "Merge graph does not have 7 nodes");
+    assertTrue(mergeG->linkCount()==4, "Merge graph does not have 4 links");
 
 
     return 0;

@@ -10,6 +10,12 @@ Checks: # See https://clang.llvm.org/extra/clang-tidy/checks/list.html
   - modernize-*
   - performance-*
 
+  # This check requires single-argument constructors and conversion operators to be marked as explicit.
+  # Disabled because it leaves no way to define an intentional implicit conversion between classes
+  # (at least in C++17). To be reconsidered if moving to C++20, where `explicit(false)` can be used
+  # to mark an implicit conversion as intentional.
+  - -cppcoreguidelines-explicit-constructor
+
   # This check assumes that each `T&&` function argument (with `T` a template parameter of the function)
   # is meant to be forwarded (see F.19 principle from C++ Core Guidelines, as referred in
   # https://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines/missing-std-forward.html).

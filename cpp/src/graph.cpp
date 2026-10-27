@@ -17,15 +17,15 @@ namespace hipop
         if (this != &other) {
 
             // FIXME: duplicated code with destructor. Could be improved with smart pointers...
-            for (const auto &it : mlinks) {
+            for (const auto &it : links_) {
                 delete it.second;
             }
-            for (const auto &it : mnodes) {
+            for (const auto &it : nodes_) {
                 delete it.second;
             }
 
-            mlinks.clear();
-            mnodes.clear();
+            links_.clear();
+            nodes_.clear();
             AddAllNodesAndLinks(other);
         }
         return *this;
@@ -33,18 +33,17 @@ namespace hipop
 
 
     OrientedGraph::~OrientedGraph() {
-        for (const auto &it : mlinks) {
+        for (const auto &it : links_) {
             delete it.second;
         }
-        for (const auto &it : mnodes) {
+        for (const auto &it : nodes_) {
             delete it.second;
         }
     }
 
 
     void OrientedGraph::AddAllNodesAndLinks(const OrientedGraph &graph) {
-        for (const auto &it : graph.mnodes) {
-            const Node *otherNode = it.second;
+        for (const Node *otherNode : graph.nodes()) {
             AddNode(
                 otherNode->mid,
                 otherNode->mposition[0],
@@ -53,8 +52,7 @@ namespace hipop
                 otherNode->mexclude_movements
             );
         }
-        for (const auto &it : graph.mlinks) {
-            const Link *otherLink = it.second;
+        for (const Link *otherLink : graph.links()) {
             AddLink(
                 otherLink->mid,
                 otherLink->mup->mid,
@@ -78,7 +76,7 @@ namespace hipop
      */
     void OrientedGraph::AddNode(std::string id, double x, double y, std::string label, mapsets excludeMovements) {
         Node *new_node = new Node(std::move(id), x, y, std::move(label), std::move(excludeMovements));
-        mnodes[new_node->mid] = new_node;
+        nodes_[new_node->mid] = new_node;
     }
 
 
@@ -94,13 +92,13 @@ namespace hipop
      */
     void OrientedGraph::AddLink(std::string id, const std::string &up, const std::string &down, double length, mapcosts costs, std::string label) {
 
-        Node *up_node = mnodes.at(up);
-        Node *down_node = mnodes.at(down);
+        Node *up_node = nodes_.at(up);
+        Node *down_node = nodes_.at(down);
 
         Link *new_link = new Link(std::move(id), up_node, down_node, length, std::move(costs), std::move(label));
         up_node->madj.emplace(down, new_link);
         down_node->mradj.emplace(up, new_link);
-        mlinks.emplace(new_link->mid, new_link);
+        links_.emplace(new_link->mid, new_link);
     }
 
 
@@ -109,23 +107,23 @@ namespace hipop
      */
     void OrientedGraph::DeleteLink(const std::string &linkId) {
 
-        if (mlinks.find(linkId) != mlinks.end())
+        if (links_.find(linkId) != links_.end())
         {
-            Link* pLink = mlinks[linkId];
+            Link* pLink = links_[linkId];
 
-            if (mnodes.find(pLink->mup->mid) != mnodes.end())
+            if (nodes_.find(pLink->mup->mid) != nodes_.end())
             {
-                Node* pUp = mnodes[pLink->mup->mid];
+                Node* pUp = nodes_[pLink->mup->mid];
                 pUp->madj.erase(pLink->mdown->mid);
             }
 
-            if (mnodes.find(pLink->mdown->mid) != mnodes.end())
+            if (nodes_.find(pLink->mdown->mid) != nodes_.end())
             {
-                Node* pDown = mnodes[pLink->mdown->mid];
+                Node* pDown = nodes_[pLink->mdown->mid];
                 pDown->mradj.erase(pLink->mup->mid);
             }
 
-            mlinks.erase(linkId);
+            links_.erase(linkId);
             delete pLink;
         }
     };
@@ -135,9 +133,9 @@ namespace hipop
      */
     void OrientedGraph::DeleteAllLinksToNode(const std::string &nodeId) {
 
-        if (mnodes.find(nodeId) != mnodes.end())
+        if (nodes_.find(nodeId) != nodes_.end())
         {
-            for (const auto &it : mnodes[nodeId]->madj) {
+            for (const auto &it : nodes_[nodeId]->madj) {
                 DeleteLink(it.second->mid);
             }
         }
@@ -151,7 +149,7 @@ namespace hipop
      * @param costs The new costs
      */
     void OrientedGraph::UpdateLinkCosts(const std::string &linkId, mapcosts costs) {
-        mlinks[linkId]->updateCosts(std::move(costs));
+        links_[linkId]->updateCosts(std::move(costs));
     }
 
     /**
@@ -171,7 +169,7 @@ namespace hipop
      *
      */
     void OrientedGraph::ShowNodes() {
-        for(const auto &elem: mnodes) {
+        for(const auto &elem: nodes_) {
             std::cout << "Node(" << elem.first << ", [" << elem.second->mposition[0] << ",\t" << elem.second->mposition[1] << "])\n";
         }
     }
@@ -181,7 +179,7 @@ namespace hipop
      *
      */
     void OrientedGraph::ShowLinks() {
-        for(const auto &elem: mlinks) {
+        for(const auto &elem: links_) {
             std::cout << "Link(" << elem.first << ", " << elem.second->mup->mid << ", " << elem.second->mdown->mid << ")\n";
         }
     }
@@ -195,7 +193,7 @@ namespace hipop
      */
     double OrientedGraph::getLength(const std::string &up, const std::string &down)
     {
-        return mnodes[up]->madj[down]->mlength;
+        return nodes_[up]->madj[down]->mlength;
     }
 
 
@@ -223,7 +221,7 @@ namespace hipop
     std::vector<std::string> OrientedGraph::GetLinksWithoutCost(const std::string &costMetric, const std::unordered_map<std::string, std::string> &labelToCostFamily)
     {
         std::vector<std::string> links;
-        for(const auto &elem: mlinks)
+        for(const auto &elem: links_)
         {
             if ( elem.second->mcosts[labelToCostFamily.at(elem.second->mlabel)].find(costMetric) == elem.second->mcosts[labelToCostFamily.at(elem.second->mlabel)].end() )
                 links.push_back(elem.first);
