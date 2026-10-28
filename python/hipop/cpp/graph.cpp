@@ -246,6 +246,19 @@ void graph(nb::module_ &m) {
             return LinkMapping{ &graph };
         }, nb::keep_alive<0, 1>())
 
+        // Copy
+        .def("copy", [](const hipop::OrientedGraph &graph) {
+            return hipop::OrientedGraph(graph);
+        })
+        .def("__copy__", [](const hipop::OrientedGraph &graph) {
+            return hipop::OrientedGraph(graph);
+        })
+        .def("__deepcopy__", [](const hipop::OrientedGraph &graph, const nb::typed<nb::dict, int, nb::any> &) {
+            // The graph owns its nodes and links (it is not a container of shared references to them),
+            // so copying the graph always copies them: thus, __copy__ and __deepcopy__ behave identically.
+            return hipop::OrientedGraph(graph);
+        }, "memo"_a)
+
         // Other operations
         .def("add_all_nodes_and_links", &hipop::OrientedGraph::AddAllNodesAndLinks, "graph"_a)
         .def("add_node", &hipop::OrientedGraph::AddNode,
@@ -263,10 +276,6 @@ void graph(nb::module_ &m) {
     m.def("generate_manhattan", &hipop::makeManhattan, "n"_a, "link_length"_a);
 
     m.def("merge_oriented_graph", &hipop::mergeOrientedGraph, "graphs"_a);
-
-    m.def("copy_graph", [](const hipop::OrientedGraph &graph) {
-        return hipop::OrientedGraph(graph);
-    }, "graph"_a);
 }
 
 }

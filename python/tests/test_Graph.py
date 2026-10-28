@@ -2,7 +2,9 @@
 # that have no equivalent between the C++ and Python APIs.
 # WARNING: any modification in this file should be reflected in the C++ test as well.
 
+import copy
 import re
+from collections.abc import Callable
 
 import pytest
 
@@ -216,6 +218,26 @@ def test_add_link() -> None:
     assert len(G.nodes["A"].adj) == 1 and len(G.nodes["A"].radj) == 0, (
         "Failed insertion should not modify the adjacency of the nodes"
     )
+
+
+@pytest.mark.parametrize("copy_func", [
+    OrientedGraph.copy,
+    copy.copy,
+    copy.deepcopy,
+], ids=["copy_method", "copy.copy", "copy.deepcopy"])
+def test_copy(copy_func: Callable[[OrientedGraph], OrientedGraph]) -> None:
+
+    G = _make_graph()
+    copyG = copy_func(G)
+    G.links["A_B"].update_costs({"CAR": {"time": 42}})
+
+    # Since the graph owns its nodes and links, all copy methods are expected to be deep copies,
+    # thus both instances are expected to be independent.
+    assert G.links["A_B"].costs != copyG.links["A_B"].costs, \
+        "Cost of original and copy should be different on link 'A_B'"
+    assert G.links["B_C"].costs == copyG.links["B_C"].costs, \
+        "Cost of original and copy should be the same on link 'B_C'"
+    assert G.links["B_C"] is not copyG.links["B_C"], "Links must be different objects"
 
 
 def test_exits() -> None:
