@@ -19,29 +19,11 @@ namespace hipop
     OrientedGraph &OrientedGraph::operator=(const OrientedGraph &other) {
         if (this != &other) {
 
-            // FIXME: duplicated code with destructor. Could be improved with smart pointers...
-            for (const auto &it : links_) {
-                delete it.second;
-            }
-            for (const auto &it : nodes_) {
-                delete it.second;
-            }
-
-            links_.clear();
-            nodes_.clear();
-            AddAllNodesAndLinks(other);
+            // Create a temporary OrientedGraph instance + move-assign it to `this`.
+            // This ensures that the current OrientedGraph instance remains unchanged on failure.
+            *this = OrientedGraph(other);
         }
         return *this;
-    }
-
-
-    OrientedGraph::~OrientedGraph() {
-        for (const auto &it : links_) {
-            delete it.second;
-        }
-        for (const auto &it : nodes_) {
-            delete it.second;
-        }
     }
 
 
@@ -68,32 +50,45 @@ namespace hipop
     }
 
 
+    // NOLINTBEGIN(performance-unnecessary-value-param): false positive, clang-tidy loses track of the
+    // std::move(..) once they are forwarded through try_emplace(..) down to the object constructor.
     void OrientedGraph::AddNode(std::string nodeId, double x, double y, std::string label,
         mapsets excludeMovements) {
+    // NOLINTEND(performance-unnecessary-value-param)
 
-        if (nodes_.find(nodeId) != nodes_.end()) {
-            throw std::invalid_argument(StrCat("[OrientedGraph::AddNode] Duplicated node ID [", nodeId, "]."));
+        std::string key = nodeId; // Copy mandatory because of std::move(..).
+
+        auto [it, inserted] = nodes_.try_emplace(std::move(key), std::move(nodeId), x, y, std::move(label),
+            std::move(excludeMovements));
+        if (!inserted) {
+
+            // WARNING: do not use the nodeId received in input for the error message, as it may have been moved.
+            throw std::invalid_argument(StrCat("[OrientedGraph::AddNode] Duplicated node ID [", it->first, "]."));
         }
-
-        Node *new_node = new Node(std::move(nodeId), x, y, std::move(label), std::move(excludeMovements));
-        nodes_[new_node->mid] = new_node;
     }
 
 
+    // NOLINTBEGIN(performance-unnecessary-value-param): false positive, clang-tidy loses track of the
+    // std::move(..) once they are forwarded through try_emplace(..) down to the object constructor.
     void OrientedGraph::AddLink(std::string linkId, const std::string &up, const std::string &down,
         double length, mapcosts costs, std::string label) {
+    // NOLINTEND(performance-unnecessary-value-param)
 
         Node *up_node = node(up);
         Node *down_node = node(down);
+        std::string key = linkId; // Copy mandatory because of std::move(..).
 
-        if (links_.find(linkId) != links_.end()) {
-            throw std::invalid_argument(StrCat("[OrientedGraph::AddLink] Duplicated link ID [", linkId, "]."));
+        auto [it, inserted] = links_.try_emplace(std::move(key), std::move(linkId), up_node, down_node, length,
+            std::move(costs), std::move(label));
+        if (!inserted) {
+
+            // WARNING: do not use the linkId received in input for the error message, as it may have been moved.
+            throw std::invalid_argument(StrCat("[OrientedGraph::AddLink] Duplicated link ID [", it->first, "]."));
         }
 
-        Link *new_link = new Link(std::move(linkId), up_node, down_node, length, std::move(costs), std::move(label));
+        Link *new_link = &it->second;
         up_node->madj.emplace(down, new_link);
         down_node->mradj.emplace(up, new_link);
-        links_.emplace(new_link->mid, new_link);
     }
 
 
@@ -104,22 +99,21 @@ namespace hipop
 
         if (links_.find(linkId) != links_.end())
         {
-            Link* pLink = links_[linkId];
+            Link* pLink = &links_.at(linkId);
 
             if (nodes_.find(pLink->mup->mid) != nodes_.end())
             {
-                Node* pUp = nodes_[pLink->mup->mid];
+                Node* pUp = &nodes_.at(pLink->mup->mid);
                 pUp->madj.erase(pLink->mdown->mid);
             }
 
             if (nodes_.find(pLink->mdown->mid) != nodes_.end())
             {
-                Node* pDown = nodes_[pLink->mdown->mid];
+                Node* pDown = &nodes_.at(pLink->mdown->mid);
                 pDown->mradj.erase(pLink->mup->mid);
             }
 
             links_.erase(linkId);
-            delete pLink;
         }
     };
 
@@ -130,7 +124,7 @@ namespace hipop
 
         if (nodes_.find(nodeId) != nodes_.end())
         {
-            for (const auto &it : nodes_[nodeId]->madj) {
+            for (const auto &it : nodes_.at(nodeId).madj) {
                 DeleteLink(it.second->mid);
             }
         }
@@ -144,7 +138,7 @@ namespace hipop
      * @param costs The new costs
      */
     void OrientedGraph::UpdateLinkCosts(const std::string &linkId, mapcosts costs) {
-        links_[linkId]->updateCosts(std::move(costs));
+        link(linkId)->updateCosts(std::move(costs));
     }
 
     /**
@@ -165,7 +159,7 @@ namespace hipop
      */
     void OrientedGraph::ShowNodes() {
         for(const auto &elem: nodes_) {
-            std::cout << "Node(" << elem.first << ", [" << elem.second->mposition[0] << ",\t" << elem.second->mposition[1] << "])\n";
+            std::cout << "Node(" << elem.first << ", [" << elem.second.mposition[0] << ",\t" << elem.second.mposition[1] << "])\n";
         }
     }
 
@@ -175,7 +169,7 @@ namespace hipop
      */
     void OrientedGraph::ShowLinks() {
         for(const auto &elem: links_) {
-            std::cout << "Link(" << elem.first << ", " << elem.second->mup->mid << ", " << elem.second->mdown->mid << ")\n";
+            std::cout << "Link(" << elem.first << ", " << elem.second.mup->mid << ", " << elem.second.mdown->mid << ")\n";
         }
     }
 
@@ -188,7 +182,7 @@ namespace hipop
      */
     double OrientedGraph::getLength(const std::string &up, const std::string &down)
     {
-        return nodes_[up]->madj[down]->mlength;
+        return node(up)->madj[down]->mlength;
     }
 
 
@@ -216,9 +210,9 @@ namespace hipop
     std::vector<std::string> OrientedGraph::GetLinksWithoutCost(const std::string &costMetric, const std::unordered_map<std::string, std::string> &labelToCostFamily)
     {
         std::vector<std::string> links;
-        for(const auto &elem: links_)
+        for(auto &elem: links_)
         {
-            if ( elem.second->mcosts[labelToCostFamily.at(elem.second->mlabel)].find(costMetric) == elem.second->mcosts[labelToCostFamily.at(elem.second->mlabel)].end() )
+            if ( elem.second.mcosts[labelToCostFamily.at(elem.second.mlabel)].find(costMetric) == elem.second.mcosts[labelToCostFamily.at(elem.second.mlabel)].end() )
                 links.push_back(elem.first);
         }
 

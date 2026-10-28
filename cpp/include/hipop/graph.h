@@ -33,8 +33,6 @@ namespace hipop
         std::string mlabel;
         double mlength;
 
-    private:
-
         Link(std::string id, const Node *up, const Node *down, double length, mapcosts costs, std::string label = "") :
             mid(std::move(id)),
             mup(up),
@@ -43,10 +41,6 @@ namespace hipop
             mlabel(std::move(label)),
             mlength(length)
         {}
-
-        friend class OrientedGraph;
-
-    public:
 
         // Relationships between Node and Link instances are materialized through raw pointers.
         // Copying and/or moving these instances would break these relationships.
@@ -91,18 +85,12 @@ namespace hipop
         std::string mlabel;
         mapsets mexclude_movements;
 
-    private:
-
         Node(std::string id, double x, double y, std::string label = "", mapsets exclude_movements = {}) :
             mid(std::move(id)),
             mposition{ x, y },
             mlabel(std::move(label)),
             mexclude_movements(std::move(exclude_movements))
         {}
-
-        friend class OrientedGraph;
-
-    public:
 
         // Relationships between Node and Link instances are materialized through raw pointers.
         // Copying and/or moving these instances would break these relationships.
@@ -156,8 +144,9 @@ namespace hipop
 
     class OrientedGraph {
 
-        std::unordered_map<std::string, Node* > nodes_;
-        std::unordered_map<std::string, Link* > links_;
+        // Must be node-based containers (no flat hash map): Node/Link addresses must remain stable.
+        std::unordered_map<std::string, Node> nodes_;
+        std::unordered_map<std::string, Link> links_;
 
         template<typename Element>
         class ElementRange;
@@ -165,11 +154,16 @@ namespace hipop
         template<typename Element> // Element is `Node`, `const Node`, `Link` or `const Link`.
         class ElementIterator {
 
-            using Container = std::unordered_map<std::string, std::remove_const_t<Element> *>;
+            using Container = std::unordered_map<std::string, std::remove_const_t<Element>>;
+            using ContainerIterator = std::conditional_t<
+                std::is_const_v<Element>,
+                typename Container::const_iterator,
+                typename Container::iterator
+            >;
 
-            typename Container::const_iterator it_;
+            ContainerIterator it_;
 
-            explicit ElementIterator(typename Container::const_iterator it) : it_(it) {}
+            explicit ElementIterator(ContainerIterator it) : it_(it) {}
 
             friend class ElementRange<Element>;
             template<typename> friend class ElementIterator;
@@ -179,8 +173,8 @@ namespace hipop
             using iterator_category = std::forward_iterator_tag;
             using difference_type = std::ptrdiff_t;
             using value_type = Element *;
-            using pointer = value_type const *;
-            using reference = value_type const &;
+            using pointer = void;
+            using reference = value_type;
 
             ElementIterator() = default;
 
@@ -193,8 +187,7 @@ namespace hipop
             >
             ElementIterator(const ElementIterator<Other> &other) : it_(other.it_) {}
 
-            [[nodiscard]] pointer operator->() const { return &it_->second; }
-            [[nodiscard]] reference operator*() const { return it_->second; }
+            [[nodiscard]] reference operator*() const { return &it_->second; }
 
             ElementIterator &operator++() {
                 ++it_;
@@ -219,11 +212,15 @@ namespace hipop
         template<typename Element> // Element is `Node`, `const Node`, `Link` or `const Link`.
         class ElementRange {
 
-            using Container = std::unordered_map<std::string, std::remove_const_t<Element> *>;
+            using Container = std::conditional_t<
+                std::is_const_v<Element>,
+                const std::unordered_map<std::string, std::remove_const_t<Element>>,
+                std::unordered_map<std::string, Element>
+            >;
 
-            const Container *container_;
+            Container *container_;
 
-            explicit ElementRange(const Container &container) : container_(&container) {}
+            explicit ElementRange(Container &container) : container_(&container) {}
 
             friend class OrientedGraph;
             template<typename> friend class ElementRange;
@@ -284,7 +281,7 @@ namespace hipop
             if (it == nodes_.end()) {
                 throw std::invalid_argument(StrCat("[OrientedGraph::node] Unknown node ID [", nodeId, "]."));
             }
-            return it->second;
+            return &it->second;
         }
 
         /**
@@ -308,7 +305,7 @@ namespace hipop
          */
         [[nodiscard]] const Node *findNode(const std::string &nodeId) const {
             auto it = nodes_.find(nodeId);
-            return it == nodes_.end() ? nullptr : it->second;
+            return it == nodes_.end() ? nullptr : &it->second;
         }
 
         /**
@@ -367,7 +364,7 @@ namespace hipop
             if (it == links_.end()) {
                 throw std::invalid_argument(StrCat("[OrientedGraph::link] Unknown link ID [", linkId, "]."));
             }
-            return it->second;
+            return &it->second;
         }
 
         /**
@@ -391,7 +388,7 @@ namespace hipop
          */
         [[nodiscard]] const Link *findLink(const std::string &linkId) const {
             auto it = links_.find(linkId);
-            return it == links_.end() ? nullptr : it->second;
+            return it == links_.end() ? nullptr : &it->second;
         }
 
         /**
@@ -465,7 +462,7 @@ namespace hipop
         OrientedGraph(OrientedGraph &&other) noexcept = default;
         OrientedGraph &operator=(const OrientedGraph &other);
         OrientedGraph &operator=(OrientedGraph &&other) noexcept = default;
-        ~OrientedGraph();
+        ~OrientedGraph() = default;
 
     };
 

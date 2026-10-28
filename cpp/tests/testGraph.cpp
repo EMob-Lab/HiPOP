@@ -11,6 +11,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 using namespace hipop;
@@ -175,8 +176,8 @@ static void test_NodeRanges() {
 
     static_assert(std::is_same_v<decltype(cG.nodes()), OrientedGraph::ConstNodeRange>);
     static_assert(std::is_same_v<decltype(G.nodes()), OrientedGraph::NodeRange>);
-    static_assert(std::is_same_v<decltype(*cG.nodes().begin()), const Node *const &>);
-    static_assert(std::is_same_v<decltype(*G.nodes().begin()), Node *const &>);
+    static_assert(std::is_same_v<decltype(*cG.nodes().begin()), const Node *>);
+    static_assert(std::is_same_v<decltype(*G.nodes().begin()), Node *>);
     static_assert(std::is_convertible_v<OrientedGraph::NodeRange, OrientedGraph::ConstNodeRange>);
     static_assert(!std::is_convertible_v<OrientedGraph::ConstNodeRange, OrientedGraph::NodeRange>);
 
@@ -227,8 +228,8 @@ static void test_LinkRanges() {
 
     static_assert(std::is_same_v<decltype(cG.links()), OrientedGraph::ConstLinkRange>);
     static_assert(std::is_same_v<decltype(G.links()), OrientedGraph::LinkRange>);
-    static_assert(std::is_same_v<decltype(*cG.links().begin()), const Link *const &>);
-    static_assert(std::is_same_v<decltype(*G.links().begin()), Link *const &>);
+    static_assert(std::is_same_v<decltype(*cG.links().begin()), const Link *>);
+    static_assert(std::is_same_v<decltype(*G.links().begin()), Link *>);
     static_assert(std::is_convertible_v<OrientedGraph::LinkRange, OrientedGraph::ConstLinkRange>);
     static_assert(!std::is_convertible_v<OrientedGraph::ConstLinkRange, OrientedGraph::LinkRange>);
     static_assert(!std::is_convertible_v<OrientedGraph::LinkIterator, OrientedGraph::ConstNodeIterator>);
@@ -344,6 +345,53 @@ static void test_AddLink() {
 }
 
 
+// No Python equivalent: checks C++-specific guarantees on the address of the nodes and links.
+static void test_PointerStability() {
+
+    OrientedGraph G = makeGraph();
+    const Node *a = G.node("A");
+    const Link *ab = G.link("A_B");
+
+    // Enough insertions to trigger several rehashes.
+    for (int i = 0; i < 1000; ++i) {
+        G.AddNode("N" + std::to_string(i), i, i);
+        G.AddLink("L" + std::to_string(i), "A", "N" + std::to_string(i), 1, {});
+    }
+    assertTrue(G.node("A") == a && G.link("A_B") == ab, "[PointerStability] Insertions should not relocate elements");
+    assertTrue(ab->mup == a && a->madj.at("B") == ab, "[PointerStability] Relationships should survive insertions");
+
+    // Move construction/assignment transfer the elements without relocating them.
+    OrientedGraph moved(std::move(G));
+    assertTrue(moved.node("A") == a && moved.link("A_B") == ab, "[PointerStability] Move should not relocate elements");
+    OrientedGraph assigned;
+    assigned = std::move(moved);
+    assertTrue(
+        assigned.node("A") == a && assigned.link("A_B") == ab,
+        "[PointerStability] Move-assignment should not relocate elements"
+    );
+
+    // Copies are deep, with relationships pointing to the elements of the copy.
+    OrientedGraph copy(assigned);
+    const Node *copyA = copy.node("A");
+    const Link *copyAB = copy.link("A_B");
+    assertTrue(copyA != a && copyAB != ab, "[PointerStability] Copy should create new elements");
+    assertTrue(
+        copyAB->mup == copyA && copyAB->mdown == copy.node("B") && copyA->madj.at("B") == copyAB,
+        "[PointerStability] Relationships in the copy should point to the elements of the copy"
+    );
+    OrientedGraph copyAssigned = makeGraph();
+    copyAssigned = assigned;
+    assertTrue(
+        copyAssigned.nodeCount() == assigned.nodeCount() && copyAssigned.linkCount() == assigned.linkCount(),
+        "[PointerStability] Copy-assignment should replace the content"
+    );
+    assertTrue(
+        copyAssigned.link("A_B")->mup == copyAssigned.node("A"),
+        "[PointerStability] Relationships in the copy-assigned graph should point to its own elements"
+    );
+}
+
+
 static void test_Exits() {
 
     OrientedGraph G;
@@ -375,6 +423,7 @@ int testGraph(int, char**) {
     test_LinkRanges();
     test_AddNode();
     test_AddLink();
+    test_PointerStability();
     test_Exits();
     return 0;
 }
