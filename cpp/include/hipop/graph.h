@@ -447,8 +447,20 @@ namespace hipop
         void AddLink(std::string linkId, const std::string &up, const std::string &down, double length,
             mapcosts costs, std::string label = "");
 
+        /**
+         * Remove the node corresponding to the given ID, and all the adjacent links (both from or to this node).
+         *
+         * Nothing happens if no node corresponds to the given ID.
+         */
+        void DeleteNode(const std::string &nodeId);
+
+        /**
+         * Remove the link corresponding to the given ID.
+         *
+         * Nothing happens if no link corresponds to the given ID.
+         */
         void DeleteLink(const std::string &linkId);
-        void DeleteAllLinksToNode(const std::string &nodeId);
+
         void UpdateLinkCosts(const std::string &linkId, mapcosts costs);
         void UpdateCosts(const std::unordered_map<std::string, mapcosts> &linkIdToCosts);
         double getLength(const std::string &up, const std::string &down);

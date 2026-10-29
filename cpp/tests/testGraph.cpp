@@ -109,6 +109,19 @@ static void test_NodeAccessors() {
     assertTrue(cG.node("B")->mlabel == "Modified", "[NodeAccessors] Modification through node() should be visible");
     G.findNode("C")->mlabel = "Modified";
     assertTrue(cG.node("C")->mlabel == "Modified", "[NodeAccessors] Modification through findNode() should be visible");
+
+    // Accessors must stay consistent after a deletion.
+    G.DeleteNode("B");
+    assertTrue(cG.nodeCount() == 3, "[NodeAccessors] nodeCount() should be 3 after deletion");
+    assertTrue(!cG.hasNode("B"), "[NodeAccessors] hasNode() should be false after deletion");
+    assertTrue(cG.findNode("B") == nullptr, "[NodeAccessors] findNode() should return nullptr after deletion");
+    assertThrows<std::invalid_argument>([&]() {
+        [[maybe_unused]] const Node *node = cG.node("B");
+    }, "[NodeAccessors] node() should throw after deletion");
+    assertTrue(
+        collectIds(cG.nodes()) == std::multiset<std::string>{"A", "C", "D"},
+        "[NodeAccessors] Range should not contain deleted node"
+    );
 }
 
 
@@ -345,6 +358,102 @@ static void test_AddLink() {
 }
 
 
+static void test_DeleteLink() {
+
+    OrientedGraph G = makeGraph();
+    const Node *a = G.node("A");
+    const Node *b = G.node("B");
+    const Link *bc = G.link("B_C");
+
+    G.DeleteLink("A_B");
+    assertTrue(G.linkCount() == 1 && !G.hasLink("A_B"), "[DeleteLink] Link 'A_B' should be removed");
+    assertTrue(G.nodeCount() == 4, "[DeleteLink] Nodes should not be removed");
+    assertTrue(
+        G.node("A") == a && G.node("B") == b && G.link("B_C") == bc,
+        "[DeleteLink] Remaining elements should not be relocated"
+    );
+    assertTrue(
+        a->madj.empty() && b->mradj.empty(),
+        "[DeleteLink] Deleted link should be unregistered from the adjacency of its nodes"
+    );
+    assertTrue(
+        b->madj.size() == 1 && b->madj.at("C") == bc && G.node("C")->mradj.at("B") == bc,
+        "[DeleteLink] Adjacency of the other links should not be modified"
+    );
+
+    // Unknown ID, or link already deleted: no-op.
+    G.DeleteLink("Z");
+    G.DeleteLink("A_B");
+    assertTrue(
+        G.linkCount() == 1 && G.nodeCount() == 4,
+        "[DeleteLink] Deleting an unknown link should not modify the graph"
+    );
+
+    // A link with the same ID and endpoints can be added again.
+    G.AddLink("A_B", "A", "B", 15, {{"CAR", {{"time", 5}}}}, "CarLayer");
+    assertTrue(
+        G.link("A_B")->mlength == 15 && a->madj.at("B") == G.link("A_B") && b->mradj.at("A") == G.link("A_B"),
+        "[DeleteLink] Deleted link should be re-insertable"
+    );
+}
+
+
+static void test_DeleteNode() {
+
+    // Additional links so that node 'B' has several entrance and exit links, plus a self-loop
+    // (which appears both in its entrance and exit links):
+    //
+    //           Self-link
+    //             on B
+    //        10    (*)    20
+    //   A --------> B <-------> C
+    //               |
+    //               +---------> D
+    OrientedGraph G = makeGraph();
+    G.AddLink("C_B", "C", "B", 30, {{"CAR", {{"time", 3}}}}, "CarLayer");
+    G.AddLink("B_D", "B", "D", 40, {{"CAR", {{"time", 4}}}}, "CarLayer");
+    G.AddLink("B_B", "B", "B", 5, {{"CAR", {{"time", 1}}}}, "CarLayer"); // Self-link
+    const Node *a = G.node("A");
+    const Node *c = G.node("C");
+    const Node *d = G.node("D");
+
+    G.DeleteNode("B");
+    assertTrue(G.nodeCount() == 3 && !G.hasNode("B"), "[DeleteNode] Node 'B' should be removed");
+    assertTrue(G.linkCount() == 0, "[DeleteNode] All the links from or to node 'B' should be removed");
+    assertTrue(
+        G.node("A") == a && G.node("C") == c && G.node("D") == d,
+        "[DeleteNode] Remaining nodes should not be relocated"
+    );
+    assertTrue(
+        a->madj.empty() && a->mradj.empty() && c->madj.empty() && c->mradj.empty()
+            && d->madj.empty() && d->mradj.empty(),
+        "[DeleteNode] Deleted links should be unregistered from the adjacency of the remaining nodes"
+    );
+
+    // Unknown ID, or node already deleted: no-op.
+    G.DeleteNode("Z");
+    G.DeleteNode("B");
+    assertTrue(G.nodeCount() == 3, "[DeleteNode] Deleting an unknown node should not modify the graph");
+
+    // Isolated node.
+    G.AddLink("A_C", "A", "C", 50, {{"CAR", {{"time", 5}}}}, "CarLayer");
+    G.DeleteNode("D");
+    assertTrue(G.nodeCount() == 2 && !G.hasNode("D"), "[DeleteNode] Isolated node 'D' should be removed");
+    assertTrue(
+        G.linkCount() == 1 && a->madj.at("C") == G.link("A_C"),
+        "[DeleteNode] Links not adjacent to the deleted node should not be modified"
+    );
+
+    // A node with the same ID can be added again, and linked.
+    G.AddNode("B", 5, 5);
+    G.AddLink("A_B", "A", "B", 60, {{"CAR", {{"time", 6}}}}, "CarLayer");
+    assertTrue(
+        G.node("B")->mposition[0] == 5 && G.node("B")->mradj.at("A") == G.link("A_B"),
+        "[DeleteNode] Deleted node should be re-insertable"
+    );
+}
+
+
 // No Python equivalent: checks C++-specific guarantees on the address of the nodes and links.
 static void test_PointerStability() {
 
@@ -469,6 +578,8 @@ int testGraph(int, char**) {
     test_LinkRanges();
     test_AddNode();
     test_AddLink();
+    test_DeleteLink();
+    test_DeleteNode();
     test_PointerStability();
     test_CopyConstructor();
     test_CopyAssignmentOperator();
