@@ -37,9 +37,10 @@ jobs:
       fail-fast: false
       matrix:
         os: # See https://docs.github.com/en/actions/reference/runners/github-hosted-runners
-          - ubuntu-latest  # Arch: x64
-          - windows-latest # Arch: x64
-          - macos-latest   # Arch: arm64
+          - ubuntu-latest     # Arch: x64
+          - ubuntu-24.04-arm  # Arch: arm64
+          - windows-latest    # Arch: x64
+          - macos-latest      # Arch: arm64
         python-version:
           - '3.10' # Oldest supported version (must be kept consistent with the classifiers in `pyproject.toml`).
           - '3.14' # Most recent supported version (must be kept consistent with the classifiers in `pyproject.toml`).
