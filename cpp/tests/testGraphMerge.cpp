@@ -2,11 +2,8 @@
 
 #include <hipop/graph.h>
 
-#include <unordered_map>
-#include <set>
 #include <string>
-#include <memory>
-#include <iostream>
+#include <unordered_map>
 
 using namespace hipop;
 

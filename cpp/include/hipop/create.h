@@ -1,7 +1,6 @@
-#include "hipop/graph.h"
-
-
 #pragma once
+
+#include <hipop/graph.h>
 
 namespace hipop
 {

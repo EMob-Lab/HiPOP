@@ -1,15 +1,11 @@
+#pragma once
+
+#include <array>
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
-#include <memory>
-#include <set>
-#include <vector>
-#include <array>
 #include <utility>
-
-#include <iostream>
-
-#pragma once
+#include <vector>
 
 using setstring = std::set<std::string>;
 using vecstring = std::vector<std::string>;

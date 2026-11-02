@@ -22,11 +22,11 @@ namespace hipop {
             (std::is_convertible_v<Args, std::string_view> && ...),
             "All arguments passed to StrAppend/StrCat must be convertible to std::string_view"
         );
-        // NOLINTBEGIN (cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+        // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
         std::size_t total_size = (target.size() + ... + std::string_view(args).size());
         target.reserve(total_size);
         (target.append(std::forward<Args>(args)), ...);
-        // NOLINTEND (cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+        // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     }
 
 

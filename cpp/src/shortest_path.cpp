@@ -1,15 +1,28 @@
 #include <hipop/shortest_path.h>
 
+#include <hipop/graph.h>
+#include <hipop/graph_path_cost.h>
 #include <hipop/string_util.h>
 
 #include <omp.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <queue>
+#include <set>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <tuple>
+#include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 
 namespace { // Anonymous namespace

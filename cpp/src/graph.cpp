@@ -1,17 +1,10 @@
-#include "hipop/graph.h"
-
+#include <hipop/graph.h>
 
 #include <iostream>
 #include <string>
-#include <vector>
 #include <unordered_map>
-#include <unordered_set>
-#include <memory>
-#include <algorithm>
-#include <queue>
-#include <numeric>
-#include <limits>
-
+#include <utility>
+#include <vector>
 
 namespace hipop
 {

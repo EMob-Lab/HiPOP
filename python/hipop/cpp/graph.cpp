@@ -1,12 +1,12 @@
+#include <hipop/create.h>
+#include <hipop/graph.h>
+
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/set.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/unordered_map.h>
 #include <nanobind/stl/vector.h>
-
-#include <hipop/graph.h>
-#include <hipop/create.h>
 
 namespace nb = nanobind;
 using namespace nb::literals;
