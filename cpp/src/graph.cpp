@@ -1,6 +1,9 @@
 #include <hipop/graph.h>
 
+#include <hipop/string_util.h>
+
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -65,37 +68,29 @@ namespace hipop
     }
 
 
-    /**
-     * @brief Create and Add a new Node to the OrientedGraph
-     *
-     * @param id The id of the Node
-     * @param x The x coordinate of the Node
-     * @param y The y coordinate of the Node
-     * @param label The optional label associated to the Node
-     * @param excludeMovements The map of exclude movements with adjacent Nodes
-     */
-    void OrientedGraph::AddNode(std::string id, double x, double y, std::string label, mapsets excludeMovements) {
-        Node *new_node = new Node(std::move(id), x, y, std::move(label), std::move(excludeMovements));
+    void OrientedGraph::AddNode(std::string nodeId, double x, double y, std::string label,
+        mapsets excludeMovements) {
+
+        if (nodes_.find(nodeId) != nodes_.end()) {
+            throw std::invalid_argument(StrCat("[OrientedGraph::AddNode] Duplicated node ID [", nodeId, "]."));
+        }
+
+        Node *new_node = new Node(std::move(nodeId), x, y, std::move(label), std::move(excludeMovements));
         nodes_[new_node->mid] = new_node;
     }
 
 
-    /**
-     * @brief Create and add a new Link to the OrientedGraph
-     *
-     * @param id The id of the Link
-     * @param up The id of the upstream Node of the Link
-     * @param down The id of the downstream Node of the Link
-     * @param length The length of the Link
-     * @param costs The costs of the Link
-     * @param label The optional label of the Link
-     */
-    void OrientedGraph::AddLink(std::string id, const std::string &up, const std::string &down, double length, mapcosts costs, std::string label) {
+    void OrientedGraph::AddLink(std::string linkId, const std::string &up, const std::string &down,
+        double length, mapcosts costs, std::string label) {
 
-        Node *up_node = nodes_.at(up);
-        Node *down_node = nodes_.at(down);
+        Node *up_node = node(up);
+        Node *down_node = node(down);
 
-        Link *new_link = new Link(std::move(id), up_node, down_node, length, std::move(costs), std::move(label));
+        if (links_.find(linkId) != links_.end()) {
+            throw std::invalid_argument(StrCat("[OrientedGraph::AddLink] Duplicated link ID [", linkId, "]."));
+        }
+
+        Link *new_link = new Link(std::move(linkId), up_node, down_node, length, std::move(costs), std::move(label));
         up_node->madj.emplace(down, new_link);
         down_node->mradj.emplace(up, new_link);
         links_.emplace(new_link->mid, new_link);

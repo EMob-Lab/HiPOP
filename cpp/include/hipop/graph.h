@@ -432,8 +432,24 @@ namespace hipop
          */
         void AddAllNodesAndLinks(const OrientedGraph &graph);
 
-        void AddNode(std::string id, double x, double y, std::string label = "", mapsets excludeMovements = {});
-        void AddLink(std::string id, const std::string &up, const std::string &down, double length, mapcosts costs, std::string label = "");
+        /**
+         * Create and add a new Node to the graph.
+         *
+         * @throw std::invalid_argument if another node with the same ID already exist in the graph.
+         */
+        void AddNode(std::string nodeId, double x, double y, std::string label = "", mapsets excludeMovements = {});
+
+        /**
+         * Create and add a new Link to the graph.
+         *
+         * @param up ID of the upstream node of the link.
+         * @param down ID of the downstream node of the link.
+         * @throw std::invalid_argument if another link with the same ID already exist in the graph,
+         *                              or if either up or down do not correspond to an existing node.
+         */
+        void AddLink(std::string linkId, const std::string &up, const std::string &down, double length,
+            mapcosts costs, std::string label = "");
+
         void DeleteLink(const std::string &linkId);
         void DeleteAllLinksToNode(const std::string &nodeId);
         void UpdateLinkCosts(const std::string &linkId, mapcosts costs);

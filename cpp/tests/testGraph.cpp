@@ -265,6 +265,85 @@ static void test_LinkRanges() {
 }
 
 
+static void test_AddNode() {
+
+    OrientedGraph G = makeGraph();
+    const Node *a = G.node("A");
+
+    G.AddNode("E", 4, 4, "NewNode");
+    const Node *e = G.node("E");
+    assertTrue(G.nodeCount() == 5, "[AddNode] nodeCount() should be 5 after insertion");
+    assertTrue(
+        e->mid == "E" && e->mposition[0] == 4 && e->mposition[1] == 4 && e->mlabel == "NewNode",
+        "[AddNode] node() should return the inserted node"
+    );
+
+    // Duplicated ID.
+    assertThrows<std::invalid_argument>([&]() {
+        G.AddNode("A", 5, 5, "Duplicate");
+    }, "[AddNode] AddNode() should throw for a duplicated node ID");
+    assertTrue(G.nodeCount() == 5, "[AddNode] nodeCount() should be unchanged after a failed insertion");
+    assertTrue(G.node("A") == a, "[AddNode] Existing node should not be replaced by a failed insertion");
+    assertTrue(
+        a->mposition[0] == 0 && a->mposition[1] == 0 && a->mlabel.empty(),
+        "[AddNode] Existing node should not be modified by a failed insertion"
+    );
+    assertTrue(
+        a->madj.size() == 1 && a->madj.at("B") == G.link("A_B"),
+        "[AddNode] Links of the existing node should not be modified by a failed insertion"
+    );
+}
+
+
+static void test_AddLink() {
+
+    OrientedGraph G = makeGraph();
+    const Link *ab = G.link("A_B");
+
+    G.AddLink("C_D", "C", "D", 30, {{"CAR", {{"time", 3}}}}, "CarLayer");
+    const Link *cd = G.link("C_D");
+    assertTrue(G.linkCount() == 3, "[AddLink] linkCount() should be 3 after insertion");
+    assertTrue(
+        cd->mid == "C_D" && cd->mup == G.node("C") && cd->mdown == G.node("D") && cd->mlength == 30,
+        "[AddLink] link() should return the inserted link"
+    );
+    assertTrue(
+        G.node("C")->madj.at("D") == cd && G.node("D")->mradj.at("C") == cd,
+        "[AddLink] Inserted link should be registered in the adjacency of its nodes"
+    );
+
+    // Duplicated ID.
+    assertThrows<std::invalid_argument>([&]() {
+        G.AddLink("A_B", "D", "A", 40, {{"CAR", {{"time", 4}}}}, "Duplicate");
+    }, "[AddLink] AddLink() should throw for a duplicated link ID");
+    assertTrue(G.linkCount() == 3, "[AddLink] linkCount() should be unchanged after a failed insertion");
+    assertTrue(G.link("A_B") == ab, "[AddLink] Existing link should not be replaced by a failed insertion");
+    assertTrue(
+        ab->mup == G.node("A") && ab->mdown == G.node("B") && ab->mlength == 10 && ab->mlabel == "CarLayer",
+        "[AddLink] Existing link should not be modified by a failed insertion"
+    );
+    assertTrue(
+        G.node("D")->madj.empty() && G.node("A")->mradj.empty(),
+        "[AddLink] Failed insertion should not modify the adjacency of the nodes"
+    );
+
+    // Unknown upstream/downstream node.
+    assertThrows<std::invalid_argument>([&]() {
+        G.AddLink("Z_A", "Z", "A", 50, {{"CAR", {{"time", 5}}}}, "CarLayer");
+    }, "[AddLink] AddLink() should throw for an unknown upstream node");
+    assertThrows<std::invalid_argument>([&]() {
+        G.AddLink("A_Z", "A", "Z", 50, {{"CAR", {{"time", 5}}}}, "CarLayer");
+    }, "[AddLink] AddLink() should throw for an unknown downstream node");
+    assertTrue(G.linkCount() == 3, "[AddLink] linkCount() should be unchanged after a failed insertion");
+    assertTrue(!G.hasLink("Z_A") && !G.hasLink("A_Z"), "[AddLink] Failed insertion should not add any link");
+    assertTrue(!G.hasNode("Z"), "[AddLink] Failed insertion should not add any node");
+    assertTrue(
+        G.node("A")->madj.size() == 1 && G.node("A")->mradj.empty(),
+        "[AddLink] Failed insertion should not modify the adjacency of the nodes"
+    );
+}
+
+
 static void test_Exits() {
 
     OrientedGraph G;
@@ -294,6 +373,8 @@ int testGraph(int, char**) {
     test_LinkAccessors();
     test_NodeRanges();
     test_LinkRanges();
+    test_AddNode();
+    test_AddLink();
     test_Exits();
     return 0;
 }
