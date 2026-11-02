@@ -329,6 +329,22 @@ def test_copy(copy_func: Callable[[OrientedGraph], OrientedGraph]) -> None:
     assert G.links["B_C"] is not copyG.links["B_C"], "Links must be different objects"
 
 
+def test_get_links_without_cost() -> None:
+
+    G = _make_graph()
+    label_to_cost_family = {"CarLayer": "CAR", "BusLayer": "BUS"}
+
+    result = G.get_links_without_cost("time", label_to_cost_family)
+    assert result == [], "All links should have a cost for the given metric"
+
+    result = G.get_links_without_cost("distance", label_to_cost_family)
+    assert sorted(result) == ["A_B", "B_C"], "No link should have a cost for an unknown metric"
+
+    # Cost family defined on B_C only.
+    result = G.get_links_without_cost("time", {"CarLayer": "BUS", "BusLayer": "BUS"})
+    assert result == ["A_B"], "Links without the given cost family should be returned"
+
+
 def test_exits() -> None:
 
     G = OrientedGraph()

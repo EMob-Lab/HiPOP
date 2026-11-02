@@ -10,23 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace hipop
-{
-    OrientedGraph::OrientedGraph(const OrientedGraph &other) {
-        AddAllNodesAndLinks(other);
-    }
-
-
-    OrientedGraph &OrientedGraph::operator=(const OrientedGraph &other) {
-        if (this != &other) {
-
-            // Create a temporary OrientedGraph instance + move-assign it to `this`.
-            // This ensures that the current OrientedGraph instance remains unchanged on failure.
-            *this = OrientedGraph(other);
-        }
-        return *this;
-    }
-
+namespace hipop {
 
     void OrientedGraph::AddAllNodesAndLinks(const OrientedGraph &graph) {
         for (const Node *otherNode : graph.nodes()) {
@@ -173,25 +157,20 @@ namespace hipop
         }
     }
 
-    /**
-     * @brief Print the Nodes informations
-     *
-     */
-    void OrientedGraph::ShowNodes() {
-        for(const auto &elem: nodes_) {
-            std::cout << "Node(" << elem.first << ", [" << elem.second.mposition[0] << ",\t" << elem.second.mposition[1] << "])\n";
+
+    void OrientedGraph::ShowNodes() const {
+        for (const Node *node : nodes()) {
+            std::cout << "Node(" << node->mid << ", [" << node->mposition[0] << ",\t" << node->mposition[1] << "])\n";
         }
     }
 
-    /**
-     * @brief Print the Link informations
-     *
-     */
-    void OrientedGraph::ShowLinks() {
-        for(const auto &elem: links_) {
-            std::cout << "Link(" << elem.first << ", " << elem.second.mup->mid << ", " << elem.second.mdown->mid << ")\n";
+
+    void OrientedGraph::ShowLinks() const {
+        for (const Link *link : links()) {
+            std::cout << "Link(" << link->mid << ", " << link->mup->mid << ", " << link->mdown->mid << ")\n";
         }
     }
+
 
     /**
      * @brief Get the length of a link
@@ -220,22 +199,18 @@ namespace hipop
         return newGraph;
     }
 
-    /**
-     * @brief Return links for which the considered cost has not been set
-     *
-     * @param costMetric The cost metric to consider
-     * @param labelToCostFamily The cost family to use for each link label
-     * @return std::vector<std::string> The list of links with no cost
-     */
-    std::vector<std::string> OrientedGraph::GetLinksWithoutCost(const std::string &costMetric, const std::unordered_map<std::string, std::string> &labelToCostFamily)
-    {
-        std::vector<std::string> links;
-        for(auto &elem: links_)
-        {
-            if ( elem.second.mcosts[labelToCostFamily.at(elem.second.mlabel)].find(costMetric) == elem.second.mcosts[labelToCostFamily.at(elem.second.mlabel)].end() )
-                links.push_back(elem.first);
-        }
 
-        return links;
+    std::vector<std::string> OrientedGraph::GetLinksWithoutCost(const std::string &costMetric,
+        const std::unordered_map<std::string, std::string> &labelToCostFamily) const {
+
+        std::vector<std::string> result;
+        for (const Link *link : links()) {
+            if (!link->hasCost(labelToCostFamily.at(link->mlabel), costMetric)) {
+                result.emplace_back(link->mid);
+            }
+        }
+        return result;
     }
+
+
 } // namespace hipop

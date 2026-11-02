@@ -33,7 +33,7 @@ namespace hipop
         std::string mlabel;
         double mlength;
 
-        Link(std::string id, const Node *up, const Node *down, double length, mapcosts costs, std::string label = "") :
+        Link(std::string id, const Node *up, const Node *down, double length, mapcosts costs, std::string label) :
             mid(std::move(id)),
             mup(up),
             mdown(down),
@@ -49,6 +49,21 @@ namespace hipop
         Link &operator=(const Link &other) = delete;
         Link &operator=(Link &&other) = delete;
         ~Link() = default;
+
+        /**
+         * Whether a cost value is set for the current link, assuming the given cost family and cost metric.
+         */
+        [[nodiscard]] bool hasCost(const std::string &costFamily, const std::string &costMetric) const {
+            auto it1 = mcosts.find(costFamily);
+            if (it1 == mcosts.end()) {
+                return false;
+            }
+            auto it2 = it1->second.find(costMetric);
+            if (it2 == it1->second.end()) {
+                return false;
+            }
+            return true;
+        }
 
         /**
          * Read the cost value associated to the current link, assuming the given cost family and cost metric.
@@ -85,7 +100,7 @@ namespace hipop
         std::string mlabel;
         mapsets mexclude_movements;
 
-        Node(std::string id, double x, double y, std::string label = "", mapsets exclude_movements = {}) :
+        Node(std::string id, double x, double y, std::string label, mapsets exclude_movements) :
             mid(std::move(id)),
             mposition{ x, y },
             mlabel(std::move(label)),
@@ -255,6 +270,24 @@ namespace hipop
         using ConstLinkRange = ElementRange<const Link>;
         using LinkIterator = ElementIterator<Link>;
         using LinkRange = ElementRange<Link>;
+
+        OrientedGraph() = default;
+        OrientedGraph(OrientedGraph &&other) noexcept = default;
+        OrientedGraph &operator=(OrientedGraph &&other) noexcept = default;
+        ~OrientedGraph() = default;
+
+        OrientedGraph(const OrientedGraph &other) {
+            AddAllNodesAndLinks(other);
+        }
+
+        OrientedGraph &operator=(const OrientedGraph &other) {
+            if (this != &other) {
+                // Create a temporary OrientedGraph instance + move-assign it to `this`.
+                // This ensures that the current OrientedGraph instance remains unchanged on failure.
+                *this = OrientedGraph(other);
+            }
+            return *this;
+        }
 
         /**
          * Number of nodes in the graph.
@@ -464,17 +497,15 @@ namespace hipop
         void UpdateLinkCosts(const std::string &linkId, mapcosts costs);
         void UpdateCosts(const std::unordered_map<std::string, mapcosts> &linkIdToCosts);
         double getLength(const std::string &up, const std::string &down);
-        std::vector<std::string> GetLinksWithoutCost(const std::string &costMetric, const std::unordered_map<std::string, std::string> &labelToCostFamily);
 
-        void ShowNodes();
-        void ShowLinks();
+        /**
+         * Return the IDs of the links for which the considered cost has not been set.
+         */
+        [[nodiscard]] std::vector<std::string> GetLinksWithoutCost(const std::string &costMetric,
+            const std::unordered_map<std::string, std::string> &labelToCostFamily) const;
 
-        OrientedGraph() = default;
-        OrientedGraph(const OrientedGraph &other);
-        OrientedGraph(OrientedGraph &&other) noexcept = default;
-        OrientedGraph &operator=(const OrientedGraph &other);
-        OrientedGraph &operator=(OrientedGraph &&other) noexcept = default;
-        ~OrientedGraph() = default;
+        void ShowNodes() const;
+        void ShowLinks() const;
 
     };
 

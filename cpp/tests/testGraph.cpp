@@ -547,6 +547,29 @@ static void test_CopyAssignmentOperator() {
 }
 
 
+static void test_GetLinksWithoutCost() {
+
+    const OrientedGraph G = makeGraph();
+    const std::unordered_map<std::string, std::string> labelToCostFamily{{"CarLayer", "CAR"}, {"BusLayer", "BUS"}};
+
+    std::vector<std::string> result = G.GetLinksWithoutCost("time", labelToCostFamily);
+    assertTrue(result.empty(), "[GetLinksWithoutCost] All links should have a cost for the given metric");
+
+    result = G.GetLinksWithoutCost("distance", labelToCostFamily);
+    assertTrue(
+        std::multiset<std::string>(result.begin(), result.end()) == std::multiset<std::string>{"A_B", "B_C"},
+        "[GetLinksWithoutCost] No link should have a cost for an unknown metric"
+    );
+
+    // Cost family defined on B_C only.
+    result = G.GetLinksWithoutCost("time", {{"CarLayer", "BUS"}, {"BusLayer", "BUS"}});
+    assertTrue(
+        result == std::vector<std::string>{"A_B"},
+        "[GetLinksWithoutCost] Links without the given cost family should be returned"
+    );
+}
+
+
 static void test_Exits() {
 
     OrientedGraph G;
@@ -583,6 +606,7 @@ int testGraph(int, char**) {
     test_PointerStability();
     test_CopyConstructor();
     test_CopyAssignmentOperator();
+    test_GetLinksWithoutCost();
     test_Exits();
     return 0;
 }
