@@ -466,6 +466,6 @@ namespace hipop
 
     };
 
-    OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &graphs);
+    OrientedGraph mergeOrientedGraph(const std::vector<const OrientedGraph*> &graphs);
 
 } // namespace hipop

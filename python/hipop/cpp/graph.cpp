@@ -265,7 +265,7 @@ void graph(nb::module_ &m) {
     m.def("merge_oriented_graph", &hipop::mergeOrientedGraph, "graphs"_a);
 
     m.def("copy_graph", [](const hipop::OrientedGraph &graph) {
-        return new hipop::OrientedGraph(graph);
+        return hipop::OrientedGraph(graph);
     }, "graph"_a);
 }
 

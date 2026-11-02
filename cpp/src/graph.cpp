@@ -192,10 +192,10 @@ namespace hipop
      * @param graphs Vector of OrientedGraph to merge
      * @return OrientedGraph* The result of the merge
      */
-    OrientedGraph* mergeOrientedGraph(const std::vector<const OrientedGraph*> &graphs) {
-        auto newGraph = new OrientedGraph();
+    OrientedGraph mergeOrientedGraph(const std::vector<const OrientedGraph*> &graphs) {
+        OrientedGraph newGraph;
         for (const OrientedGraph *G : graphs) {
-            newGraph->AddAllNodesAndLinks(*G);
+            newGraph.AddAllNodesAndLinks(*G);
         }
         return newGraph;
     }

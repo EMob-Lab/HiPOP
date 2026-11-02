@@ -30,11 +30,6 @@ Checks: # See https://clang.llvm.org/extra/clang-tidy/checks/list.html
   # the inputs and outputs of graph algorithm functions).
   - -cppcoreguidelines-narrowing-conversions
 
-  # FIXME Definitively worth enabling, but this would require to modify the graph data-structure
-  # (to use smart pointers to manage Node/Link allocations - or even better to allocate them in-place
-  # in the `mnodes`/`mlinks` maps), with impacts on the Python API. To be addressed in a dedicated change.
-  - -cppcoreguidelines-owning-memory
-
   # These checks require to use bounds-checked accessors on containers (e.g. `.at()` instead of `operator[]`).
   # Disabled because of the performance cost in hot loops, and because they raise false positives:
   # the index may be valid by the general logic of the algorithm, even if the checks can't deduce it.
