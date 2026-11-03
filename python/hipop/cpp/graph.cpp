@@ -382,11 +382,8 @@ void graph(nb::module_ &m) {
             nb::sig("def __eq__(self, arg: object, /) -> bool")) // Overridden signature, to accept any obj type.
         // Remark: operator != is not bound, as Python deduces it from operator ==.
         .def(nb::hash(nb::self))
-        .def("__len__", &hipop::OrientedGraphPath::size)
-        .def("__bool__", [](const hipop::OrientedGraphPath &) {
-            // An empty path must not be treated as an empty container, even if `__len__()` returns 0.
-            return true;
-        })
+        // Remark: `__len__` is not bound, as it would be ambiguous (number of nodes or links?):
+        // use `len(path.nodes)` or `len(path.links)` instead. As a consequence, a path is always truthy, even if empty.
         .def("copy", [](const hipop::OrientedGraphPath &path) {
             return hipop::OrientedGraphPath(path);
         })

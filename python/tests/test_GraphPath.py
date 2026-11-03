@@ -42,7 +42,6 @@ def test_empty_path() -> None:
     G = _make_graph()
     path = make_empty_path(G, "A")
 
-    assert len(path) == 0
     assert path, "An empty path must be truthy"
     assert path.origin.id == "A"
     assert path.origin_id == "A"
@@ -71,7 +70,7 @@ def test_make_path() -> None:
     G = _make_graph()
     path = make_path(G, ["A_B", "B_C", "C_D"])
 
-    assert len(path) == 3
+    assert len(path.links) == 3
     assert path.origin.id == "A"
     assert path.origin_id == "A"
     assert path.destination.id == "D"
