@@ -9,6 +9,8 @@ from hipop.cpp.graph import Node as Node
 from hipop.cpp.graph import NodeMap as NodeMap
 from hipop.cpp.graph import OrientedGraph as OrientedGraph
 from hipop.cpp.graph import OrientedGraphPath as OrientedGraphPath
+from hipop.cpp.graph import PathLinkSequence as PathLinkSequence
+from hipop.cpp.graph import PathNodeSequence as PathNodeSequence
 from hipop.cpp.graph import generate_manhattan as generate_manhattan
 from hipop.cpp.graph import make_empty_path as make_empty_path
 from hipop.cpp.graph import make_path as make_path

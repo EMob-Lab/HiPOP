@@ -48,18 +48,20 @@ def test_empty_path() -> None:
     assert path.origin_id == "A"
     assert path.destination.id == "A"
     assert path.destination_id == "A"
-    assert path.node(0).id == "A"
-    assert path.node_id(0) == "A"
-    assert [node.id for node in path.nodes()] == ["A"]
+    assert len(path.nodes) == 1
+    assert path.nodes[0].id == "A"
+    assert [node.id for node in path.nodes] == ["A"]
     assert path.node_ids() == ["A"]
-    assert path.links() == []
+    assert len(path.links) == 0
+    assert not path.links, "The link view of an empty path must be falsy"
+    assert list(path.links) == []
     assert path.link_ids() == []
     assert not path.has_loop()
 
     with pytest.raises(IndexError):
-        path.node(1)
+        path.nodes[1]
     with pytest.raises(IndexError):
-        path.link(0)
+        path.links[0]
     with pytest.raises(ValueError, match=r"\[I'm not a node ID\]"):
         make_empty_path(G, "I'm not a node ID")
 
@@ -74,21 +76,19 @@ def test_make_path() -> None:
     assert path.origin_id == "A"
     assert path.destination.id == "D"
     assert path.destination_id == "D"
-    assert path.node(1).id == "B"
-    assert path.node_id(1) == "B"
-    assert path.link(1).id == "B_C"
-    assert path.link_id(1) == "B_C"
-    assert [node.id for node in path.nodes()] == ["A", "B", "C", "D"]
+    assert path.nodes[1].id == "B"
+    assert path.links[1].id == "B_C"
+    assert [node.id for node in path.nodes] == ["A", "B", "C", "D"]
     assert path.node_ids() == ["A", "B", "C", "D"]
-    assert [link.id for link in path.links()] == ["A_B", "B_C", "C_D"]
+    assert [link.id for link in path.links] == ["A_B", "B_C", "C_D"]
     assert path.link_ids() == ["A_B", "B_C", "C_D"]
     assert not path.has_loop()
     assert make_path(G, ["A_B", "B_C", "C_D", "D_A"]).has_loop()
 
     with pytest.raises(IndexError):
-        path.node(4)
+        path.nodes[4]
     with pytest.raises(IndexError):
-        path.link(3)
+        path.links[3]
 
     with pytest.raises(ValueError):
         make_path(G, [])
@@ -96,6 +96,43 @@ def test_make_path() -> None:
         make_path(G, ["A_B", "C_D"])
     with pytest.raises(ValueError, match=r"\[I'm not a link ID\]"):
         make_path(G, ["A_B", "I'm not a link ID"])
+
+
+def test_node_and_link_views() -> None:
+
+    G = _make_graph()
+    path = make_path(G, ["A_B", "B_C", "C_D"])
+
+    for node in path.nodes:
+        assert node is G.nodes[node.id], "View should enumerate the nodes of the graph"
+    for link in path.links:
+        assert link is G.links[link.id], "View should enumerate the links of the graph"
+
+    # Python-specific: list-like features.
+    assert len(path.nodes) == 4 and len(path.links) == 3
+    assert path.nodes[-1].id == "D" and path.nodes[-4].id == "A", "Negative indexing should work"
+    assert path.links[-1].id == "C_D" and path.links[-3].id == "A_B", "Negative indexing should work"
+    with pytest.raises(IndexError):
+        path.nodes[-5]
+    with pytest.raises(IndexError):
+        path.links[-4]
+    assert [node.id for node in reversed(path.nodes)] == ["D", "C", "B", "A"], "`reversed()` should work"
+    assert [link.id for link in reversed(path.links)] == ["C_D", "B_C", "A_B"], "`reversed()` should work"
+    assert G.nodes["B"] in path.nodes and G.nodes["A"] in path.nodes, "`in path.nodes` should work"
+    assert G.links["B_C"] in path.links and G.links["A_C"] not in path.links, "`in path.links` should work"
+    assert [node.id for node in list(path.nodes)] == path.node_ids(), "Node view should be convertible to a list"
+    assert [link.id for link in list(path.links)] == path.link_ids(), "Link view should be convertible to a list"
+
+    # The views reflect the current state of the path.
+    nodes = path.nodes
+    links = path.links
+    path.add(G.links["D_A"])
+    assert len(nodes) == 5 and nodes[-1].id == "A", "Node view should reflect modifications of the path"
+    assert len(links) == 4 and links[-1].id == "D_A", "Link view should reflect modifications of the path"
+
+    # The views keep the path alive.
+    links = make_path(G, ["A_B", "B_C"]).links
+    assert [link.id for link in links] == ["A_B", "B_C"], "Link view should keep the path alive"
 
 
 def test_constructors() -> None:
