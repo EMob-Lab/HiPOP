@@ -377,12 +377,8 @@ void graph(nb::module_ &m) {
         "using the path results in undefined behavior (likely a crash).")
         .def(nb::init<const hipop::Node *>(), "origin"_a)
         .def(nb::init<const hipop::Node *, std::vector<const hipop::Link *>>(), "origin"_a, "links"_a)
-        .def(nb::self == nb::self,
-            nb::sig("def __eq__(self, arg: object, /) -> bool")) // Overridden signature, to accept any obj type.
-        // Remark: operator != is not bound, as Python deduces it from operator ==.
-        .def(nb::hash(nb::self))
-        // Remark: `__len__` is not bound, as it would be ambiguous (number of nodes or links?):
-        // use `len(path.nodes)` or `len(path.links)` instead. As a consequence, a path is always truthy, even if empty.
+
+        // Copy
         .def("copy", [](const hipop::OrientedGraphPath &path) {
             return hipop::OrientedGraphPath(path);
         })
@@ -394,17 +390,12 @@ void graph(nb::module_ &m) {
             // Thus, same behavior for __copy__ and __deepcopy__ in case of OrientedGraphPath.
             return hipop::OrientedGraphPath(path);
         }, "memo"_a)
-        .def("__repr__", [](const hipop::OrientedGraphPath &path) {
-            std::ostringstream stream;
-            stream << "OrientedGraphPath(" << path << ")";
-            return stream.str();
-        })
-        .def_prop_ro("origin", &hipop::OrientedGraphPath::origin, nb::rv_policy::reference)
-        .def_prop_ro("destination", &hipop::OrientedGraphPath::destination, nb::rv_policy::reference)
 
         // Node/link accessors
         // Remark: on the Python side, nodes and links are accessed only through the read-only sequence views
         // returned by `nodes` and `links`, the other C++ accessors (`node()`, `link()`, etc.) are not exposed.
+        .def_prop_ro("origin", &hipop::OrientedGraphPath::origin, nb::rv_policy::reference)
+        .def_prop_ro("destination", &hipop::OrientedGraphPath::destination, nb::rv_policy::reference)
         .def_prop_ro("nodes", [](const hipop::OrientedGraphPath &path) {
             return PathNodeSequence{ &path };
         }, nb::keep_alive<0, 1>())
@@ -420,7 +411,18 @@ void graph(nb::module_ &m) {
             return linkCount.has_value() ? path.subPath(pos, *linkCount) : path.subPath(pos);
         }, "pos"_a, "link_count"_a = nb::none())
         .def("starts_with", &hipop::OrientedGraphPath::startsWith, "prefix"_a)
-        .def("ends_with", &hipop::OrientedGraphPath::endsWith, "suffix"_a);
+        .def("ends_with", &hipop::OrientedGraphPath::endsWith, "suffix"_a)
+
+        // Operators and special methods.
+        .def("__repr__", [](const hipop::OrientedGraphPath &path) {
+            std::ostringstream stream;
+            stream << "OrientedGraphPath(" << path << ")";
+            return stream.str();
+        })
+        .def(nb::self == nb::self,
+            nb::sig("def __eq__(self, arg: object, /) -> bool")) // Overridden signature, to accept any obj type.
+        // Remark: operator != is not bound, as Python deduces it from operator ==.
+        .attr("__hash__") = nb::none(); // Make obj unhashable, as it is mutable.
 
     m.def("generate_manhattan", &hipop::makeManhattan, "n"_a, "link_length"_a);
 

@@ -160,8 +160,11 @@ def test_hash() -> None:
     path2 = make_path(G, ["A_B", "B_C"])
     assert path1 == path2
 
-    assert hash(path1) == hash(path2), "Equal paths must have the same hash value"
-    assert len({path1, path2}) == 1, "Equal paths must be deduplicated in a set"
+    # Paths are mutable, so they must not be hashable.
+    with pytest.raises(TypeError):
+        hash(path1)
+    with pytest.raises(TypeError):
+        {path1, path2}  # noqa: B018
 
 
 def test_add() -> None:
