@@ -14,7 +14,6 @@
 #include <nanobind/operators.h>
 
 #include <cstddef>
-#include <limits>
 #include <optional>
 #include <string>
 #include <sstream>
@@ -417,8 +416,9 @@ void graph(nb::module_ &m) {
         .def("has_loop", &hipop::OrientedGraphPath::hasLoop)
         .def("add", nb::overload_cast<const hipop::Link *>(&hipop::OrientedGraphPath::add), "link"_a)
         .def("add", nb::overload_cast<const hipop::OrientedGraphPath &>(&hipop::OrientedGraphPath::add), "other"_a)
-        .def("sub_path", &hipop::OrientedGraphPath::subPath,
-            "pos"_a, "link_count"_a = std::numeric_limits<std::size_t>::max())
+        .def("sub_path", [](const hipop::OrientedGraphPath &path, std::size_t pos, std::optional<std::size_t> linkCount) {
+            return linkCount.has_value() ? path.subPath(pos, *linkCount) : path.subPath(pos);
+        }, "pos"_a, "link_count"_a = nb::none())
         .def("starts_with", &hipop::OrientedGraphPath::startsWith, "p"_a)
         .def("ends_with", &hipop::OrientedGraphPath::endsWith, "p"_a);
 

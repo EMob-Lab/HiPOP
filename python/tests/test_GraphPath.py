@@ -188,6 +188,8 @@ def test_sub_path() -> None:
     assert path.sub_path(1) == make_path(G, ["B_C", "C_D"])
     assert path.sub_path(1, 1) == make_path(G, ["B_C"])
     assert path.sub_path(3) == make_empty_path(G, "D")
+    assert path.sub_path(1, None) == make_path(G, ["B_C", "C_D"]), "None link count means up to the end of the path"
+    assert path.sub_path(1, link_count=10) == make_path(G, ["B_C", "C_D"]), "Too large link count should be truncated"
 
     assert path.starts_with(make_path(G, ["A_B", "B_C"]))
     assert not path.starts_with(make_path(G, ["A_C"]))
