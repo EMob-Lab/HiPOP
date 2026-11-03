@@ -366,11 +366,13 @@ void graph(nb::module_ &m) {
             "cost_metric"_a, "label_to_cost_family"_a);
 
     nb::class_<hipop::OrientedGraphPath>(m, "OrientedGraphPath",
-        "A path within an OrientedGraph, i.e. a sequence of consecutive links from an origin node "
-        "to a destination node.\n\n"
-        "WARNING: a path holds references to the nodes and links of its graph. The graph must be kept alive "
-        "as long as the path is, and the nodes and links visited by the path must not be removed from it. "
-        "Otherwise, using the path results in undefined behavior (likely a crash).")
+        "A path within an OrientedGraph, i.e. a sequence of consecutive links\n"
+        "from an origin node to a destination node.\n"
+        "\n"
+        "WARNING: a path holds references to the nodes and links of its graph.\n"
+        "The graph must be kept alive as long as the path is, and the nodes\n"
+        "and links visited by the path must not be removed from it. Otherwise,\n"
+        "using the path results in undefined behavior (likely a crash).")
         .def(nb::init<const hipop::Node *>(), "origin"_a)
         .def(nb::init<const hipop::Node *, std::vector<const hipop::Link *>>(), "origin"_a, "links"_a)
         .def(nb::self == nb::self,
