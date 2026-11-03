@@ -1,3 +1,6 @@
+#include <hipop/graph_path_cost.h>
+#include <hipop/shortest_path.h>
+
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/pair.h>
@@ -7,8 +10,7 @@
 #include <nanobind/stl/unordered_set.h>
 #include <nanobind/stl/vector.h>
 
-#include <hipop/graph_path_cost.h>
-#include <hipop/shortest_path.h>
+#include <vector>
 
 namespace nb = nanobind;
 using namespace nb::literals;

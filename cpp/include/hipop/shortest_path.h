@@ -12,6 +12,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -74,8 +75,8 @@ namespace hipop {
             "Cost function must have signature: double(const Link *link)"
         );
 
-        const Node *origin_node = G.mnodes.at(origin);
-        const Node *destination_node = G.mnodes.at(destination);
+        const Node *origin_node = G.node(origin);
+        const Node *destination_node = G.node(destination);
 
         // Return an empty path (i.e. no link) with zero cost if origin and destination are identical.
         if (origin_node == destination_node) {

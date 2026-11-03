@@ -139,6 +139,12 @@ Again, by default, everything is built with `CMAKE_BUILD_TYPE=Release`,
 and can be overridden by setting the `CMAKE_BUILD_TYPE` environment variable
 before invoking `cmake`.
 
+Interprocedural optimization (IPO/LTO) is disabled by default, as it results in portability issues
+for the static library `hipoplib` (consumers must be built with IPO/LTO enabled,
+using the same compiler and compiler version).
+Still, it can be enabled by passing `-DHIPOP_USE_IPO_LTO=ON` to `cmake` if static library portability
+is not an issue (e.g. if only executables or shared libraries are distributed).
+
 C++ tests are defined in `cpp/tests`.
 
 

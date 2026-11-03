@@ -1,8 +1,13 @@
 #include <hipop/graph_path_cost.h>
 
+#include <hipop/graph.h>
+
 #include <omp.h>
 
 #include <cstdint>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 
 namespace hipop {

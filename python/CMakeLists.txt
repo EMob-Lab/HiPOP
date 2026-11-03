@@ -1,5 +1,18 @@
 nanobind_add_module(cpp
     NB_SUPPRESS_WARNINGS
+
+    # By default, nanobind compiles the binding sources with `-Os` (size optimization),
+    # overriding the optimization flags defined at CMake-project level (typically `-O3`).
+    # Here, we disable this so that the binding code - including the hipoplib code
+    # inlined into it - gets the same optimizations as the rest of the project.
+    # This speeds up client code by ~2-5%, although it makes the binary ~10% larger,
+    # which stays well within PyPI limits
+    # (see https://docs.pypi.org/project-management/storage-limits/).
+    NOMINSIZE
+
+    # Remark: configuration of interprocedural optimization (IPO/LTO) is handled
+    # by `hipop_configure_target(..)`, thus do not use the `LTO` parameter here.
+
     hipop/cpp/main.cpp
     hipop/cpp/graph.cpp
     hipop/cpp/shortest_path.cpp

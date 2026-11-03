@@ -50,10 +50,12 @@ endfunction()
 
 # Other settings
 include(cmake/ClangTidySettings.cmake)
+include(cmake/IPOSettings.cmake)
 
 # Unified target configuration function.
 # Must be called explicitly on each target defined in the project.
 function(hipop_configure_target target)
     hipop_enable_warnings(${target})
     hipop_enable_clang_tidy_if_requested(${target})
+    hipop_enable_ipo_lto_if_requested(${target})
 endfunction()
