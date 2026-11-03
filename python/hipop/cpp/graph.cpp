@@ -419,8 +419,7 @@ void graph(nb::module_ &m) {
             stream << "OrientedGraphPath(" << path << ")";
             return stream.str();
         })
-        .def(nb::self == nb::self,
-            nb::sig("def __eq__(self, arg: object, /) -> bool")) // Overridden signature, to accept any obj type.
+        .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool")) // Overridden sig to accept any obj type.
         // Remark: operator != is not bound, as Python deduces it from operator ==.
         .attr("__hash__") = nb::none(); // Make obj unhashable, as it is mutable.
 
