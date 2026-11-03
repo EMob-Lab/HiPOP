@@ -51,11 +51,11 @@ def test_empty_path() -> None:
     assert len(path.nodes) == 1
     assert path.nodes[0].id == "A"
     assert [node.id for node in path.nodes] == ["A"]
-    assert path.node_ids() == ["A"]
+    assert path.nodes.ids() == ["A"]
     assert len(path.links) == 0
     assert not path.links, "The link view of an empty path must be falsy"
     assert list(path.links) == []
-    assert path.link_ids() == []
+    assert path.links.ids() == []
     assert not path.has_loop()
 
     with pytest.raises(IndexError):
@@ -79,9 +79,9 @@ def test_make_path() -> None:
     assert path.nodes[1].id == "B"
     assert path.links[1].id == "B_C"
     assert [node.id for node in path.nodes] == ["A", "B", "C", "D"]
-    assert path.node_ids() == ["A", "B", "C", "D"]
+    assert path.nodes.ids() == ["A", "B", "C", "D"]
     assert [link.id for link in path.links] == ["A_B", "B_C", "C_D"]
-    assert path.link_ids() == ["A_B", "B_C", "C_D"]
+    assert path.links.ids() == ["A_B", "B_C", "C_D"]
     assert not path.has_loop()
     assert make_path(G, ["A_B", "B_C", "C_D", "D_A"]).has_loop()
 
@@ -120,8 +120,8 @@ def test_node_and_link_views() -> None:
     assert [link.id for link in reversed(path.links)] == ["C_D", "B_C", "A_B"], "`reversed()` should work"
     assert G.nodes["B"] in path.nodes and G.nodes["A"] in path.nodes, "`in path.nodes` should work"
     assert G.links["B_C"] in path.links and G.links["A_C"] not in path.links, "`in path.links` should work"
-    assert [node.id for node in list(path.nodes)] == path.node_ids(), "Node view should be convertible to a list"
-    assert [link.id for link in list(path.links)] == path.link_ids(), "Link view should be convertible to a list"
+    assert [node.id for node in list(path.nodes)] == path.nodes.ids(), "Node view should be convertible to a list"
+    assert [link.id for link in list(path.links)] == path.links.ids(), "Link view should be convertible to a list"
 
     # The views reflect the current state of the path.
     nodes = path.nodes

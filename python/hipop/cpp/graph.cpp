@@ -223,6 +223,7 @@ struct PathNodeSequence {
     [[nodiscard]] static std::size_t count(const hipop::OrientedGraphPath &path) { return path.size() + 1; }
     [[nodiscard]] static const hipop::Node *at(const hipop::OrientedGraphPath &path, std::size_t index) { return path.node(index); }
     [[nodiscard]] static hipop::OrientedGraphPath::NodeRange range(const hipop::OrientedGraphPath &path) { return path.nodes(); }
+    [[nodiscard]] static std::vector<std::string> ids(const hipop::OrientedGraphPath &path) { return path.nodeIds(); }
 };
 
 
@@ -247,6 +248,7 @@ struct PathLinkSequence {
     [[nodiscard]] static std::size_t count(const hipop::OrientedGraphPath &path) { return path.size(); }
     [[nodiscard]] static const hipop::Link *at(const hipop::OrientedGraphPath &path, std::size_t index) { return path.link(index); }
     [[nodiscard]] static const std::vector<const hipop::Link *> &range(const hipop::OrientedGraphPath &path) { return path.links(); }
+    [[nodiscard]] static std::vector<std::string> ids(const hipop::OrientedGraphPath &path) { return path.linkIds(); }
 };
 
 
@@ -282,7 +284,8 @@ static void bind_path_element_sequence(nb::module_ &m, const char *name) {
         .def("__reversed__", [](const Sequence &s) {
             decltype(auto) range = Sequence::range(*s.path);
             return nb::make_iterator<nb::rv_policy::reference>(nb::type<Sequence>(), "ReverseIterator", range.rbegin(), range.rend());
-        }, nb::keep_alive<0, 1>());
+        }, nb::keep_alive<0, 1>())
+        .def("ids", [](const Sequence &s) { return Sequence::ids(*s.path); }); // Return a plain Python list.
 }
 
 
@@ -406,18 +409,14 @@ void graph(nb::module_ &m) {
         .def_prop_ro("destination_id", &hipop::OrientedGraphPath::destinationId)
 
         // Node/link accessors
-        // Remark: on the Python side, nodes and links are accessed by index only through the read-only sequence views
+        // Remark: on the Python side, nodes and links are accessed only through the read-only sequence views
         // returned by `nodes` and `links`, the other C++ accessors (`node()`, `nodeId()`, etc.) are not exposed.
-        // `node_ids()` and `link_ids()` are exposed as methods returning lists (and not as views), so that
-        // they can be compared to lists of IDs.
         .def_prop_ro("nodes", [](const hipop::OrientedGraphPath &path) {
             return PathNodeSequence{ &path };
         }, nb::keep_alive<0, 1>())
         .def_prop_ro("links", [](const hipop::OrientedGraphPath &path) {
             return PathLinkSequence{ &path };
         }, nb::keep_alive<0, 1>())
-        .def("node_ids", &hipop::OrientedGraphPath::nodeIds)
-        .def("link_ids", &hipop::OrientedGraphPath::linkIds)
 
         // Other operations
         .def("has_loop", &hipop::OrientedGraphPath::hasLoop)
