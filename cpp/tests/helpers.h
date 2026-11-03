@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 
@@ -100,25 +101,39 @@ inline void assertEqualPaths(
 }
 
 
-inline void assertEqualShortestPathsTrees(const ShortestPathsTree &actual, const ShortestPathsTree &expected,
-    std::string_view message) {
+/**
+ * @param expected Expected paths, defined as a map destination -> path.
+ */
+inline void assertEqualSameOriginPathTrees(
+    const hipop::SameOriginPathTree &actual,
+    const std::unordered_map<const hipop::Node *, hipop::OrientedGraphPath> &expected,
+    std::string_view message
+) {
+    std::unordered_set<const hipop::Node *> unmatchedExpectedDestinations;
+    for (const auto &it : expected) {
+        unmatchedExpectedDestinations.emplace(it.first);
+    }
 
-    if (actual != expected) {
-        std::cerr << "[ERROR] " << message << '\n';
+    // Each destination of `actual` must be expected, with the same path.
+    for (const hipop::Node *destination : actual.destinations()) {
+        auto it = expected.find(destination);
+        if (it == expected.end()) {
+            std::cerr << "[ERROR] " << message << " (found a path to " << destination->mid << ", while none was expected)\n";
+            throw std::runtime_error(static_cast<std::string>(message));
+        }
+        if (actual.pathTo(destination) != it->second) {
+            std::cerr << "[ERROR] " << message << " (wrong path to " << destination->mid << "):\n";
+            std::cerr << "  actual:   " << actual.pathTo(destination) << '\n';
+            std::cerr << "  expected: " << it->second << '\n';
+            throw std::runtime_error(static_cast<std::string>(message));
+        }
+        unmatchedExpectedDestinations.erase(destination);
+    }
 
-        auto print = [](const ShortestPathsTree &tree) {
-            std::vector<std::pair<std::string, std::string>> sorted(tree.begin(), tree.end());
-            std::sort(sorted.begin(), sorted.end());
-            for (const auto &it : sorted) {
-                std::cerr << "    " << it.first << " -> " << (it.second.empty() ? "<no predecessor>" : it.second) << '\n';
-            }
-        };
-
-        std::cerr << "  actual:\n";
-        print(actual);
-        std::cerr << "  expected:\n";
-        print(expected);
-
+    // Each expected destination must be reachable in `actual`.
+    if (!unmatchedExpectedDestinations.empty()) {
+        auto it = unmatchedExpectedDestinations.begin();
+        std::cerr << "[ERROR] " << message << " (no path to "<< (*it)->mid << " found, while one was expected)\n";
         throw std::runtime_error(static_cast<std::string>(message));
     }
 }

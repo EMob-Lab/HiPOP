@@ -17,8 +17,6 @@
 #include <vector>
 
 
-using ShortestPathsTree = std::unordered_map<std::string, std::string>; // TODO remove
-
 namespace hipop {
 
 
@@ -160,7 +158,172 @@ namespace hipop {
     }
 
 
-    ShortestPathsTree dijkstraSingleSource(
+    /**
+     * Container for the paths returned by dijkstraSingleSource.
+     *
+     * All the paths in this tree share the same origin node.
+     */
+    class SameOriginPathTree {
+
+        // The pointers in this class a never null (neither for `origin_`
+        // nor for the keys/values in `destinationToLastLink_`).
+        const Node *origin_;
+        std::unordered_map<const Node *, const Link *> destinationToLastLink_;
+
+        explicit SameOriginPathTree(const Node *origin) : origin_(origin) {}
+
+        friend SameOriginPathTree dijkstraSingleSource(
+            const OrientedGraph &,
+            const std::string &,
+            const std::string &,
+            const std::unordered_map<std::string, std::string> &,
+            const setstring &
+        );
+
+    public:
+
+        /**
+         * Origin - aka. first node - of all the paths in the current tree.
+         */
+        [[nodiscard]] const Node *origin() const {
+            return origin_;
+        }
+
+        /**
+         * Whether or not a path from the origin to the given destination node exists in the current tree.
+         */
+        bool hasPathTo(const Node *destination) const {
+            return destination == origin_ || destinationToLastLink_.find(destination) != destinationToLastLink_.end();
+        }
+
+        class DestinationRange;
+
+        class DestinationIterator {
+
+            using ContainerIterator = std::unordered_map<const Node *, const Link *>::const_iterator;
+
+            const Node *origin_ = nullptr; // Non-null iff the iterator currently points to the origin node.
+            ContainerIterator it_;
+
+            DestinationIterator(const Node *origin, ContainerIterator it) : origin_(origin), it_(it) {}
+
+            friend class DestinationRange;
+
+        public:
+
+            using iterator_category = std::forward_iterator_tag;
+            using difference_type = std::ptrdiff_t;
+            using value_type = const Node *;
+            using pointer = void;
+            using reference = value_type;
+
+            DestinationIterator() = default;
+
+            [[nodiscard]] reference operator*() const {
+                return origin_ != nullptr ? origin_ : it_->first;
+            }
+
+            DestinationIterator &operator++() {
+                if (origin_ != nullptr) {
+                    origin_ = nullptr;
+                }
+                else {
+                    ++it_;
+                }
+                return *this;
+            }
+
+            DestinationIterator operator++(int) {
+                DestinationIterator previous = *this;
+                operator++();
+                return previous;
+            }
+
+            [[nodiscard]] friend bool operator==(const DestinationIterator &lhs, const DestinationIterator &rhs) {
+                return lhs.origin_ == rhs.origin_ && lhs.it_ == rhs.it_;
+            }
+
+            [[nodiscard]] friend bool operator!=(const DestinationIterator &lhs, const DestinationIterator &rhs) {
+                return !(lhs == rhs);
+            }
+        };
+
+        /**
+         * Lightweight view over the destination nodes of a tree, to be used in range-based for-loops.
+         */
+        class DestinationRange {
+
+            const SameOriginPathTree *tree_;
+
+            explicit DestinationRange(const SameOriginPathTree *tree) : tree_{ tree } {}
+
+            friend class SameOriginPathTree;
+
+        public:
+
+            using iterator = DestinationIterator;
+
+            [[nodiscard]] bool empty() const {
+                return false; // There is always at least 1 destination: the origin node.
+            }
+
+            [[nodiscard]] std::size_t size() const {
+                return tree_->destinationToLastLink_.size() + 1;
+            }
+
+            [[nodiscard]] iterator begin() const {
+                return { tree_->origin_, tree_->destinationToLastLink_.begin() };
+            }
+
+            [[nodiscard]] iterator end() const {
+                return { nullptr, tree_->destinationToLastLink_.end() };
+            }
+        };
+
+        /**
+         * Destination nodes reachable from the origin in the current tree (including the origin itself).
+         */
+        [[nodiscard]] DestinationRange destinations() const {
+            return DestinationRange{ this };
+        }
+
+        /**
+         * Return the path from the origin to the given destination node, if it exists in the current tree.
+         *
+         * @throws std::invalid_argument if no path to the given destination node exists in the current tree.
+         */
+        [[nodiscard]] OrientedGraphPath pathTo(const Node *destination) const {
+
+            if (!hasPathTo(destination)) {
+                throw std::invalid_argument(
+                    StrCat("[SameOriginPathTree::pathTo] No path to node=[", destination->mid, "].")
+                );
+            }
+
+            std::vector<const Link *> links;
+            const Node *currentNode = destination;
+            while (currentNode != origin_) {
+                const Link *link = destinationToLastLink_.at(currentNode);
+                links.emplace_back(link);
+                currentNode = link->mup;
+            }
+            std::reverse(links.begin(), links.end());
+            return { origin_, std::move(links) };
+        }
+
+        /**
+         * Return the path from the origin to the given destination node, if it exists in the current tree.
+         *
+         * @return std::nullopt if no path to the given destination node exists in the current tree.
+         */
+        [[nodiscard]] std::optional<OrientedGraphPath> findPathTo(const Node *destination) const {
+            return hasPathTo(destination) ? std::make_optional(pathTo(destination)) : std::nullopt;
+        }
+
+    };
+
+
+    SameOriginPathTree dijkstraSingleSource(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &costMetric,
@@ -196,7 +359,7 @@ namespace hipop {
         int threadNumber,
         const std::vector<setstring> &accessibleLinkLabels = {});
 
-    std::vector<ShortestPathsTree> parallelDijkstraSingleSource(
+    std::vector<SameOriginPathTree> parallelDijkstraSingleSource(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
