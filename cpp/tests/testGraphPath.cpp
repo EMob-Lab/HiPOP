@@ -57,11 +57,8 @@ static void test_EmptyPath() {
     assertTrue(path.empty(), "Path should be empty");
     assertTrue(path.size() == 0, "Path size should be 0");
     assertTrue(path.origin() == A, "Wrong origin");
-    assertTrue(path.originId() == "A", "Wrong origin ID");
     assertTrue(path.destination() == A, "Destination should be identical to origin");
-    assertTrue(path.destinationId() == "A", "Wrong destination ID");
     assertTrue(path.node(0) == A, "Wrong node #0");
-    assertTrue(path.nodeId(0) == "A", "Wrong node ID #0");
     assertTrue(!path.nodes().empty(), "Node range should never be empty");
     assertTrue(path.nodes().size() == 1, "Path should have exactly 1 node");
     assertTrue(path.nodeIds() == std::vector<std::string>{"A"}, "Wrong node IDs");
@@ -90,9 +87,7 @@ static void test_MakePath() {
     assertTrue(!path.empty(), "Path should not be empty");
     assertTrue(path.size() == 3, "Path size should be 3");
     assertTrue(path.origin() == G.node("A"), "Wrong origin");
-    assertTrue(path.originId() == "A", "Wrong origin ID");
     assertTrue(path.destination() == G.node("I"), "Wrong destination");
-    assertTrue(path.destinationId() == "I", "Wrong destination ID");
     assertTrue(!path.nodes().empty(), "Node range should never be empty");
     assertTrue(path.nodes().size() == 4, "Path should have exactly 4 nodes");
     assertTrue(!path.links().empty(), "Link list should not be empty");
@@ -107,11 +102,9 @@ static void test_MakePath() {
 
     for (std::size_t i = 0; i < path.size(); ++i) {
         assertTrue(path.link(i) == G.link(expectedLinkIds[i]), "Wrong link");
-        assertTrue(path.linkId(i) == expectedLinkIds[i], "Wrong link ID");
     }
     for (std::size_t i = 0; i <= path.size(); ++i) {
         assertTrue(path.node(i) == G.node(expectedNodeIds[i]), "Wrong node");
-        assertTrue(path.nodeId(i) == expectedNodeIds[i], "Wrong node ID");
     }
 
     assertThrows<std::out_of_range>([&path]() {

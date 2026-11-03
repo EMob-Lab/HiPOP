@@ -100,24 +100,10 @@ namespace hipop {
         }
 
         /**
-         * ID of the origin - aka. first node - of the path.
-         */
-        [[nodiscard]] const std::string &originId() const {
-            return origin()->mid;
-        }
-
-        /**
          * Destination - aka. last node - of the path.
          */
         [[nodiscard]] const Node *destination() const {
             return links_.empty() ? origin_ : links_.back()->mdown;
-        }
-
-        /**
-         * ID of the destination - aka. last node - of the path.
-         */
-        [[nodiscard]] const std::string &destinationId() const {
-            return destination()->mid;
         }
 
         /**
@@ -174,24 +160,10 @@ namespace hipop {
         }
 
         /**
-         * @param nodeIndex Must be <= size().
-         */
-        [[nodiscard]] const std::string &nodeId(std::size_t nodeIndex) const {
-            return node(nodeIndex)->mid;
-        }
-
-        /**
          * @param linkIndex Must be < size().
          */
         [[nodiscard]] const Link *link(std::size_t linkIndex) const {
             return links_.at(linkIndex);
-        }
-
-        /**
-         * @param linkIndex Must be < size().
-         */
-        [[nodiscard]] const std::string &linkId(std::size_t linkIndex) const {
-            return link(linkIndex)->mid;
         }
 
         class NodeIterator {

@@ -401,13 +401,11 @@ void graph(nb::module_ &m) {
             return stream.str();
         })
         .def_prop_ro("origin", &hipop::OrientedGraphPath::origin, nb::rv_policy::reference)
-        .def_prop_ro("origin_id", &hipop::OrientedGraphPath::originId)
         .def_prop_ro("destination", &hipop::OrientedGraphPath::destination, nb::rv_policy::reference)
-        .def_prop_ro("destination_id", &hipop::OrientedGraphPath::destinationId)
 
         // Node/link accessors
         // Remark: on the Python side, nodes and links are accessed only through the read-only sequence views
-        // returned by `nodes` and `links`, the other C++ accessors (`node()`, `nodeId()`, etc.) are not exposed.
+        // returned by `nodes` and `links`, the other C++ accessors (`node()`, `link()`, etc.) are not exposed.
         .def_prop_ro("nodes", [](const hipop::OrientedGraphPath &path) {
             return PathNodeSequence{ &path };
         }, nb::keep_alive<0, 1>())
