@@ -378,6 +378,18 @@ void graph(nb::module_ &m) {
         .def(nb::init<const hipop::Node *>(), "origin"_a)
         .def(nb::init<const hipop::Node *, std::vector<const hipop::Link *>>(), "origin"_a, "links"_a)
 
+        // Node/link accessors
+        // Remark: on the Python side, nodes and links are accessed only through the read-only sequence views
+        // returned by `nodes` and `links`, the other C++ accessors (`node()`, `link()`, etc.) are not exposed.
+        .def_prop_ro("origin", &hipop::OrientedGraphPath::origin, nb::rv_policy::reference)
+        .def_prop_ro("destination", &hipop::OrientedGraphPath::destination, nb::rv_policy::reference)
+        .def_prop_ro("nodes", [](const hipop::OrientedGraphPath &path) {
+            return PathNodeSequence{ &path };
+        }, nb::keep_alive<0, 1>())
+        .def_prop_ro("links", [](const hipop::OrientedGraphPath &path) {
+            return PathLinkSequence{ &path };
+        }, nb::keep_alive<0, 1>())
+
         // Copy
         .def("copy", [](const hipop::OrientedGraphPath &path) {
             return hipop::OrientedGraphPath(path);
@@ -390,18 +402,6 @@ void graph(nb::module_ &m) {
             // Thus, same behavior for __copy__ and __deepcopy__ in case of OrientedGraphPath.
             return hipop::OrientedGraphPath(path);
         }, "memo"_a)
-
-        // Node/link accessors
-        // Remark: on the Python side, nodes and links are accessed only through the read-only sequence views
-        // returned by `nodes` and `links`, the other C++ accessors (`node()`, `link()`, etc.) are not exposed.
-        .def_prop_ro("origin", &hipop::OrientedGraphPath::origin, nb::rv_policy::reference)
-        .def_prop_ro("destination", &hipop::OrientedGraphPath::destination, nb::rv_policy::reference)
-        .def_prop_ro("nodes", [](const hipop::OrientedGraphPath &path) {
-            return PathNodeSequence{ &path };
-        }, nb::keep_alive<0, 1>())
-        .def_prop_ro("links", [](const hipop::OrientedGraphPath &path) {
-            return PathLinkSequence{ &path };
-        }, nb::keep_alive<0, 1>())
 
         // Other operations
         .def("has_loop", &hipop::OrientedGraphPath::hasLoop)
