@@ -415,12 +415,12 @@ void graph(nb::module_ &m) {
         // Other operations
         .def("has_loop", &hipop::OrientedGraphPath::hasLoop)
         .def("add", nb::overload_cast<const hipop::Link *>(&hipop::OrientedGraphPath::add), "link"_a)
-        .def("add", nb::overload_cast<const hipop::OrientedGraphPath &>(&hipop::OrientedGraphPath::add), "other"_a)
+        .def("add", nb::overload_cast<const hipop::OrientedGraphPath &>(&hipop::OrientedGraphPath::add), "path"_a)
         .def("sub_path", [](const hipop::OrientedGraphPath &path, std::size_t pos, std::optional<std::size_t> linkCount) {
             return linkCount.has_value() ? path.subPath(pos, *linkCount) : path.subPath(pos);
         }, "pos"_a, "link_count"_a = nb::none())
-        .def("starts_with", &hipop::OrientedGraphPath::startsWith, "p"_a)
-        .def("ends_with", &hipop::OrientedGraphPath::endsWith, "p"_a);
+        .def("starts_with", &hipop::OrientedGraphPath::startsWith, "prefix"_a)
+        .def("ends_with", &hipop::OrientedGraphPath::endsWith, "suffix"_a);
 
     m.def("generate_manhattan", &hipop::makeManhattan, "n"_a, "link_length"_a);
 

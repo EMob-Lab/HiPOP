@@ -345,28 +345,28 @@ namespace hipop {
         /**
          * Append the given path to the current one, from the current destination node.
          *
-         * @param other Must have the same origin node as the current path destination node.
-         * @throws std::invalid_argument if `other.origin() != destination()`.
+         * @param path Must have the same origin node as the current path destination node.
+         * @throws std::invalid_argument if `path.origin() != destination()`.
          */
-        void add(const OrientedGraphPath &other) {
-            if (other.origin() != destination()) {
+        void add(const OrientedGraphPath &path) {
+            if (path.origin() != destination()) {
                 throw std::invalid_argument(
                     StrCat(
                         "[OrientedGraphPath::add(const OrientedGraphPath &)] ",
                         "Inconsistent path continuation: other-path-origin=[",
-                        other.origin()->mid,
-                        "] path-destination=[",
+                        path.origin()->mid,
+                        "] current-path-destination=[",
                         destination()->mid,
                         "]"
                     )
                 );
             }
-            std::size_t sz = other.links_.size();
+            std::size_t sz = path.links_.size();
             links_.reserve(links_.size() + sz);
             for (std::size_t i = 0; i < sz; ++i) {
                 // WARNING: do not use a foreach loop or a bulk insert here, as that would not work properly
-                // if `this` and `other` are the same instance (i.e. path added to itself).
-                links_.emplace_back(other.links_[i]);
+                // if `this` and `path` are the same instance (i.e. path added to itself).
+                links_.emplace_back(path.links_[i]);
             }
         }
 
@@ -390,23 +390,23 @@ namespace hipop {
         }
 
         /**
-         * Whether the current path starts with `p` or not.
+         * Whether the current path starts with `prefix` or not.
          */
-        [[nodiscard]] bool startsWith(const OrientedGraphPath &p) const {
-            std::size_t psz = p.size();
-            return psz == 0 ?
-                origin() == p.origin() :
-                links_.size() >= psz && std::equal(p.links_.begin(), p.links_.end(), links_.begin());
+        [[nodiscard]] bool startsWith(const OrientedGraphPath &prefix) const {
+            std::size_t sz = prefix.size();
+            return sz == 0 ?
+                origin() == prefix.origin() :
+                links_.size() >= sz && std::equal(prefix.links_.begin(), prefix.links_.end(), links_.begin());
         }
 
         /**
-         * Whether the current path ends with `p` or not.
+         * Whether the current path ends with `suffix` or not.
          */
-        [[nodiscard]] bool endsWith(const OrientedGraphPath &p) const {
-            std::size_t psz = p.size();
-            return psz == 0 ?
-                destination() == p.destination() :
-                size() >= psz && std::equal(p.links_.begin(), p.links_.end(), links_.begin() + (size() - psz));
+        [[nodiscard]] bool endsWith(const OrientedGraphPath &suffix) const {
+            std::size_t sz = suffix.size();
+            return sz == 0 ?
+                destination() == suffix.destination() :
+                size() >= sz && std::equal(suffix.links_.begin(), suffix.links_.end(), links_.begin() + (size() - sz));
         }
 
     };
