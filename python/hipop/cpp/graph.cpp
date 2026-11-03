@@ -11,7 +11,6 @@
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/unordered_map.h>
 #include <nanobind/stl/vector.h>
-#include <nanobind/operators.h>
 
 #include <cstddef>
 #include <optional>
@@ -419,7 +418,9 @@ void graph(nb::module_ &m) {
             stream << "OrientedGraphPath(" << path << ")";
             return stream.str();
         })
-        .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool")) // Overridden sig to accept any obj type.
+        .def("__eq__", [](const hipop::OrientedGraphPath &path, nb::handle other) {
+            return nb::isinstance<hipop::OrientedGraphPath>(other) && path == nb::cast<const hipop::OrientedGraphPath &>(other);
+        }, "other"_a.none())
         // Remark: operator != is not bound, as Python deduces it from operator ==.
         .attr("__hash__") = nb::none(); // Make obj unhashable, as it is mutable.
 
