@@ -88,8 +88,8 @@ namespace hipop {
         // No null pointers in these maps (neither as keys nor as values).
         std::unordered_map<const Node*, double> dist;
         std::unordered_map<const Node*, const Link*> prev;
-        dist.reserve(G.mnodes.size());
-        prev.reserve(G.mnodes.size());
+        dist.reserve(G.nodeCount());
+        prev.reserve(G.nodeCount());
         dist[origin_node] = 0;
 
         std::priority_queue<DijkstraQueueItem> pq;

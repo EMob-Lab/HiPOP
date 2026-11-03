@@ -2,9 +2,11 @@
 #include "sample_graphs.h"
 
 #include <hipop/create.h>
+#include <hipop/graph.h>
 #include <hipop/graph_path.h>
 #include <hipop/string_util.h>
 
+#include <cstddef>
 #include <functional>
 #include <iostream>
 #include <iterator>
@@ -48,7 +50,7 @@ static void checkPathInvariant(const OrientedGraphPath &path, std::string_view e
 static void test_EmptyPath() {
 
     const OrientedGraph G = simple_graph(true);
-    const Node *A = G.mnodes.at("A");
+    const Node *A = G.node("A");
 
     OrientedGraphPath path = makeEmptyPath(G, "A");
 
@@ -87,9 +89,9 @@ static void test_MakePath() {
 
     assertTrue(!path.empty(), "Path should not be empty");
     assertTrue(path.size() == 3, "Path size should be 3");
-    assertTrue(path.origin() == G.mnodes.at("A"), "Wrong origin");
+    assertTrue(path.origin() == G.node("A"), "Wrong origin");
     assertTrue(path.originId() == "A", "Wrong origin ID");
-    assertTrue(path.destination() == G.mnodes.at("I"), "Wrong destination");
+    assertTrue(path.destination() == G.node("I"), "Wrong destination");
     assertTrue(path.destinationId() == "I", "Wrong destination ID");
     assertTrue(!path.nodes().empty(), "Node range should never be empty");
     assertTrue(path.nodes().size() == 4, "Path should have exactly 4 nodes");
@@ -104,11 +106,11 @@ static void test_MakePath() {
     assertTrue(path.linkIds() == expectedLinkIds, "Wrong link IDs");
 
     for (std::size_t i = 0; i < path.size(); ++i) {
-        assertTrue(path.link(i) == G.mlinks.at(expectedLinkIds[i]), "Wrong link");
+        assertTrue(path.link(i) == G.link(expectedLinkIds[i]), "Wrong link");
         assertTrue(path.linkId(i) == expectedLinkIds[i], "Wrong link ID");
     }
     for (std::size_t i = 0; i <= path.size(); ++i) {
-        assertTrue(path.node(i) == G.mnodes.at(expectedNodeIds[i]), "Wrong node");
+        assertTrue(path.node(i) == G.node(expectedNodeIds[i]), "Wrong node");
         assertTrue(path.nodeId(i) == expectedNodeIds[i], "Wrong node ID");
     }
 
@@ -154,20 +156,20 @@ static void test_AddLink() {
 
     OrientedGraphPath path = makeEmptyPath(G, "A");
     checkPathInvariant(path, " (initial state)");
-    path.add(G.mlinks.at("A_D"));
+    path.add(G.link("A_D"));
     checkPathInvariant(path, " (after 1 insertion)");
-    path.add(G.mlinks.at("D_E"));
+    path.add(G.link("D_E"));
     checkPathInvariant(path, " (after 2 insertions)");
 
     assertTrue(path == makePath(G, {"A_D", "D_E"}), "Path should be equal to the one built by makePath");
-    assertTrue(path.destination() == G.mnodes.at("E"), "Wrong destination");
+    assertTrue(path.destination() == G.node("E"), "Wrong destination");
 
     // Adding a link that does not start from the current destination must throw, and leave the path unchanged.
     assertThrows<std::invalid_argument>([&]() {
-        path.add(G.mlinks.at("B_C"));
+        path.add(G.link("B_C"));
     }, "Inconsistent link should throw");
     assertTrue(path.size() == 2, "Path should be unchanged after a failed add");
-    assertTrue(path.destination() == G.mnodes.at("E"), "Destination should be unchanged after a failed add");
+    assertTrue(path.destination() == G.node("E"), "Destination should be unchanged after a failed add");
     checkPathInvariant(path, " (after rejected insertion)");
 }
 
@@ -250,11 +252,11 @@ static void test_AddPathToItself() {
 static void test_Constructor() {
 
     const OrientedGraph G = simple_graph(true);
-    const Node *A = G.mnodes.at("A");
-    const Node *B = G.mnodes.at("B");
-    const Link *A_B = G.mlinks.at("A_B");
-    const Link *B_C = G.mlinks.at("B_C");
-    const Link *E_F = G.mlinks.at("E_F");
+    const Node *A = G.node("A");
+    const Node *B = G.node("B");
+    const Link *A_B = G.link("A_B");
+    const Link *B_C = G.link("B_C");
+    const Link *E_F = G.link("E_F");
 
     OrientedGraphPath path(A, {A_B, B_C});
     assertTrue(path.linkIds() == std::vector<std::string>{"A_B", "B_C"}, "Wrong link IDs");
@@ -348,13 +350,13 @@ static void test_NodeIteration() {
 
     // Post-increment/decrement return the previous position.
     auto it = path.nodes().begin();
-    assertTrue(*it++ == G.mnodes.at("A") && *it == G.mnodes.at("B"), "Wrong post-increment");
-    assertTrue(*it-- == G.mnodes.at("B") && *it == G.mnodes.at("A"), "Wrong post-decrement");
+    assertTrue(*it++ == G.node("A") && *it == G.node("B"), "Wrong post-increment");
+    assertTrue(*it-- == G.node("B") && *it == G.node("A"), "Wrong post-decrement");
 
     // Empty path: a single node is visited.
     const OrientedGraphPath emptyPath = makeEmptyPath(G, "C");
     std::vector<const Node *> nodes(emptyPath.nodes().begin(), emptyPath.nodes().end());
-    assertTrue(nodes == std::vector<const Node *>{G.mnodes.at("C")}, "Wrong iteration on empty path");
+    assertTrue(nodes == std::vector<const Node *>{G.node("C")}, "Wrong iteration on empty path");
 }
 
 
@@ -408,7 +410,7 @@ static void test_PathWithExcludedMovement() {
     const OrientedGraph G = graph_with_exclude_movements();
 
     // Sanity check: the transition A -> B2 -> C is indeed forbidden in the graph.
-    const auto &excludeMovements = G.mnodes.at("B2")->mexclude_movements;
+    const auto &excludeMovements = G.node("B2")->mexclude_movements;
     assertTrue(
         excludeMovements.count("A") > 0 && excludeMovements.at("A").count("C") > 0,
         "Transition A -> B2 -> C should be forbidden in the test graph"
@@ -427,8 +429,8 @@ static void test_PathWithExcludedMovement() {
     // With add.
     {
         OrientedGraphPath path = makeEmptyPath(G, "A");
-        path.add(G.mlinks.at("A_B2"));
-        path.add(G.mlinks.at("B2_C"));
+        path.add(G.link("A_B2"));
+        path.add(G.link("B2_C"));
         assertTrue(path.nodeIds() == expectedNodeIds, "Wrong node IDs with add(..)");
         assertTrue(path.linkIds() == expectedLinkIds, "Wrong link IDs with add(..)");
     }

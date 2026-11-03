@@ -1,6 +1,6 @@
 #include <hipop/graph_path_cost.h>
 
-#include <hipop/graph.h>
+#include <hipop/graph_path.h>
 
 #include <omp.h>
 

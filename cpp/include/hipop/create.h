@@ -15,7 +15,7 @@
 namespace hipop {
 
 
-    OrientedGraph* makeManhattan(int n, double linkLength);
+    OrientedGraph makeManhattan(int n, double linkLength);
 
 
     /**
@@ -25,11 +25,11 @@ namespace hipop {
      * @throws std::invalid_argument if the given node ID does not exist in the graph.
      */
     inline OrientedGraphPath makeEmptyPath(const OrientedGraph &graph, const std::string &originNodeId) {
-        auto it = graph.mnodes.find(originNodeId);
-        if (it == graph.mnodes.end()) {
+        const Node *originNode = graph.findNode(originNodeId);
+        if (originNode == nullptr) {
             throw std::invalid_argument(StrCat("[makeEmptyPath] Unknown node ID [", originNodeId, "]."));
         }
-        return OrientedGraphPath(it->second);
+        return OrientedGraphPath(originNode);
     }
 
 
@@ -49,11 +49,11 @@ namespace hipop {
         std::vector<const Link *> links;
         links.reserve(linkIds.size());
         for (const std::string &linkId : linkIds) {
-            auto it = graph.mlinks.find(linkId);
-            if (it == graph.mlinks.end()) {
+            const Link *link = graph.findLink(linkId);
+            if (link == nullptr) {
                 throw std::invalid_argument(StrCat("[makePath] Unknown link ID [", linkId, "]."));
             }
-            links.emplace_back(it->second);
+            links.emplace_back(link);
         }
 
         const Node *origin = links[0]->mup;

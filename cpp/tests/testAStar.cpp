@@ -3,8 +3,6 @@
 
 #include <hipop/create.h>
 #include <hipop/graph.h>
-#include <hipop/graph_path.h>
-#include <hipop/graph_path_cost.h>
 #include <hipop/shortest_path.h>
 
 #include <algorithm>

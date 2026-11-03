@@ -19,6 +19,7 @@
 #include <string>
 #include <sstream>
 #include <utility>
+#include <vector>
 
 namespace nb = nanobind;
 using namespace nb::literals;

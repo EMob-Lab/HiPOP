@@ -1,6 +1,7 @@
 #include <hipop/shortest_path.h>
 
 #include <hipop/graph.h>
+#include <hipop/graph_path.h>
 #include <hipop/graph_path_cost.h>
 #include <hipop/string_util.h>
 
@@ -11,8 +12,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <iostream>
 #include <limits>
+#include <optional>
 #include <queue>
 #include <set>
 #include <stdexcept>
@@ -601,10 +602,10 @@ namespace hipop
      * valid for the original graph.
      */
     OrientedGraphPath decodeIntermodalPath(const OrientedGraph &graph, const OrientedGraphPath &path) {
-        OrientedGraphPath result(graph.mnodes.at(removeIntermodalNodeSuffix(path.origin()->mid)));
+        OrientedGraphPath result(graph.node(removeIntermodalNodeSuffix(path.origin()->mid)));
         result.reserve(path.size());
         for (const Link *link : path.links()) {
-            result.add(graph.mlinks.at(removeIntermodalLinkSuffix(link->mid)));
+            result.add(graph.link(removeIntermodalLinkSuffix(link->mid)));
         }
         return result;
     }
@@ -976,8 +977,8 @@ namespace hipop
         // No null pointers in these maps (neither as keys nor as values).
         std::unordered_map<const Node*, double> dist;
         std::unordered_map<const Node*, const Link*> prev;
-        dist.reserve(G.mnodes.size());
-        prev.reserve(G.mnodes.size());
+        dist.reserve(G.nodeCount());
+        prev.reserve(G.nodeCount());
         dist[origin_node] = 0;
 
         std::priority_queue<DijkstraQueueItem> pq;
