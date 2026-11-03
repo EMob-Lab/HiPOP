@@ -5,7 +5,6 @@
 #include <hipop/graph.h>
 #include <hipop/shortest_path.h>
 
-#include <cmath>
 #include <functional>
 #include <iostream>
 #include <optional>
