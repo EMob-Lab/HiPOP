@@ -25,8 +25,8 @@ pip install hipop
 
 This installation method requires your OS / system architecture to be one of these:
 - Windows on x86_64 architecture (i.e. Intel/AMD CPU)
-- Linux on x86_64 architecture (i.e. Intel/AMD CPU)
 - MacOS (≥ 14 Sonoma) on ARM64 architecture (i.e. Apple M* CPU)
+- Linux on x86_64 and ARM64 architectures
 
 The exact list of prebuilt distributions is available on https://pypi.org/project/HiPOP/#files.
 If none of them matches your environment, please contact the package maintainers,
