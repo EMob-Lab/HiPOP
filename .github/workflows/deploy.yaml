@@ -34,9 +34,10 @@ jobs:
       fail-fast: false
       matrix:
         os: # See https://docs.github.com/en/actions/reference/runners/github-hosted-runners
-          - ubuntu-latest  # Arch: x64
-          - windows-latest # Arch: x64
-          - macos-14       # Arch: arm64
+          - ubuntu-latest     # Arch: x64
+          - ubuntu-24.04-arm  # Arch: arm64
+          - windows-latest    # Arch: x64
+          - macos-14          # Arch: arm64
           # Do not use the latest macOS runner to ensure backward compatibility.
           # See comment on MACOSX_DEPLOYMENT_TARGET in pyproject.toml for more details.
 
