@@ -10,6 +10,12 @@ Checks: # See https://clang.llvm.org/extra/clang-tidy/checks/list.html
   - modernize-*
   - performance-*
 
+  # This check requires single-argument constructors and conversion operators to be marked as explicit.
+  # Disabled because it leaves no way to define an intentional implicit conversion between classes
+  # (at least in C++17). To be reconsidered if moving to C++20, where `explicit(false)` can be used
+  # to mark an implicit conversion as intentional.
+  - -cppcoreguidelines-explicit-constructor
+
   # This check assumes that each `T&&` function argument (with `T` a template parameter of the function)
   # is meant to be forwarded (see F.19 principle from C++ Core Guidelines, as referred in
   # https://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines/missing-std-forward.html).
@@ -23,11 +29,6 @@ Checks: # See https://clang.llvm.org/extra/clang-tidy/checks/list.html
   # (in particular, it would require to carefully review the integral types used to encode
   # the inputs and outputs of graph algorithm functions).
   - -cppcoreguidelines-narrowing-conversions
-
-  # FIXME Definitively worth enabling, but this would require to modify the graph data-structure
-  # (to use smart pointers to manage Node/Link allocations - or even better to allocate them in-place
-  # in the `mnodes`/`mlinks` maps), with impacts on the Python API. To be addressed in a dedicated change.
-  - -cppcoreguidelines-owning-memory
 
   # These checks require to use bounds-checked accessors on containers (e.g. `.at()` instead of `operator[]`).
   # Disabled because of the performance cost in hot loops, and because they raise false positives:

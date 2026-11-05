@@ -1,6 +1,5 @@
 set(Tests
     testAStar.cpp
-    testCopyGraph.cpp
     testGraph.cpp
     testGraphMerge.cpp
     testDijkstra.cpp

@@ -4,9 +4,10 @@ from typing import TypedDict
 # ruff: disable[PLC0414] The useless-import-alias rule is explicitly described as raising false positives
 # in case of re-exporting symbols from a module, which is exactly what we are doing here.
 from hipop.cpp.graph import Link as Link
+from hipop.cpp.graph import LinkMap as LinkMap
 from hipop.cpp.graph import Node as Node
+from hipop.cpp.graph import NodeMap as NodeMap
 from hipop.cpp.graph import OrientedGraph as OrientedGraph
-from hipop.cpp.graph import copy_graph as copy_graph
 from hipop.cpp.graph import generate_manhattan as generate_manhattan
 from hipop.cpp.graph import merge_oriented_graph as merge_oriented_graph
 

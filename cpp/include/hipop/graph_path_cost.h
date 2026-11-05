@@ -33,7 +33,7 @@ namespace hipop {
         );
         double result = 0;
         for (std::size_t i = 0; i + 1 < path.size(); ++i) {
-            const Link *link = G.mnodes.at(path[i])->madj.at(path[i + 1]);
+            const Link *link = G.node(path[i])->madj.at(path[i + 1]);
             result += costFunction(link);
         }
         return result;

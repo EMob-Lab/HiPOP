@@ -66,8 +66,8 @@ namespace hipop {
             "Cost function must have signature: double(const Link *link)"
         );
 
-        const Node *origin_node = G.mnodes.at(origin);
-        const Node *destination_node = G.mnodes.at(destination);
+        const Node *origin_node = G.node(origin);
+        const Node *destination_node = G.node(destination);
 
         // Return a 0-node path with zero cost if origin and destination are identical.
         // Remark: it would be more consistent with the general case to return 1-node path
@@ -81,8 +81,8 @@ namespace hipop {
 
         std::unordered_map<const Node*, double> dist; // No nullptr keys in this map.
         std::unordered_map<const Node*, const Node*> prev; // No nullptr (neither as key nor as value) in this map.
-        dist.reserve(G.mnodes.size());
-        prev.reserve(G.mnodes.size());
+        dist.reserve(G.nodeCount());
+        prev.reserve(G.nodeCount());
         dist[origin_node] = 0;
         // `prev[origin_node]` is intentionally left unset (the origin node has no predecessor).
 
