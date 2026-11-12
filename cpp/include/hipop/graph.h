@@ -25,21 +25,25 @@ namespace hipop
 
 
     class Link {
-    public:
-        std::string mid;
-        const Node *mup;
-        const Node *mdown;
-        mapcosts mcosts; // mcosts[cost-family][cost-metric] -> cost-value
-        std::string mlabel;
-        double mlength;
 
-        Link(std::string id, const Node *up, const Node *down, double length, mapcosts costs, std::string label) :
-            mid(std::move(id)),
-            mup(up),
-            mdown(down),
-            mcosts(std::move(costs)),
-            mlabel(std::move(label)),
-            mlength(length)
+        std::string id_;
+        Node *up_;
+        Node *down_;
+        double length_;
+        mapcosts costs_; // costs_[cost-family][cost-metric] -> cost-value
+        std::string label_;
+
+        friend class OrientedGraph; // Access to private fields is needed to add/remove node/link in the graph.
+
+    public:
+
+        Link(std::string id, Node *up, Node *down, double length, mapcosts costs, std::string label) :
+            id_(std::move(id)),
+            up_(up),
+            down_(down),
+            length_(length),
+            costs_(std::move(costs)),
+            label_(std::move(label))
         {}
 
         // Relationships between Node and Link instances are materialized through raw pointers.
@@ -51,11 +55,48 @@ namespace hipop
         ~Link() = default;
 
         /**
+         * ID of the current link (uniqueness guaranteed among the links of a given OrientedGraph instance).
+         */
+        [[nodiscard]] const std::string &id() const {
+            return id_;
+        }
+
+        /**
+         * Upstream node (the current link is an outgoing link for this node).
+         */
+        [[nodiscard]] const Node *up() const {
+            return up_;
+        }
+
+        /**
+         * Downstream node (the current link is an incoming link for this node).
+         */
+        [[nodiscard]] const Node *down() const {
+            return down_;
+        }
+
+        /**
+         * Geometric length of the link.
+         */
+        [[nodiscard]] double length() const {
+            return length_;
+        }
+
+        /**
+         * Cost values assigned to the link.
+         *
+         * @return `costs()[cost-family][cost-metric]` -> cost value
+         */
+        [[nodiscard]] const mapcosts &costs() const {
+            return costs_;
+        }
+
+        /**
          * Whether a cost value is set for the current link, assuming the given cost family and cost metric.
          */
         [[nodiscard]] bool hasCost(const std::string &costFamily, const std::string &costMetric) const {
-            auto it1 = mcosts.find(costFamily);
-            if (it1 == mcosts.end()) {
+            auto it1 = costs_.find(costFamily);
+            if (it1 == costs_.end()) {
                 return false;
             }
             auto it2 = it1->second.find(costMetric);
@@ -74,8 +115,8 @@ namespace hipop
          *         is explicitly set. Still, 0 is returned to match the legacy behavior.
          */
         [[nodiscard]] double cost(const std::string &costFamily, const std::string &costMetric) const {
-            auto it1 = mcosts.find(costFamily);
-            if (it1 == mcosts.end()) {
+            auto it1 = costs_.find(costFamily);
+            if (it1 == costs_.end()) {
                 return 0;
             }
             auto it2 = it1->second.find(costMetric);
@@ -85,26 +126,38 @@ namespace hipop
             return it2->second;
         }
 
-        void updateCosts(mapcosts costs) {
-            mcosts = std::move(costs);
+        void setCosts(mapcosts costs) {
+            costs_ = std::move(costs);
         }
+
+        /**
+         * Link label (may be used to categorize links).
+         */
+        [[nodiscard]] const std::string &label() const {
+            return label_;
+        }
+
     };
 
 
     class Node {
-    public:
-        std::string mid;
-        std::array<double, 2> mposition;
-        std::unordered_map<std::string, Link* > madj;
-        std::unordered_map<std::string, Link* > mradj;
-        std::string mlabel;
-        mapsets mexclude_movements;
 
-        Node(std::string id, double x, double y, std::string label, mapsets exclude_movements) :
-            mid(std::move(id)),
-            mposition{ x, y },
-            mlabel(std::move(label)),
-            mexclude_movements(std::move(exclude_movements))
+        std::string id_;
+        std::array<double, 2> position_;
+        std::unordered_map<std::string, const Link *> adj_;
+        std::unordered_map<std::string, const Link *> radj_;
+        std::string label_;
+        mapsets excludeMovements_;
+
+        friend class OrientedGraph; // Access to private fields is needed to add/remove node/link in the graph.
+
+    public:
+
+        Node(std::string id, double x, double y, std::string label, mapsets excludeMovements) :
+            id_(std::move(id)),
+            position_{ x, y },
+            label_(std::move(label)),
+            excludeMovements_(std::move(excludeMovements))
         {}
 
         // Relationships between Node and Link instances are materialized through raw pointers.
@@ -114,6 +167,69 @@ namespace hipop
         Node &operator=(const Node &other) = delete;
         Node &operator=(Node &&other) = delete;
         ~Node() = default;
+
+        /**
+         * ID of the current node (uniqueness guaranteed among the nodes of a given OrientedGraph instance).
+         */
+        [[nodiscard]] const std::string &id() const {
+            return id_;
+        }
+
+        /**
+         * X/Y coordinates of the current node.
+         */
+        [[nodiscard]] const std::array<double, 2> &position() const {
+            return position_;
+        }
+
+        /**
+         * Same as `position()[0]`.
+         */
+        [[nodiscard]] double x() const {
+            return position_[0];
+        }
+
+        /**
+         * Same as `position()[1]`.
+         */
+        [[nodiscard]] double y() const {
+            return position_[1];
+        }
+
+        /**
+         * Outgoing links from the current node.
+         *
+         * @return `adj()[adjacent-node-ID]` -> link from the current node to the adjacent node
+         */
+        [[nodiscard]] const std::unordered_map<std::string, const Link *> &adj() const {
+            return adj_;
+        }
+
+        /**
+         * Incoming links to the current node.
+         *
+         * @return `radj()[adjacent-node-ID]` -> link from the adjacent node to the current node
+         */
+        [[nodiscard]] const std::unordered_map<std::string, const Link *> &radj() const {
+            return radj_;
+        }
+
+        /**
+         * Node label (may be used to categorize nodes).
+         */
+        [[nodiscard]] const std::string &label() const {
+            return label_;
+        }
+
+        /**
+         * Movement restrictions (i.e. forbidden turns) at the current node.
+         *
+         * @return `excludeMovements()[predecessor-node-ID]` -> IDs of the downstream nodes (i.e. those in `adj()`)
+         *         that cannot be reached from the current node when arriving from the given predecessor node
+         */
+        [[nodiscard]] const mapsets &excludeMovements() const {
+            return excludeMovements_;
+        }
 
         /**
          * Assuming we follow a path in the graph, and that we come from node `predecessor`,
@@ -129,10 +245,10 @@ namespace hipop
          */
         template<typename Callback>
         void forEachExit(const std::string &predecessor, Callback &&callback) const {
-            for (const auto &l : madj) {
-                auto it = mexclude_movements.find(predecessor);
-                if (it == mexclude_movements.end() || it->second.find(l.second->mdown->mid) == it->second.end()) {
-                    callback(const_cast<const Link*>(l.second));
+            for (const auto &l : adj_) {
+                auto it = excludeMovements_.find(predecessor);
+                if (it == excludeMovements_.end() || it->second.find(l.second->down()->id()) == it->second.end()) {
+                    callback(l.second);
                 }
             }
         }

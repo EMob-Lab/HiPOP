@@ -15,21 +15,21 @@ namespace hipop {
     void OrientedGraph::AddAllNodesAndLinks(const OrientedGraph &graph) {
         for (const Node *otherNode : graph.nodes()) {
             AddNode(
-                otherNode->mid,
-                otherNode->mposition[0],
-                otherNode->mposition[1],
-                otherNode->mlabel,
-                otherNode->mexclude_movements
+                otherNode->id(),
+                otherNode->x(),
+                otherNode->y(),
+                otherNode->label(),
+                otherNode->excludeMovements()
             );
         }
         for (const Link *otherLink : graph.links()) {
             AddLink(
-                otherLink->mid,
-                otherLink->mup->mid,
-                otherLink->mdown->mid,
-                otherLink->mlength,
-                otherLink->mcosts,
-                otherLink->mlabel
+                otherLink->id(),
+                otherLink->up()->id(),
+                otherLink->down()->id(),
+                otherLink->length(),
+                otherLink->costs(),
+                otherLink->label()
             );
         }
     }
@@ -72,8 +72,8 @@ namespace hipop {
         }
 
         Link *new_link = &it->second;
-        up_node->madj.emplace(down, new_link);
-        down_node->mradj.emplace(up, new_link);
+        up_node->adj_.emplace(down, new_link);
+        down_node->radj_.emplace(up, new_link);
     }
 
 
@@ -89,22 +89,22 @@ namespace hipop {
         // Remove the entrance links.
         // WARNING: do not remove links while iterating on the adjacency map
         // (because link deletion would invalidate the iterators on this map).
-        std::vector<Link *> linksToRemove;
-        linksToRemove.reserve(std::max(node->madj.size(), node->mradj.size()));
-        for (const auto &linkIt : node->madj) {
+        std::vector<const Link *> linksToRemove;
+        linksToRemove.reserve(std::max(node->adj().size(), node->radj().size()));
+        for (const auto &linkIt : node->adj()) {
             linksToRemove.emplace_back(linkIt.second);
         }
-        for (Link *link : linksToRemove) {
-            DeleteLink(link->mid);
+        for (const Link *link : linksToRemove) {
+            DeleteLink(link->id());
         }
 
         // Same thing for the exit links.
         linksToRemove.clear();
-        for (const auto &linkIt : node->mradj) {
+        for (const auto &linkIt : node->radj()) {
             linksToRemove.emplace_back(linkIt.second);
         }
-        for (Link *link : linksToRemove) {
-            DeleteLink(link->mid);
+        for (const Link *link : linksToRemove) {
+            DeleteLink(link->id());
         }
 
         // Remove the node itself at the end.
@@ -120,17 +120,12 @@ namespace hipop {
         }
 
         Link *link = &it->second;
-
-        // NOLINTBEGIN(cppcoreguidelines-pro-type-const-cast)
-        // Casting away const is safe here: the nodes are owned by this graph, which is itself
-        // non-const in this method, so the nodes are not actually const objects.
-        Node *up = const_cast<Node *>(link->mup);
-        Node *down = const_cast<Node *>(link->mdown);
-        // NOLINTEND(cppcoreguidelines-pro-type-const-cast)
+        Node *up = link->up_;
+        Node *down = link->down_;
 
         // Remove the references to the link in its adjacent nodes, and the link itself at the end.
-        up->madj.erase(down->mid);
-        down->mradj.erase(up->mid);
+        up->adj_.erase(down->id());
+        down->radj_.erase(up->id());
         links_.erase(it);
     }
 
@@ -142,7 +137,7 @@ namespace hipop {
      * @param costs The new costs
      */
     void OrientedGraph::UpdateLinkCosts(const std::string &linkId, mapcosts costs) {
-        link(linkId)->updateCosts(std::move(costs));
+        link(linkId)->setCosts(std::move(costs));
     }
 
     /**
@@ -160,14 +155,14 @@ namespace hipop {
 
     void OrientedGraph::ShowNodes() const {
         for (const Node *node : nodes()) {
-            std::cout << "Node(" << node->mid << ", [" << node->mposition[0] << ",\t" << node->mposition[1] << "])\n";
+            std::cout << "Node(" << node->id() << ", [" << node->x() << ",\t" << node->y() << "])\n";
         }
     }
 
 
     void OrientedGraph::ShowLinks() const {
         for (const Link *link : links()) {
-            std::cout << "Link(" << link->mid << ", " << link->mup->mid << ", " << link->mdown->mid << ")\n";
+            std::cout << "Link(" << link->id() << ", " << link->up()->id() << ", " << link->down()->id() << ")\n";
         }
     }
 
@@ -181,7 +176,7 @@ namespace hipop {
      */
     double OrientedGraph::getLength(const std::string &up, const std::string &down)
     {
-        return node(up)->madj[down]->mlength;
+        return node(up)->adj().at(down)->length();
     }
 
 
@@ -205,8 +200,8 @@ namespace hipop {
 
         std::vector<std::string> result;
         for (const Link *link : links()) {
-            if (!link->hasCost(labelToCostFamily.at(link->mlabel), costMetric)) {
-                result.emplace_back(link->mid);
+            if (!link->hasCost(labelToCostFamily.at(link->label()), costMetric)) {
+                result.emplace_back(link->id());
             }
         }
         return result;
