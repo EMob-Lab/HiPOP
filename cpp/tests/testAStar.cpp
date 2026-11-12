@@ -33,8 +33,8 @@ static void testCase(
  */
 static std::function<double(const Node*, const Node*)> makePenaltyFun(double max_speed) {
     return [max_speed](const Node *a, const Node *b) {
-        double dx = b->mposition[0] - a->mposition[0];
-        double dy = b->mposition[1] - a->mposition[1];
+        double dx = b->x() - a->x();
+        double dy = b->y() - a->y();
         return std::sqrt(dx * dx + dy * dy) / max_speed;
     };
 }

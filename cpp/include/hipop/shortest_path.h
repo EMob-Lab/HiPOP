@@ -37,7 +37,7 @@ namespace hipop {
          * - ... or, in case of ties, the one whose ID comes first in lexicographical order.
          */
         bool operator<(const DijkstraQueueItem &other) const {
-            return dist == other.dist ? node->mid > other.node->mid : dist > other.dist;
+            return dist == other.dist ? node->id() > other.node->id() : dist > other.dist;
         }
     };
 
@@ -98,16 +98,16 @@ namespace hipop {
             if (u == destination_node) {
                 pathCost path;
                 for (auto it = prev.find(u); it != prev.end(); it = prev.find(it->second)) {
-                    path.first.emplace_back(it->first->mid);
+                    path.first.emplace_back(it->first->id());
                 }
-                path.first.emplace_back(origin_node->mid);
+                path.first.emplace_back(origin_node->id());
                 std::reverse(path.first.begin(), path.first.end());
                 path.second = dist_u;
                 return path;
             }
 
-            u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
-                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->id(), [&](const Link *link) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->label()) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
@@ -116,7 +116,7 @@ namespace hipop {
 
                     double cost_on_link = costFunction(link);
                     double new_dist = dist_u + cost_on_link;
-                    const Node *neighbor = link->mdown;
+                    const Node *neighbor = link->down();
 
                     auto neighbor_it = dist.try_emplace(neighbor, INFINITY).first;
                     if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
