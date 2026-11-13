@@ -34,6 +34,12 @@ void shortest_path(nb::module_ &m) {
     m.def(
         "dijkstra_single_source",
         &hipop::dijkstraSingleSource,
+        "Compute the shortest paths from the given origin to all the nodes reachable from it.\n"
+        "\n"
+        "WARNING: the Node and Link objects in the returned dict are non-owning references\n"
+        "to data stored in the OrientedGraph. The graph must be kept alive for as long as they\n"
+        "are used, and they must not be removed from it. Otherwise, accessing them results in\n"
+        "undefined behavior (likely a crash).",
         nb::rv_policy::reference,
         "graph"_a,
         "origin"_a,
@@ -66,6 +72,12 @@ void shortest_path(nb::module_ &m) {
     m.def(
         "parallel_dijkstra_single_source",
         &hipop::parallelDijkstraSingleSource,
+        "Compute, for each origin, the shortest paths to all the nodes reachable from it.\n"
+        "\n"
+        "WARNING: the Node and Link objects in the returned dicts are non-owning references\n"
+        "to data stored in the OrientedGraph. The graph must be kept alive for as long as they\n"
+        "are used, and they must not be removed from it. Otherwise, accessing them results in\n"
+        "undefined behavior (likely a crash).",
         nb::rv_policy::reference,
         "graph"_a,
         "origins"_a,
