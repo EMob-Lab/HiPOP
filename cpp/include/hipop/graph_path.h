@@ -116,8 +116,8 @@ namespace hipop {
         /**
          * Number of links in the path.
          *
-         * WARNING: the number of nodes in the path is `1 + size()`.
-         * In particular, the number of nodes is always > 0, even if the path is empty.
+         * @warning The number of nodes in the path is `1 + size()`. In particular,
+         *          the number of nodes is always > 0, even if the path is empty.
          */
         [[nodiscard]] std::size_t size() const {
             return links_.size();
