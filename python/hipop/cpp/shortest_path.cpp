@@ -97,7 +97,8 @@ void shortest_path(nb::module_ &m) {
         "cost_multiplier"_a,
         "max_retry"_a,
         "k_path"_a,
-        "intermodal"_a
+        "intermodal"_a,
+        "a_star_constant"_a
     );
 
     m.def(

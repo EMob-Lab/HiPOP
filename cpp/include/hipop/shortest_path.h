@@ -42,6 +42,90 @@ namespace hipop {
     };
 
 
+    template<typename CostFunction, typename HeuristicFunction>
+    pathCost aStarGeneric(
+        const OrientedGraph &G,
+        const std::string &origin,
+        const std::string &destination,
+        const CostFunction &costFunction,
+        const setstring &accessibleLinkLabels,
+        const HeuristicFunction &heuristic
+    ) {
+        static_assert(
+            std::is_invocable_r_v<double, CostFunction, const Link *>,
+            "Cost function must have signature: double(const Link *link)"
+        );
+
+        const Node *origin_node = G.node(origin);
+        const Node *destination_node = G.node(destination);
+
+        // Return a 0-node path with zero cost if origin and destination are identical.
+        // Remark: it would be more consistent with the general case to return 1-node path
+        // made of the single origin + destination node.
+        // Still, for compliance with legacy behavior, we return a 0-node path.
+        if (origin_node == destination_node) {
+            pathCost empty_path;
+            empty_path.second = 0;
+            return empty_path;
+        }
+
+        std::unordered_map<const Node*, double> dist; // No nullptr keys in this map.
+        std::unordered_map<const Node*, const Node*> prev; // No nullptr (neither as key nor as value) in this map.
+        dist.reserve(G.nodeCount());
+        prev.reserve(G.nodeCount());
+        dist[origin_node] = 0;
+        // `prev[origin_node]` is intentionally left unset (the origin node has no predecessor).
+
+        std::priority_queue<DijkstraQueueItem> pq;
+        pq.emplace(DijkstraQueueItem{ heuristic(origin_node, destination_node), origin_node });
+
+        while (!pq.empty()) {
+
+            const Node *u = pq.top().node;
+            double dist_u = dist.at(u);
+            pq.pop();
+
+            if (u == destination_node) {
+                pathCost path;
+                for (auto it = prev.find(u); it != prev.end(); it = prev.find(it->second)) {
+                    path.first.emplace_back(it->first->mid);
+                }
+                path.first.emplace_back(origin_node->mid);
+                std::reverse(path.first.begin(), path.first.end());
+                path.second = dist_u;
+                return path;
+            }
+
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->mid, [&](const Link *link) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
+
+                    // The Dijkstra algorithm requires that all link costs are >= 0, and so does
+                    // the current implementation. `cost_on_link` must NOT be NaN either.
+                    // However, having link costs equal to +infinity is allowed:
+                    // the corresponding links are never visited.
+
+                    double cost_on_link = costFunction(link);
+                    double new_dist = dist_u + cost_on_link;
+                    const Node *neighbor = link->mdown;
+
+                    auto neighbor_it = dist.try_emplace(neighbor, INFINITY).first;
+                    if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
+                        neighbor_it->second = new_dist;
+                        pq.emplace(DijkstraQueueItem{ new_dist + heuristic(neighbor, destination_node), neighbor });
+                        prev[neighbor] = u;
+                    }
+                }
+            });
+        }
+
+        // No path from origin to destination was found: return a 0-node path with infinite cost in this case.
+        // Remark: to make it more expicit, it would be better to return an optional<pathCost> instead.
+        pathCost invalid_path;
+        invalid_path.second = INFINITY;
+        return invalid_path;
+    }
+
+
     /**
      * Compute the shortest path between origin and destination using the Dijkstra algorithm.
      *
@@ -231,7 +315,8 @@ namespace hipop {
         double costMultiplier,
         int maxRetry,
         int kPath,
-        bool intermodal);
+        bool intermodal,
+        double aStarConstant = 0);
 
     std::vector<std::vector<pathCost>> parallelKShortestPath(
         const OrientedGraph &G,
