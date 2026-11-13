@@ -1,7 +1,6 @@
 # Re-export symbols from the C++ bindings
 # ruff: disable[PLC0414] The useless-import-alias rule is explicitly described as raising false positives
 # in case of re-exporting symbols from a module, which is exactly what we are doing here.
-from hipop.cpp.shortest_path import SameOriginPathTree as SameOriginPathTree
 from hipop.cpp.shortest_path import astar_euclidian_dist as astar_euclidian_dist
 from hipop.cpp.shortest_path import compute_path_cost as compute_path_cost
 from hipop.cpp.shortest_path import compute_path_length as compute_path_length

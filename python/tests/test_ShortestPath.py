@@ -1,7 +1,5 @@
 import multiprocessing
 
-import pytest
-
 from hipop.graph import OrientedGraph, make_empty_path, make_path
 from hipop.shortest_path import dijkstra, dijkstra_single_source, parallel_dijkstra
 
@@ -92,7 +90,7 @@ def test_parallel_dijkstra() -> None:
     ]
 
 
-# Test the bindings exposed for dijkstra_single_source and its returned object SameOriginPathTree.
+# Test the bindings exposed for dijkstra_single_source.
 # REMARK: here, the goal is to validate the bindings, not to cover
 # all the algorithmic edge cases (these are covered in the C++ tests).
 def test_dijkstra_single_source() -> None:
@@ -100,20 +98,9 @@ def test_dijkstra_single_source() -> None:
     G = _make_simple_graph()
     tree = dijkstra_single_source(G, "B", "time", {"CarLayer": "CAR"})
 
-    assert tree.origin.id == "B"
-
-    # Destinations
-    assert sorted(node.id for node in tree.destinations) == ["B", "C", "E", "F"]
-    assert len(tree.destinations) == 4
-    assert G.nodes["F"] in tree.destinations
-    assert G.nodes["A"] not in tree.destinations
-
-    # Paths
-    assert tree.has_path_to(G.nodes["B"])
-    assert not tree.has_path_to(G.nodes["A"])
-    assert tree.path_to(G.nodes["B"]) == make_empty_path(G, "B"), "Empty path B -> B"
-    assert tree.path_to(G.nodes["F"]) == make_path(G, ["B_C", "C_F"]), "B -> F"
-    assert tree.find_path_to(G.nodes["E"]) == make_path(G, ["B_E"]), "B -> E"
-    assert tree.find_path_to(G.nodes["D"]) is None, "Non-feasible path B -> D"
-    with pytest.raises(ValueError, match=r"\[D\]"):
-        tree.path_to(G.nodes["D"])
+    assert isinstance(tree, dict)
+    assert {node.id: link.id for node, link in tree.items()} == {"C": "B_C", "E": "B_E", "F": "C_F"}
+    assert G.nodes["F"] in tree
+    assert G.nodes["B"] not in tree, "Origin is not a key"
+    assert G.nodes["A"] not in tree, "Non-reachable node"
+    assert tree[G.nodes["F"]] is G.links["C_F"]
