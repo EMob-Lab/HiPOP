@@ -7,6 +7,7 @@ Checks: # See https://clang.llvm.org/extra/clang-tidy/checks/list.html
 
   - cppcoreguidelines-*
   - misc-include-cleaner # The other misc-* are worth enabling, but that would mean significant code refactoring.
+  - misc-non-private-member-variables-in-classes
   - modernize-*
   - performance-*
 
@@ -49,3 +50,9 @@ CheckOptions:
   # The nanobind STL headers provide the C++ <-> Python type casters through template specializations:
   # no symbol from them is referenced directly, but they must be included where the conversions happen.
   misc-include-cleaner.IgnoreHeaders: 'nanobind/stl/.*'
+
+  # Classes whose fields are ALL public are accepted as plain data structures (to avoid writing
+  # trivial getters). Still, this exception to the general rule should be reserved for simple small classes,
+  # with no abstraction, and no non-trivial logic implemented in the class.
+  # Complex classes MUST keep their fields private (although this check will miss them if they are all public).
+  misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true

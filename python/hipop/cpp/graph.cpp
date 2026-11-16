@@ -138,12 +138,12 @@ static void bind_graph_element_mapping(nb::module_ &m, const char *name) {
     // to the value-type of the underlying C++ range/iterator objects.
     struct KeyProjection {
         const std::string &operator()(Element *element) const {
-            return element->mid;
+            return element->id();
         }
     };
     struct ItemProjection {
         std::pair<const std::string &, Element *> operator()(Element *element) const {
-            return { element->mid, element };
+            return { element->id(), element };
         }
     };
 
@@ -206,13 +206,13 @@ void graph(nb::module_ &m) {
         "for as long as the link is used, and the link must not be removed\n"
         "from it. Otherwise, accessing the link results in undefined behavior\n"
         "(likely a crash).")
-        .def_ro("id", &hipop::Link::mid)
-        .def_prop_ro("upstream", [](const hipop::Link &link) { return link.mup->mid; })
-        .def_prop_ro("downstream", [](const hipop::Link &link) { return link.mdown->mid; })
-        .def_ro("costs", &hipop::Link::mcosts)
-        .def_ro("label", &hipop::Link::mlabel)
-        .def_ro("length", &hipop::Link::mlength)
-        .def("update_costs", &hipop::Link::updateCosts, "costs"_a);
+        .def_prop_ro("id", &hipop::Link::id)
+        .def_prop_ro("upstream", [](const hipop::Link &link) { return link.up()->id(); })
+        .def_prop_ro("downstream", [](const hipop::Link &link) { return link.down()->id(); })
+        .def_prop_ro("length", &hipop::Link::length)
+        .def_prop_ro("costs", &hipop::Link::costs)
+        .def_prop_ro("label", &hipop::Link::label)
+        .def("update_costs", &hipop::Link::setCosts, "costs"_a);
 
     nb::class_<hipop::Node>(m, "Node",
         "Node of an OrientedGraph.\n"
@@ -222,12 +222,12 @@ void graph(nb::module_ &m) {
         "for as long as the node is used, and the node must not be removed\n"
         "from it. Otherwise, accessing the node results in undefined behavior\n"
         "(likely a crash).")
-        .def_ro("id", &hipop::Node::mid)
-        .def_ro("position", &hipop::Node::mposition)
-        .def_ro("adj", &hipop::Node::madj)
-        .def_ro("radj", &hipop::Node::mradj)
-        .def_ro("label", &hipop::Node::mlabel)
-        .def_ro("exclude_movements", &hipop::Node::mexclude_movements)
+        .def_prop_ro("id", &hipop::Node::id)
+        .def_prop_ro("position", &hipop::Node::position)
+        .def_prop_ro("adj", &hipop::Node::adj)
+        .def_prop_ro("radj", &hipop::Node::radj)
+        .def_prop_ro("label", &hipop::Node::label)
+        .def_prop_ro("exclude_movements", &hipop::Node::excludeMovements)
         .def("get_exits", &hipop::Node::getExits, "predecessor"_a, nb::rv_policy::reference);
 
     bind_graph_element_mapping<NodeMapping>(m, "NodeMap");
