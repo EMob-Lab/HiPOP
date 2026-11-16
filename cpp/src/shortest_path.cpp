@@ -669,7 +669,8 @@ namespace hipop
         double costMultiplier,
         int maxRetry,
         int kPath,
-        bool intermodal)
+        bool intermodal,
+        double aStarConstant)
     {
         if (kPath <= 0) {
             throw std::invalid_argument("[KShortestPath] kPath must be >= 1.");
@@ -681,7 +682,13 @@ namespace hipop
         LabelToCostFamilyLinkCostFunction costFunction(labelToCostFamily, costMetric);
         std::vector<pathCost> paths;
 
-        pathCost firstPath = dijkstraGeneric(G, origin, destination, costFunction, accessibleLinkLabels);
+        auto heuristic = [aStarConstant](const Node *current, const Node *dest) {
+                double dx = dest->position()[0] - current->position()[0];
+                double dy = dest->position()[1] - current->position()[1];
+                return std::sqrt(dx * dx + dy * dy) * aStarConstant;
+        };
+
+        pathCost firstPath = aStarGeneric(G, origin, destination, costFunction, accessibleLinkLabels, heuristic);
         paths.emplace_back(firstPath);
 
         // Stop here if any of these special cases occurs:
@@ -721,7 +728,7 @@ namespace hipop
         int retry = 0;
         while (true) {
 
-            pathCost newPath = dijkstraGeneric(G, origin, destination, overridenCostFunction, accessibleLinkLabels);
+            pathCost newPath = aStarGeneric(G, origin, destination, overridenCostFunction, accessibleLinkLabels, heuristic);
 
             // The path cost returned by Dijkstra is computed using the overriden costs,
             // but we need the "true" path cost for the rest of the algorithm
@@ -870,6 +877,29 @@ namespace hipop
         return A;
     }
 
+
+    double computeAStarConstant(const OrientedGraph &G, const std::string &costMetric) {
+
+        double result = std::numeric_limits<double>::max(); // Maximum **finite** value.
+        for (const Link *link : G.links()) {
+
+            double dx = link->up()->position()[0] - link->down()->position()[0];
+            double dy = link->up()->position()[1] - link->down()->position()[1];
+            double dist = std::sqrt(dx * dx + dy * dy);
+            if (dist == 0) {
+                continue;
+            }
+
+            for (const auto &it : link->costs()) {
+                double costOnLink = link->cost(it.first, costMetric);
+                result = std::fmin(result, costOnLink / dist);
+            }
+        }
+
+        return result;
+    }
+
+
     /**
      * @brief Batch computation of K shortest paths using openmp, each thread has its own deep copy of the OrientedGraph to ensure that the increase of the cost do not collapse with the other threads
      *
@@ -915,6 +945,8 @@ namespace hipop
         std::vector<std::string> costMetrics(nbODs, costMetric);
         tie(uniqueIndices, duplicateIndices, nbPaths) = find_duplicates(origins, destinations, labelToCostFamily, costMetrics, kPaths);
 
+        double aStarConstant = computeAStarConstant(G, costMetric);
+
         // FIXME MSVC is still stuck to OpenMP 2.0, which requires **signed** loop variables for parallel for.
         std::int64_t nbUniqueIndices = uniqueIndices.size();
 
@@ -923,11 +955,11 @@ namespace hipop
             int uniqueIdx = uniqueIndices[i];
             if (accessibleLinkLabels.empty())
             {
-                res[uniqueIdx] = KShortestPath(G, origins[uniqueIdx], destinations[uniqueIdx], costMetric, {}, labelToCostFamily[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
+                res[uniqueIdx] = KShortestPath(G, origins[uniqueIdx], destinations[uniqueIdx], costMetric, {}, labelToCostFamily[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false, aStarConstant);
             }
             else
             {
-                res[uniqueIdx] = KShortestPath(G, origins[uniqueIdx], destinations[uniqueIdx], costMetric, accessibleLinkLabels[uniqueIdx], labelToCostFamily[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false);
+                res[uniqueIdx] = KShortestPath(G, origins[uniqueIdx], destinations[uniqueIdx], costMetric, accessibleLinkLabels[uniqueIdx], labelToCostFamily[uniqueIdx], maxDiffCost, maxDistInCommon, costMultiplier, maxRetry, nbPaths[uniqueIdx], false, aStarConstant);
             }
         }
 
