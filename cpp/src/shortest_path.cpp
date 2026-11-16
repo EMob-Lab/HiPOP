@@ -683,8 +683,8 @@ namespace hipop
         std::vector<pathCost> paths;
 
         auto heuristic = [aStarConstant](const Node *current, const Node *dest) {
-                double dx = dest->mposition[0] - current->mposition[0];
-                double dy = dest->mposition[1] - current->mposition[1];
+                double dx = dest->position()[0] - current->position()[0];
+                double dy = dest->position()[1] - current->position()[1];
                 return std::sqrt(dx * dx + dy * dy) * aStarConstant;
         };
 
@@ -883,14 +883,14 @@ namespace hipop
         double result = std::numeric_limits<double>::max(); // Maximum **finite** value.
         for (const Link *link : G.links()) {
 
-            double dx = link->mup->mposition[0] - link->mdown->mposition[0];
-            double dy = link->mup->mposition[1] - link->mdown->mposition[1];
+            double dx = link->up()->position()[0] - link->down()->position()[0];
+            double dy = link->up()->position()[1] - link->down()->position()[1];
             double dist = std::sqrt(dx * dx + dy * dy);
             if (dist == 0) {
                 continue;
             }
 
-            for (const auto &it : link->mcosts) {
+            for (const auto &it : link->costs()) {
                 double costOnLink = link->cost(it.first, costMetric);
                 result = std::fmin(result, costOnLink / dist);
             }
