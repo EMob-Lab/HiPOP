@@ -33,7 +33,7 @@ namespace hipop {
         );
         double result = 0;
         for (std::size_t i = 0; i + 1 < path.size(); ++i) {
-            const Link *link = G.node(path[i])->madj.at(path[i + 1]);
+            const Link *link = G.node(path[i])->adj().at(path[i + 1]);
             result += costFunction(link);
         }
         return result;
@@ -45,7 +45,7 @@ namespace hipop {
      */
     struct LengthLinkCostFunction {
         double operator()(const Link *link) const {
-            return link->mlength;
+            return link->length();
         }
     };
 
@@ -90,7 +90,7 @@ namespace hipop {
             costMetric_(std::move(costMetric)) {}
 
         double operator()(const Link *link) const {
-            return link->cost(labelToCostFamily_.at(link->mlabel), costMetric_);
+            return link->cost(labelToCostFamily_.at(link->label()), costMetric_);
         }
     };
 

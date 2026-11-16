@@ -44,7 +44,7 @@ template<typename Range>
 static std::multiset<std::string> collectIds(const Range &range) {
     std::multiset<std::string> result;
     for (const auto *element : range) {
-        result.insert(element->mid);
+        result.insert(element->id());
     }
     return result;
 }
@@ -87,7 +87,7 @@ static void test_NodeAccessors() {
     // node()
     const Node *a = cG.node("A");
     assertTrue(
-        a != nullptr && a->mid == "A" && a->mposition[0] == 0 && a->mposition[1] == 0,
+        a != nullptr && a->id() == "A" && a->x() == 0 && a->y() == 0,
         "[NodeAccessors] node() should return node 'A'"
     );
     assertTrue(G.node("A") == a, "[NodeAccessors] Read-only and read-write node() should return the same node");
@@ -103,12 +103,6 @@ static void test_NodeAccessors() {
     assertTrue(G.findNode("A") == a, "[NodeAccessors] Read-write findNode() should return node 'A'");
     assertTrue(cG.findNode("Z") == nullptr, "[NodeAccessors] Read-only findNode() should return nullptr for unknown nodes");
     assertTrue(G.findNode("Z") == nullptr, "[NodeAccessors] Read-write findNode() should return nullptr for unknown nodes");
-
-    // Modification through the read-write accessors.
-    G.node("B")->mlabel = "Modified";
-    assertTrue(cG.node("B")->mlabel == "Modified", "[NodeAccessors] Modification through node() should be visible");
-    G.findNode("C")->mlabel = "Modified";
-    assertTrue(cG.node("C")->mlabel == "Modified", "[NodeAccessors] Modification through findNode() should be visible");
 
     // Accessors must stay consistent after a deletion.
     G.DeleteNode("B");
@@ -137,10 +131,10 @@ static void test_LinkAccessors() {
     // link()
     const Link *ab = cG.link("A_B");
     assertTrue(
-        ab != nullptr && ab->mid == "A_B" && ab->mlabel == "CarLayer" && ab->mlength == 10,
+        ab != nullptr && ab->id() == "A_B" && ab->label() == "CarLayer" && ab->length() == 10,
         "[LinkAccessors] link() should return link 'A_B'"
     );
-    assertTrue(ab->mup == cG.node("A") && ab->mdown == cG.node("B"), "[LinkAccessors] Link 'A_B' should go from 'A' to 'B'");
+    assertTrue(ab->up() == cG.node("A") && ab->down() == cG.node("B"), "[LinkAccessors] Link 'A_B' should go from 'A' to 'B'");
     assertTrue(G.link("A_B") == ab, "[LinkAccessors] Read-only and read-write link() should return the same link");
     assertThrows<std::invalid_argument>([&]() {
         [[maybe_unused]] const Link *link = cG.link("Z");
@@ -156,14 +150,14 @@ static void test_LinkAccessors() {
     assertTrue(G.findLink("Z") == nullptr, "[LinkAccessors] Read-write findLink() should return nullptr for unknown links");
 
     // Modification through the read-write accessors.
-    G.link("A_B")->updateCosts({{"CAR", {{"time", 42}}}});
+    G.link("A_B")->setCosts({{"CAR", {{"time", 42}}}});
     assertTrue(
-        cG.link("A_B")->mcosts.at("CAR").at("time") == 42,
+        cG.link("A_B")->costs().at("CAR").at("time") == 42,
         "[LinkAccessors] Modification through link() should be visible"
     );
-    G.findLink("B_C")->updateCosts({{"BUS", {{"time", 43}}}});
+    G.findLink("B_C")->setCosts({{"BUS", {{"time", 43}}}});
     assertTrue(
-        cG.link("B_C")->mcosts.at("BUS").at("time") == 43,
+        cG.link("B_C")->costs().at("BUS").at("time") == 43,
         "[LinkAccessors] Modification through findLink() should be visible"
     );
 
@@ -199,18 +193,11 @@ static void test_NodeRanges() {
     assertTrue(collectIds(G.nodes()) == expected, "[NodeRanges] Read-write range should enumerate each node once");
 
     for (const Node *node : cG.nodes()) {
-        assertTrue(node == cG.node(node->mid), "[NodeRanges] Read-only range should enumerate the nodes of the graph");
+        assertTrue(node == cG.node(node->id()), "[NodeRanges] Read-only range should enumerate the nodes of the graph");
     }
 
-    // Modification through the read-write range.
     for (Node *node : G.nodes()) {
-        node->mlabel = "Label" + node->mid;
-    }
-    for (const Node *node : cG.nodes()) {
-        assertTrue(
-            node->mlabel == "Label" + node->mid,
-            "[NodeRanges] Modification through the read-write range should be visible"
-        );
+        assertTrue(node == cG.node(node->id()), "[NodeRanges] Read-write range should enumerate the nodes of the graph");
     }
 
     // Conversion from read-write to read-only, and mixed comparisons.
@@ -252,16 +239,16 @@ static void test_LinkRanges() {
     assertTrue(collectIds(G.links()) == expected, "[LinkRanges] Read-write range should enumerate each link once");
 
     for (const Link *link : cG.links()) {
-        assertTrue(link == cG.link(link->mid), "[LinkRanges] Read-only range should enumerate the links of the graph");
+        assertTrue(link == cG.link(link->id()), "[LinkRanges] Read-only range should enumerate the links of the graph");
     }
 
     // Modification through the read-write range.
     for (Link *link : G.links()) {
-        link->updateCosts({{"CAR", {{"time", 100}}}});
+        link->setCosts({{"CAR", {{"time", 100}}}});
     }
     for (const Link *link : cG.links()) {
         assertTrue(
-            link->mcosts.at("CAR").at("time") == 100,
+            link->costs().at("CAR").at("time") == 100,
             "[LinkRanges] Modification through the read-write range should be visible"
         );
     }
@@ -288,7 +275,7 @@ static void test_AddNode() {
     const Node *e = G.node("E");
     assertTrue(G.nodeCount() == 5, "[AddNode] nodeCount() should be 5 after insertion");
     assertTrue(
-        e->mid == "E" && e->mposition[0] == 4 && e->mposition[1] == 4 && e->mlabel == "NewNode",
+        e->id() == "E" && e->x() == 4 && e->y() == 4 && e->label() == "NewNode",
         "[AddNode] node() should return the inserted node"
     );
 
@@ -299,11 +286,11 @@ static void test_AddNode() {
     assertTrue(G.nodeCount() == 5, "[AddNode] nodeCount() should be unchanged after a failed insertion");
     assertTrue(G.node("A") == a, "[AddNode] Existing node should not be replaced by a failed insertion");
     assertTrue(
-        a->mposition[0] == 0 && a->mposition[1] == 0 && a->mlabel.empty(),
+        a->x() == 0 && a->y() == 0 && a->label().empty(),
         "[AddNode] Existing node should not be modified by a failed insertion"
     );
     assertTrue(
-        a->madj.size() == 1 && a->madj.at("B") == G.link("A_B"),
+        a->adj().size() == 1 && a->adj().at("B") == G.link("A_B"),
         "[AddNode] Links of the existing node should not be modified by a failed insertion"
     );
 }
@@ -318,11 +305,11 @@ static void test_AddLink() {
     const Link *cd = G.link("C_D");
     assertTrue(G.linkCount() == 3, "[AddLink] linkCount() should be 3 after insertion");
     assertTrue(
-        cd->mid == "C_D" && cd->mup == G.node("C") && cd->mdown == G.node("D") && cd->mlength == 30,
+        cd->id() == "C_D" && cd->up() == G.node("C") && cd->down() == G.node("D") && cd->length() == 30,
         "[AddLink] link() should return the inserted link"
     );
     assertTrue(
-        G.node("C")->madj.at("D") == cd && G.node("D")->mradj.at("C") == cd,
+        G.node("C")->adj().at("D") == cd && G.node("D")->radj().at("C") == cd,
         "[AddLink] Inserted link should be registered in the adjacency of its nodes"
     );
 
@@ -333,11 +320,11 @@ static void test_AddLink() {
     assertTrue(G.linkCount() == 3, "[AddLink] linkCount() should be unchanged after a failed insertion");
     assertTrue(G.link("A_B") == ab, "[AddLink] Existing link should not be replaced by a failed insertion");
     assertTrue(
-        ab->mup == G.node("A") && ab->mdown == G.node("B") && ab->mlength == 10 && ab->mlabel == "CarLayer",
+        ab->up() == G.node("A") && ab->down() == G.node("B") && ab->length() == 10 && ab->label() == "CarLayer",
         "[AddLink] Existing link should not be modified by a failed insertion"
     );
     assertTrue(
-        G.node("D")->madj.empty() && G.node("A")->mradj.empty(),
+        G.node("D")->adj().empty() && G.node("A")->radj().empty(),
         "[AddLink] Failed insertion should not modify the adjacency of the nodes"
     );
 
@@ -352,7 +339,7 @@ static void test_AddLink() {
     assertTrue(!G.hasLink("Z_A") && !G.hasLink("A_Z"), "[AddLink] Failed insertion should not add any link");
     assertTrue(!G.hasNode("Z"), "[AddLink] Failed insertion should not add any node");
     assertTrue(
-        G.node("A")->madj.size() == 1 && G.node("A")->mradj.empty(),
+        G.node("A")->adj().size() == 1 && G.node("A")->radj().empty(),
         "[AddLink] Failed insertion should not modify the adjacency of the nodes"
     );
 }
@@ -373,11 +360,11 @@ static void test_DeleteLink() {
         "[DeleteLink] Remaining elements should not be relocated"
     );
     assertTrue(
-        a->madj.empty() && b->mradj.empty(),
+        a->adj().empty() && b->radj().empty(),
         "[DeleteLink] Deleted link should be unregistered from the adjacency of its nodes"
     );
     assertTrue(
-        b->madj.size() == 1 && b->madj.at("C") == bc && G.node("C")->mradj.at("B") == bc,
+        b->adj().size() == 1 && b->adj().at("C") == bc && G.node("C")->radj().at("B") == bc,
         "[DeleteLink] Adjacency of the other links should not be modified"
     );
 
@@ -392,7 +379,7 @@ static void test_DeleteLink() {
     // A link with the same ID and endpoints can be added again.
     G.AddLink("A_B", "A", "B", 15, {{"CAR", {{"time", 5}}}}, "CarLayer");
     assertTrue(
-        G.link("A_B")->mlength == 15 && a->madj.at("B") == G.link("A_B") && b->mradj.at("A") == G.link("A_B"),
+        G.link("A_B")->length() == 15 && a->adj().at("B") == G.link("A_B") && b->radj().at("A") == G.link("A_B"),
         "[DeleteLink] Deleted link should be re-insertable"
     );
 }
@@ -425,8 +412,8 @@ static void test_DeleteNode() {
         "[DeleteNode] Remaining nodes should not be relocated"
     );
     assertTrue(
-        a->madj.empty() && a->mradj.empty() && c->madj.empty() && c->mradj.empty()
-            && d->madj.empty() && d->mradj.empty(),
+        a->adj().empty() && a->radj().empty() && c->adj().empty() && c->radj().empty()
+            && d->adj().empty() && d->radj().empty(),
         "[DeleteNode] Deleted links should be unregistered from the adjacency of the remaining nodes"
     );
 
@@ -440,7 +427,7 @@ static void test_DeleteNode() {
     G.DeleteNode("D");
     assertTrue(G.nodeCount() == 2 && !G.hasNode("D"), "[DeleteNode] Isolated node 'D' should be removed");
     assertTrue(
-        G.linkCount() == 1 && a->madj.at("C") == G.link("A_C"),
+        G.linkCount() == 1 && a->adj().at("C") == G.link("A_C"),
         "[DeleteNode] Links not adjacent to the deleted node should not be modified"
     );
 
@@ -448,7 +435,7 @@ static void test_DeleteNode() {
     G.AddNode("B", 5, 5);
     G.AddLink("A_B", "A", "B", 60, {{"CAR", {{"time", 6}}}}, "CarLayer");
     assertTrue(
-        G.node("B")->mposition[0] == 5 && G.node("B")->mradj.at("A") == G.link("A_B"),
+        G.node("B")->x() == 5 && G.node("B")->radj().at("A") == G.link("A_B"),
         "[DeleteNode] Deleted node should be re-insertable"
     );
 }
@@ -467,7 +454,7 @@ static void test_PointerStability() {
         G.AddLink("L" + std::to_string(i), "A", "N" + std::to_string(i), 1, {});
     }
     assertTrue(G.node("A") == a && G.link("A_B") == ab, "[PointerStability] Insertions should not relocate elements");
-    assertTrue(ab->mup == a && a->madj.at("B") == ab, "[PointerStability] Relationships should survive insertions");
+    assertTrue(ab->up() == a && a->adj().at("B") == ab, "[PointerStability] Relationships should survive insertions");
 
     // Move construction/assignment transfer the elements without relocating them.
     OrientedGraph moved(std::move(G));
@@ -485,7 +472,7 @@ static void test_PointerStability() {
     const Link *copyAB = copy.link("A_B");
     assertTrue(copyA != a && copyAB != ab, "[PointerStability] Copy should create new elements");
     assertTrue(
-        copyAB->mup == copyA && copyAB->mdown == copy.node("B") && copyA->madj.at("B") == copyAB,
+        copyAB->up() == copyA && copyAB->down() == copy.node("B") && copyA->adj().at("B") == copyAB,
         "[PointerStability] Relationships in the copy should point to the elements of the copy"
     );
     OrientedGraph copyAssigned = makeGraph();
@@ -495,7 +482,7 @@ static void test_PointerStability() {
         "[PointerStability] Copy-assignment should replace the content"
     );
     assertTrue(
-        copyAssigned.link("A_B")->mup == copyAssigned.node("A"),
+        copyAssigned.link("A_B")->up() == copyAssigned.node("A"),
         "[PointerStability] Relationships in the copy-assigned graph should point to its own elements"
     );
 }
@@ -507,14 +494,14 @@ static void test_CopyConstructor() {
 
     // Copy is deep, thus both instances are expected to be independent.
     OrientedGraph copyG(G);
-    G.link("A_B")->updateCosts({{"CAR", {{"time", 42}}}});
+    G.link("A_B")->setCosts({{"CAR", {{"time", 42}}}});
 
     assertTrue(
-        G.link("A_B")->mcosts.at("CAR").at("time") != copyG.link("A_B")->mcosts.at("CAR").at("time"),
+        G.link("A_B")->costs().at("CAR").at("time") != copyG.link("A_B")->costs().at("CAR").at("time"),
         "[CopyConstructor] Cost of original and copy should be different on link 'A_B'"
     );
     assertTrue(
-        G.link("B_C")->mcosts.at("BUS").at("time") == copyG.link("B_C")->mcosts.at("BUS").at("time"),
+        G.link("B_C")->costs().at("BUS").at("time") == copyG.link("B_C")->costs().at("BUS").at("time"),
         "[CopyConstructor] Cost of original and copy should be the same on link 'B_C'"
     );
     assertTrue(G.link("B_C") != copyG.link("B_C"), "[CopyConstructor] Links must be different objects");
@@ -532,15 +519,15 @@ static void test_CopyAssignmentOperator() {
     // Assignment operator is expected to perform a deep copy as well,
     // and also to erase the pre-existing content of the target instance.
     copyG = G;
-    G.link("A_B")->updateCosts({{"CAR", {{"time", 42}}}});
+    G.link("A_B")->setCosts({{"CAR", {{"time", 42}}}});
 
     assertTrue(!copyG.hasNode("Z"), "[CopyAssignmentOperator] Pre-existing node 'Z' should be erased by the copy");
     assertTrue(
-        G.link("A_B")->mcosts.at("CAR").at("time") != copyG.link("A_B")->mcosts.at("CAR").at("time"),
+        G.link("A_B")->costs().at("CAR").at("time") != copyG.link("A_B")->costs().at("CAR").at("time"),
         "[CopyAssignmentOperator] Cost of original and copy should be different on link 'A_B'"
     );
     assertTrue(
-        G.link("B_C")->mcosts.at("BUS").at("time") == copyG.link("B_C")->mcosts.at("BUS").at("time"),
+        G.link("B_C")->costs().at("BUS").at("time") == copyG.link("B_C")->costs().at("BUS").at("time"),
         "[CopyAssignmentOperator] Cost of original and copy should be the same on link 'B_C'"
     );
     assertTrue(G.link("B_C") != copyG.link("B_C"), "[CopyAssignmentOperator] Links must be different objects");
@@ -589,7 +576,7 @@ static void test_Exits() {
     std::vector<const Link*> exits = G.node("B")->getExits("A");
 
     assertTrue(exits.size() == 1, "[Exits] getExits() should return one link");
-    assertTrue(exits[0]->mdown->mid == "D", "[Exits] Exit link should go to 'D'");
+    assertTrue(exits[0]->down()->id() == "D", "[Exits] Exit link should go to 'D'");
 }
 
 
