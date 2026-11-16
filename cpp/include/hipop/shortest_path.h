@@ -51,9 +51,16 @@ namespace hipop {
         const setstring &accessibleLinkLabels,
         const HeuristicFunction &heuristic
     ) {
+        // FIXME Do not merge as-is: this function aStarGeneric has too much duplicated code
+        // with functions aStar and dijkstraGeneric.
+
         static_assert(
             std::is_invocable_r_v<double, CostFunction, const Link *>,
             "Cost function must have signature: double(const Link *link)"
+        );
+        static_assert(
+            std::is_invocable_r_v<double, HeuristicFunction, const Node *, const Node *>,
+            "Heuristic function must have signature: double(const Node *, const Node *)"
         );
 
         const Node *origin_node = G.node(origin);
