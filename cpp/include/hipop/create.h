@@ -56,7 +56,7 @@ namespace hipop {
             links.emplace_back(link);
         }
 
-        const Node *origin = links[0]->mup;
+        const Node *origin = links[0]->up();
         return { origin, std::move(links) };
     }
 

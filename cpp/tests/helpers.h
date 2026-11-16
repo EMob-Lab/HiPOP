@@ -112,10 +112,10 @@ inline void assertEqualShortestPathTrees(
         auto print = [](const std::unordered_map<const hipop::Node *, const hipop::Link *> &tree) {
             std::vector<std::pair<const hipop::Node *, const hipop::Link *>> sorted(tree.begin(), tree.end());
             std::sort(sorted.begin(), sorted.end(), [](const auto &lhs, const auto &rhs) {
-                return lhs.first->mid < rhs.first->mid;
+                return lhs.first->id() < rhs.first->id();
             });
             for (const auto &it : sorted) {
-                std::cerr << "    " << it.first->mid << " -> " << it.second->mid << '\n';
+                std::cerr << "    " << it.first->id() << " -> " << it.second->id() << '\n';
             }
         };
 

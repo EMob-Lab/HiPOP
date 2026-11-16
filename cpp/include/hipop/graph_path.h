@@ -67,20 +67,20 @@ namespace hipop {
         {
             const Node *expectedUpNode = origin_;
             for (const Link *link : links_) {
-                if (link->mup != expectedUpNode) {
+                if (link->up() != expectedUpNode) {
                     throw std::invalid_argument(
                         StrCat(
                             "[OrientedGraphPath::OrientedGraphPath] Inconsistent path continuation: link-ID=[",
-                            link->mid,
+                            link->id(),
                             "] link-origin=[",
-                            link->mup->mid,
+                            link->up()->id(),
                             "] current-path-destination=[",
-                            expectedUpNode->mid,
+                            expectedUpNode->id(),
                             "]"
                         )
                     );
                 }
-                expectedUpNode = link->mdown;
+                expectedUpNode = link->down();
             }
         }
 
@@ -103,7 +103,7 @@ namespace hipop {
          * Destination - aka. last node - of the path.
          */
         [[nodiscard]] const Node *destination() const {
-            return links_.empty() ? origin_ : links_.back()->mdown;
+            return links_.empty() ? origin_ : links_.back()->down();
         }
 
         /**
@@ -156,7 +156,7 @@ namespace hipop {
          * @param nodeIndex Must be <= size().
          */
         [[nodiscard]] const Node *node(std::size_t nodeIndex) const {
-            return nodeIndex == 0 ? origin_ : links_.at(nodeIndex - 1)->mdown;
+            return nodeIndex == 0 ? origin_ : links_.at(nodeIndex - 1)->down();
         }
 
         /**
@@ -176,8 +176,8 @@ namespace hipop {
             using iterator_category = std::bidirectional_iterator_tag;
             using difference_type = std::ptrdiff_t;
             using value_type = const Node *;
-            using pointer = value_type const *;
-            using reference = value_type const &;
+            using pointer = void;
+            using reference = value_type;
 
             NodeIterator() = default;
 
@@ -186,11 +186,7 @@ namespace hipop {
                 nodeIndex_{ nodeIndex } {}
 
             [[nodiscard]] reference operator*() const {
-                return nodeIndex_ == 0 ? path_->origin_ : path_->links_[nodeIndex_ - 1]->mdown;
-            }
-
-            [[nodiscard]] pointer operator->() const {
-                return &operator*();
+                return nodeIndex_ == 0 ? path_->origin_ : path_->links_[nodeIndex_ - 1]->down();
             }
 
             NodeIterator &operator++() {
@@ -281,7 +277,7 @@ namespace hipop {
             std::vector<std::string> result;
             result.reserve(size() + 1);
             for (const Node *node : nodes()) {
-                result.emplace_back(node->mid);
+                result.emplace_back(node->id());
             }
             return result;
         }
@@ -300,7 +296,7 @@ namespace hipop {
             std::vector<std::string> result;
             result.reserve(size());
             for (const Link *link : links_) {
-                result.emplace_back(link->mid);
+                result.emplace_back(link->id());
             }
             return result;
         }
@@ -325,16 +321,16 @@ namespace hipop {
          * @throws std::invalid_argument if `link->up() != destination()`.
          */
         void add(const Link *link) {
-            if (link->mup != destination()) {
+            if (link->up() != destination()) {
                 throw std::invalid_argument(
                     StrCat(
                         "[OrientedGraphPath::add(const Link *)] ",
                         "Inconsistent path continuation: link-ID=[",
-                        link->mid,
+                        link->id(),
                         "] link-origin=[",
-                        link->mup->mid,
+                        link->up()->id(),
                         "] path-destination=[",
-                        destination()->mid,
+                        destination()->id(),
                         "]"
                     )
                 );
@@ -354,9 +350,9 @@ namespace hipop {
                     StrCat(
                         "[OrientedGraphPath::add(const OrientedGraphPath &)] ",
                         "Inconsistent path continuation: other-path-origin=[",
-                        path.origin()->mid,
+                        path.origin()->id(),
                         "] current-path-destination=[",
-                        destination()->mid,
+                        destination()->id(),
                         "]"
                     )
                 );
@@ -416,16 +412,16 @@ namespace hipop {
      * Print the path as `from=<origin-ID> links=[<link-ID> <link-ID> ...] to=<destination-ID>`.
      */
     inline std::ostream &operator<<(std::ostream &stream, const OrientedGraphPath &path) {
-        stream << "from=" << path.origin()->mid << " links=[";
+        stream << "from=" << path.origin()->id() << " links=[";
         bool isFirstLink = true;
         for (const Link *link : path.links()) {
             if (!isFirstLink) {
                 stream << " ";
             }
-            stream << link->mid;
+            stream << link->id();
             isFirstLink = false;
         }
-        stream << "] to=" << path.destination()->mid;
+        stream << "] to=" << path.destination()->id();
         return stream;
     }
 

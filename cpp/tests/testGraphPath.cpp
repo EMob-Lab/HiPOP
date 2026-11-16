@@ -29,11 +29,11 @@ static void testCase(std::string_view test_case_name, const std::function<void()
 static void checkPathInvariant(const OrientedGraphPath &path, std::string_view errorMessageSuffix = "") {
 
     for (std::size_t i = 0; i < path.size(); ++i) {
-        assertTrue(path.node(i) == path.link(i)->mup, StrCat(
+        assertTrue(path.node(i) == path.link(i)->up(), StrCat(
             "node[i] == link[i]->up() invariant broken for i=", std::to_string(i), errorMessageSuffix
         ));
 
-        assertTrue(path.node(i + 1) == path.link(i)->mdown, StrCat(
+        assertTrue(path.node(i + 1) == path.link(i)->down(), StrCat(
             "node[i + 1] == link[i]->down() invariant broken for i=", std::to_string(i), errorMessageSuffix
         ));
     }
@@ -329,7 +329,7 @@ static void test_NodeIteration() {
     // Forward iteration.
     std::vector<std::string> nodeIds;
     for (const Node *node : path.nodes()) {
-        nodeIds.emplace_back(node->mid);
+        nodeIds.emplace_back(node->id());
     }
     assertTrue(nodeIds == expectedNodeIds, "Wrong forward iteration");
     assertTrue(path.nodes().size() == 4, "Wrong number of nodes");
@@ -337,7 +337,7 @@ static void test_NodeIteration() {
     // Reverse iteration.
     std::vector<std::string> reversedNodeIds;
     for (auto it = path.nodes().rbegin(); it != path.nodes().rend(); ++it) {
-        reversedNodeIds.emplace_back((*it)->mid);
+        reversedNodeIds.emplace_back((*it)->id());
     }
     assertTrue(reversedNodeIds == expectedReversedNodeIds, "Wrong reverse iteration");
 
@@ -403,7 +403,7 @@ static void test_PathWithExcludedMovement() {
     const OrientedGraph G = graph_with_exclude_movements();
 
     // Sanity check: the transition A -> B2 -> C is indeed forbidden in the graph.
-    const auto &excludeMovements = G.node("B2")->mexclude_movements;
+    const auto &excludeMovements = G.node("B2")->excludeMovements();
     assertTrue(
         excludeMovements.count("A") > 0 && excludeMovements.at("A").count("C") > 0,
         "Transition A -> B2 -> C should be forbidden in the test graph"

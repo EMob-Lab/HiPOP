@@ -141,17 +141,17 @@ namespace hipop
             double dist_u = dist.at(u);
             pq.pop();
 
-            u->forEachExit(u == origin_node ? "" : prev.at(u)->mup->mid, [&](const Link *link) {
-                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->up()->id(), [&](const Link *link) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->label()) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
                     // However, having link costs equal to +infinity is allowed:
                     // the corresponding links are never visited.
 
-                    double cost_on_link = link->cost(labelToCostFamily.at(link->mlabel), costMetric);
+                    double cost_on_link = link->cost(labelToCostFamily.at(link->label()), costMetric);
                     double new_dist = dist_u + cost_on_link;
-                    const Node *neighbor = link->mdown;
+                    const Node *neighbor = link->down();
 
                     auto neighbor_it = dist.try_emplace(neighbor, INFINITY).first;
                     if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
@@ -189,8 +189,8 @@ namespace hipop
             int v = 0;
             for (const Node *node : G.nodes())
             {
-                nodevMap.insert({node->mid, v});
-                vnodeMap.insert({v, node->mid});
+                nodevMap.insert({node->id(), v});
+                vnodeMap.insert({v, node->id()});
                 ++v;
             }
         }
@@ -202,11 +202,11 @@ namespace hipop
         std::vector<std::vector<int>> prev(V, std::vector<int>(V, null));
         for (const Link *link : G.links())
         {
-            if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end())
+            if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->label()) != accessibleLinkLabels.end())
             {
-                const std::string &u = link->mup->mid;
-                const std::string &v = link->mdown->mid;
-                dist[nodevMap.at(u)][nodevMap.at(v)] = link->cost(labelToCostFamily.at(link->mlabel), costMetric);
+                const std::string &u = link->up()->id();
+                const std::string &v = link->down()->id();
+                dist[nodevMap.at(u)][nodevMap.at(v)] = link->cost(labelToCostFamily.at(link->label()), costMetric);
                 prev[nodevMap.at(u)][nodevMap.at(v)] = nodevMap.at(u);
             }
         }
@@ -506,7 +506,7 @@ namespace hipop
         double costMultiplier)
     {
         for (const Link *visited_link : path.links()) {
-            std::string decoded_link_id = removeIntermodalLinkSuffix(visited_link->mid);
+            std::string decoded_link_id = removeIntermodalLinkSuffix(visited_link->id());
 
             for (std::string_view link_suffix : {
                 IntermodalLinkSuffix::ORGINAL_ORIGINAL,
@@ -553,7 +553,7 @@ namespace hipop
             double commonDist = 0;
             for (const Link *link : newPath.links()) {
                 if (linksInExistingPath.find(link) != linksInExistingPath.end()) {
-                    commonDist += link->mlength;
+                    commonDist += link->length();
                 }
             }
 
@@ -571,12 +571,12 @@ namespace hipop
             return false;
         }
         if (sz == 0) {
-            return removeIntermodalNodeSuffix(a.origin()->mid) == removeIntermodalNodeSuffix(b.origin()->mid);
+            return removeIntermodalNodeSuffix(a.origin()->id()) == removeIntermodalNodeSuffix(b.origin()->id());
         }
         else {
             // No need to check the origin in case of non-empty paths.
             for (std::size_t i = 0; i < sz; ++i) {
-                if (removeIntermodalLinkSuffix(a.link(i)->mid) != removeIntermodalLinkSuffix(b.link(i)->mid)) {
+                if (removeIntermodalLinkSuffix(a.link(i)->id()) != removeIntermodalLinkSuffix(b.link(i)->id())) {
                     return false;
                 }
             }
@@ -590,10 +590,10 @@ namespace hipop
      * valid for the original graph.
      */
     OrientedGraphPath decodeIntermodalPath(const OrientedGraph &graph, const OrientedGraphPath &path) {
-        OrientedGraphPath result(graph.node(removeIntermodalNodeSuffix(path.origin()->mid)));
+        OrientedGraphPath result(graph.node(removeIntermodalNodeSuffix(path.origin()->id())));
         result.reserve(path.size());
         for (const Link *link : path.links()) {
-            result.add(graph.link(removeIntermodalLinkSuffix(link->mid)));
+            result.add(graph.link(removeIntermodalLinkSuffix(link->id())));
         }
         return result;
     }
@@ -803,7 +803,7 @@ namespace hipop
                     return it != forbiddenLinks.end() ? INFINITY : costFunction(link);
                 };
 
-                auto spurPath = dijkstraGeneric(G, spurNode->mid, destination, overridenCostFunction, accessibleLinkLabels);
+                auto spurPath = dijkstraGeneric(G, spurNode->id(), destination, overridenCostFunction, accessibleLinkLabels);
                 if (!spurPath.has_value()) {
                     continue;
                 }
@@ -984,23 +984,23 @@ namespace hipop
                 while (v != origin_node) {
                     const Link *link_to_v = prev.at(v);
                     links.emplace_back(link_to_v);
-                    v = link_to_v->mup;
+                    v = link_to_v->up();
                 }
                 std::reverse(links.begin(), links.end());
                 return PathCost{ OrientedGraphPath(origin_node, std::move(links)), dist_u };
             }
 
-            u->forEachExit(u == origin_node ? "" : prev.at(u)->mup->mid, [&](const Link *link) {
-                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->up()->id(), [&](const Link *link) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->label()) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
                     // However, having link costs equal to +infinity is allowed:
                     // the corresponding links are never visited.
 
-                    double cost_on_link = link->cost(labelToCostFamily.at(link->mlabel), costMetric);
+                    double cost_on_link = link->cost(labelToCostFamily.at(link->label()), costMetric);
                     double new_dist = dist_u + cost_on_link;
-                    const Node *neighbor = link->mdown;
+                    const Node *neighbor = link->down();
 
                     auto neighbor_it = dist.try_emplace(neighbor, INFINITY).first;
                     if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
@@ -1035,8 +1035,8 @@ namespace hipop
     {
         return aStar(G, origin, destination, costMetric, labelToCostFamily, accessibleLinkLabels,
             [](const Node *current, const Node *dest) {
-                double dx = dest->mposition[0] - current->mposition[0];
-                double dy = dest->mposition[1] - current->mposition[1];
+                double dx = dest->x() - current->x();
+                double dy = dest->y() - current->y();
                 return std::sqrt(dx * dx + dy * dy);
             }
         );
@@ -1082,113 +1082,113 @@ namespace hipop
         OrientedGraph doubledG1; // pass first on first elem of pairMandatoryLabels
         OrientedGraph doubledG2; // pass first on second elem of pairMandatoryLabels
         for (const Node *node : G.nodes()) {
-            doubledG1.AddNode(StrCat(node->mid, IntermodalNodeSuffix::ORIGINAL),
-                            node->mposition[0],
-                            node->mposition[1],
-                            node->mlabel,
-                            node->mexclude_movements);
-            doubledG1.AddNode(StrCat(node->mid, IntermodalNodeSuffix::TWIN),
-                            node->mposition[0],
-                            node->mposition[1],
-                            node->mlabel,
-                            node->mexclude_movements);
-            doubledG1.AddNode(StrCat(node->mid, IntermodalNodeSuffix::TRIPLE),
-                            node->mposition[0],
-                            node->mposition[1],
-                            node->mlabel,
-                            node->mexclude_movements);
-            doubledG2.AddNode(StrCat(node->mid, IntermodalNodeSuffix::ORIGINAL),
-                            node->mposition[0],
-                            node->mposition[1],
-                            node->mlabel,
-                            node->mexclude_movements);
-            doubledG2.AddNode(StrCat(node->mid, IntermodalNodeSuffix::TWIN),
-                            node->mposition[0],
-                            node->mposition[1],
-                            node->mlabel,
-                            node->mexclude_movements);
-            doubledG2.AddNode(StrCat(node->mid, IntermodalNodeSuffix::TRIPLE),
-                            node->mposition[0],
-                            node->mposition[1],
-                            node->mlabel,
-                            node->mexclude_movements);
+            doubledG1.AddNode(StrCat(node->id(), IntermodalNodeSuffix::ORIGINAL),
+                            node->x(),
+                            node->y(),
+                            node->label(),
+                            node->excludeMovements());
+            doubledG1.AddNode(StrCat(node->id(), IntermodalNodeSuffix::TWIN),
+                            node->x(),
+                            node->y(),
+                            node->label(),
+                            node->excludeMovements());
+            doubledG1.AddNode(StrCat(node->id(), IntermodalNodeSuffix::TRIPLE),
+                            node->x(),
+                            node->y(),
+                            node->label(),
+                            node->excludeMovements());
+            doubledG2.AddNode(StrCat(node->id(), IntermodalNodeSuffix::ORIGINAL),
+                            node->x(),
+                            node->y(),
+                            node->label(),
+                            node->excludeMovements());
+            doubledG2.AddNode(StrCat(node->id(), IntermodalNodeSuffix::TWIN),
+                            node->x(),
+                            node->y(),
+                            node->label(),
+                            node->excludeMovements());
+            doubledG2.AddNode(StrCat(node->id(), IntermodalNodeSuffix::TRIPLE),
+                            node->x(),
+                            node->y(),
+                            node->label(),
+                            node->excludeMovements());
         }
         for (const Link *link : G.links()) {
-            doubledG1.AddLink(StrCat(link->mid, IntermodalLinkSuffix::ORGINAL_ORIGINAL),
-                            StrCat(link->mup->mid, IntermodalNodeSuffix::ORIGINAL),
-                            StrCat(link->mdown->mid, IntermodalNodeSuffix::ORIGINAL),
-                            link->mlength,
-                            link->mcosts,
-                            link->mlabel);
-            doubledG1.AddLink(StrCat(link->mid, IntermodalLinkSuffix::TWIN_TWIN),
-                            StrCat(link->mup->mid, IntermodalNodeSuffix::TWIN),
-                            StrCat(link->mdown->mid, IntermodalNodeSuffix::TWIN),
-                            link->mlength,
-                            link->mcosts,
-                            link->mlabel);
-            doubledG1.AddLink(StrCat(link->mid, IntermodalLinkSuffix::TRIPLE_TRIPLE),
-                            StrCat(link->mup->mid, IntermodalNodeSuffix::TRIPLE),
-                            StrCat(link->mdown->mid, IntermodalNodeSuffix::TRIPLE),
-                            link->mlength,
-                            link->mcosts,
-                            link->mlabel);
-            doubledG2.AddLink(StrCat(link->mid, IntermodalLinkSuffix::ORGINAL_ORIGINAL),
-                            StrCat(link->mup->mid, IntermodalNodeSuffix::ORIGINAL),
-                            StrCat(link->mdown->mid, IntermodalNodeSuffix::ORIGINAL),
-                            link->mlength,
-                            link->mcosts,
-                            link->mlabel);
-            doubledG2.AddLink(StrCat(link->mid, IntermodalLinkSuffix::TWIN_TWIN),
-                            StrCat(link->mup->mid, IntermodalNodeSuffix::TWIN),
-                            StrCat(link->mdown->mid, IntermodalNodeSuffix::TWIN),
-                            link->mlength,
-                            link->mcosts,
-                            link->mlabel);
-            doubledG2.AddLink(StrCat(link->mid, IntermodalLinkSuffix::TRIPLE_TRIPLE),
-                            StrCat(link->mup->mid, IntermodalNodeSuffix::TRIPLE),
-                            StrCat(link->mdown->mid, IntermodalNodeSuffix::TRIPLE),
-                            link->mlength,
-                            link->mcosts,
-                            link->mlabel);
+            doubledG1.AddLink(StrCat(link->id(), IntermodalLinkSuffix::ORGINAL_ORIGINAL),
+                            StrCat(link->up()->id(), IntermodalNodeSuffix::ORIGINAL),
+                            StrCat(link->down()->id(), IntermodalNodeSuffix::ORIGINAL),
+                            link->length(),
+                            link->costs(),
+                            link->label());
+            doubledG1.AddLink(StrCat(link->id(), IntermodalLinkSuffix::TWIN_TWIN),
+                            StrCat(link->up()->id(), IntermodalNodeSuffix::TWIN),
+                            StrCat(link->down()->id(), IntermodalNodeSuffix::TWIN),
+                            link->length(),
+                            link->costs(),
+                            link->label());
+            doubledG1.AddLink(StrCat(link->id(), IntermodalLinkSuffix::TRIPLE_TRIPLE),
+                            StrCat(link->up()->id(), IntermodalNodeSuffix::TRIPLE),
+                            StrCat(link->down()->id(), IntermodalNodeSuffix::TRIPLE),
+                            link->length(),
+                            link->costs(),
+                            link->label());
+            doubledG2.AddLink(StrCat(link->id(), IntermodalLinkSuffix::ORGINAL_ORIGINAL),
+                            StrCat(link->up()->id(), IntermodalNodeSuffix::ORIGINAL),
+                            StrCat(link->down()->id(), IntermodalNodeSuffix::ORIGINAL),
+                            link->length(),
+                            link->costs(),
+                            link->label());
+            doubledG2.AddLink(StrCat(link->id(), IntermodalLinkSuffix::TWIN_TWIN),
+                            StrCat(link->up()->id(), IntermodalNodeSuffix::TWIN),
+                            StrCat(link->down()->id(), IntermodalNodeSuffix::TWIN),
+                            link->length(),
+                            link->costs(),
+                            link->label());
+            doubledG2.AddLink(StrCat(link->id(), IntermodalLinkSuffix::TRIPLE_TRIPLE),
+                            StrCat(link->up()->id(), IntermodalNodeSuffix::TRIPLE),
+                            StrCat(link->down()->id(), IntermodalNodeSuffix::TRIPLE),
+                            link->length(),
+                            link->costs(),
+                            link->label());
             // Add link on G1 between original and twin graph only if it corresponds to a mandatory label of the first group
-            bool original_to_twin_G1 = pairMandatoryLabels.first.count(link->mlabel);
+            bool original_to_twin_G1 = pairMandatoryLabels.first.count(link->label());
             if (original_to_twin_G1) {
-                doubledG1.AddLink(StrCat(link->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
-                                StrCat(link->mup->mid, IntermodalNodeSuffix::ORIGINAL),
-                                StrCat(link->mdown->mid, IntermodalNodeSuffix::TWIN),
-                                link->mlength,
-                                link->mcosts,
-                                link->mlabel);
+                doubledG1.AddLink(StrCat(link->id(), IntermodalLinkSuffix::ORIGINAL_TWIN),
+                                StrCat(link->up()->id(), IntermodalNodeSuffix::ORIGINAL),
+                                StrCat(link->down()->id(), IntermodalNodeSuffix::TWIN),
+                                link->length(),
+                                link->costs(),
+                                link->label());
             }
             // Add link on G2 between original and twin graph only if it corresponds to a mandatory label of the second group
-            bool original_to_twin_G2 = pairMandatoryLabels.second.count(link->mlabel);
+            bool original_to_twin_G2 = pairMandatoryLabels.second.count(link->label());
             if (original_to_twin_G2) {
-                doubledG2.AddLink(StrCat(link->mid, IntermodalLinkSuffix::ORIGINAL_TWIN),
-                                StrCat(link->mup->mid, IntermodalNodeSuffix::ORIGINAL),
-                                StrCat(link->mdown->mid, IntermodalNodeSuffix::TWIN),
-                                link->mlength,
-                                link->mcosts,
-                                link->mlabel);
+                doubledG2.AddLink(StrCat(link->id(), IntermodalLinkSuffix::ORIGINAL_TWIN),
+                                StrCat(link->up()->id(), IntermodalNodeSuffix::ORIGINAL),
+                                StrCat(link->down()->id(), IntermodalNodeSuffix::TWIN),
+                                link->length(),
+                                link->costs(),
+                                link->label());
             }
             // Add link on G1 between twin and triple graph only if it corresponds to a mandatory label of the second group
-            bool twin_to_trpl_G1 = pairMandatoryLabels.second.count(link->mlabel);
+            bool twin_to_trpl_G1 = pairMandatoryLabels.second.count(link->label());
             if (twin_to_trpl_G1) {
-                doubledG1.AddLink(StrCat(link->mid, IntermodalLinkSuffix::TWIN_TRIPLE),
-                                StrCat(link->mup->mid, IntermodalNodeSuffix::TWIN),
-                                StrCat(link->mdown->mid, IntermodalNodeSuffix::TRIPLE),
-                                link->mlength,
-                                link->mcosts,
-                                link->mlabel);
+                doubledG1.AddLink(StrCat(link->id(), IntermodalLinkSuffix::TWIN_TRIPLE),
+                                StrCat(link->up()->id(), IntermodalNodeSuffix::TWIN),
+                                StrCat(link->down()->id(), IntermodalNodeSuffix::TRIPLE),
+                                link->length(),
+                                link->costs(),
+                                link->label());
             }
             // Add link on G2 between twin and triple graph only if it corresponds to a mandatory label of the first group
-            bool twin_to_trpl_G2 = pairMandatoryLabels.first.count(link->mlabel);
+            bool twin_to_trpl_G2 = pairMandatoryLabels.first.count(link->label());
             if (twin_to_trpl_G2) {
-                doubledG2.AddLink(StrCat(link->mid, IntermodalLinkSuffix::TWIN_TRIPLE),
-                                StrCat(link->mup->mid, IntermodalNodeSuffix::TWIN),
-                                StrCat(link->mdown->mid, IntermodalNodeSuffix::TRIPLE),
-                                link->mlength,
-                                link->mcosts,
-                                link->mlabel);
+                doubledG2.AddLink(StrCat(link->id(), IntermodalLinkSuffix::TWIN_TRIPLE),
+                                StrCat(link->up()->id(), IntermodalNodeSuffix::TWIN),
+                                StrCat(link->down()->id(), IntermodalNodeSuffix::TRIPLE),
+                                link->length(),
+                                link->costs(),
+                                link->label());
             }
         }
 

@@ -44,7 +44,7 @@ namespace hipop {
          * - ... or, in case of ties, the one whose ID comes first in lexicographical order.
          */
         bool operator<(const DijkstraQueueItem &other) const {
-            return dist == other.dist ? node->mid > other.node->mid : dist > other.dist;
+            return dist == other.dist ? node->id() > other.node->id() : dist > other.dist;
         }
     };
 
@@ -105,14 +105,14 @@ namespace hipop {
                 while (v != origin_node) {
                     const Link *link_to_v = prev.at(v);
                     links.emplace_back(link_to_v);
-                    v = link_to_v->mup;
+                    v = link_to_v->up();
                 }
                 std::reverse(links.begin(), links.end());
                 return PathCost{ OrientedGraphPath(origin_node, std::move(links)), dist_u };
             }
 
-            u->forEachExit(u == origin_node ? "" : prev.at(u)->mup->mid, [&](const Link *link) {
-                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->mlabel) != accessibleLinkLabels.end()) {
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->up()->id(), [&](const Link *link) {
+                if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->label()) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
                     // the current implementation. `cost_on_link` must NOT be NaN either.
@@ -121,7 +121,7 @@ namespace hipop {
 
                     double cost_on_link = costFunction(link);
                     double new_dist = dist_u + cost_on_link;
-                    const Node *neighbor = link->mdown;
+                    const Node *neighbor = link->down();
 
                     auto neighbor_it = dist.try_emplace(neighbor, INFINITY).first;
                     if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.

@@ -40,7 +40,7 @@ namespace hipop {
      */
     struct LengthLinkCostFunction {
         double operator()(const Link *link) const {
-            return link->mlength;
+            return link->length();
         }
     };
 
@@ -85,7 +85,7 @@ namespace hipop {
             costMetric_(std::move(costMetric)) {}
 
         double operator()(const Link *link) const {
-            return link->cost(labelToCostFamily_.at(link->mlabel), costMetric_);
+            return link->cost(labelToCostFamily_.at(link->label()), costMetric_);
         }
     };
 
