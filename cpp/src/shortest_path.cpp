@@ -114,18 +114,7 @@ namespace { // Anonymous namespace
 namespace hipop
 {
 
-    /**
-     * @brief Compute the shortest paths between origin and all other vertices of the
-     *        graph using the Dijkstra algorithm
-     *
-     * @param G The OrientedGrah used for the shortest path
-     * @param origin The origin
-     * @param costMetric The cost metric to consider in the shortest path algorithm
-     * @param labelToCostFamily The cost family to use for each link label (multiple cost families can be defined on a Link)
-     * @param accessibleLinkLabels The set of accessible link labels
-     * @return prev The shortest paths tree from origin
-     */
-    ShortestPathsTree dijkstraSingleSource(
+    std::unordered_map<const Node *, const Link *> dijkstraSingleSource(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &costMetric,
@@ -134,14 +123,14 @@ namespace hipop
     {
         const Node *origin_node = G.node(origin);
 
-        std::unordered_map<const Node*, double> dist; // No nullptr keys in this map.
-        ShortestPathsTree prev; // Values equals to "" (empty string) means "no predecessor" in this map.
+        // `dist[n]` is the best cost achieved so far to reach node n from origin.
+        // `prev[n]` is the last link of the best path achieved so far from origin to node n.
+        // No null pointers in these maps (neither as keys nor as values).
+        std::unordered_map<const Node*, double> dist;
+        std::unordered_map<const Node*, const Link*> prev;
         dist.reserve(G.nodeCount());
         prev.reserve(G.nodeCount());
-        for (const Node *node : G.nodes()) {
-            dist.emplace(node, origin_node == node ? 0 : INFINITY);
-            prev.emplace(node->id(), "");
-        }
+        dist[origin_node] = 0;
 
         std::priority_queue<DijkstraQueueItem> pq;
         pq.emplace(DijkstraQueueItem{ 0, origin_node });
@@ -152,7 +141,7 @@ namespace hipop
             double dist_u = dist.at(u);
             pq.pop();
 
-            u->forEachExit(prev.at(u->id()), [&](const Link *link) {
+            u->forEachExit(u == origin_node ? "" : prev.at(u)->up()->id(), [&](const Link *link) {
                 if (accessibleLinkLabels.empty() || accessibleLinkLabels.find(link->label()) != accessibleLinkLabels.end()) {
 
                     // The Dijkstra algorithm requires that all link costs are >= 0, and so does
@@ -164,11 +153,11 @@ namespace hipop
                     double new_dist = dist_u + cost_on_link;
                     const Node *neighbor = link->down();
 
-                    auto neighbor_it = dist.find(neighbor);
+                    auto neighbor_it = dist.try_emplace(neighbor, INFINITY).first;
                     if (neighbor_it->second > new_dist) { // Follow the link only if it STRICTLY improves the distance.
                         neighbor_it->second = new_dist;
                         pq.emplace(DijkstraQueueItem{ new_dist, neighbor });
-                        prev[neighbor->id()] = u->id();
+                        prev[neighbor] = link;
                     }
                 }
             });
@@ -390,9 +379,8 @@ namespace hipop
      * @param costMetric The cost metric to consider in the shortest path algorithm
      * @param threadNumber The number of thread for openmp
      * @param accessibleLinkLabels The vector of accessible link labels
-     * @return std::vector<ShortestPathsTree> The vector of computed shortest paths trees
      */
-    std::vector<ShortestPathsTree> parallelDijkstraSingleSource(
+    std::vector<std::unordered_map<const Node *, const Link *>> parallelDijkstraSingleSource(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,
@@ -403,7 +391,7 @@ namespace hipop
         omp_set_num_threads(threadNumber);
 
         int nbSPTs = origins.size();
-        std::vector<ShortestPathsTree> res(nbSPTs);
+        std::vector<std::unordered_map<const Node *, const Link *>> res(nbSPTs);
 
         #pragma omp parallel for shared(res, accessibleLinkLabels, labelToCostFamily) schedule(dynamic)
         for (int i = 0; i < nbSPTs; i++)

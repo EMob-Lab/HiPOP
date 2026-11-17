@@ -17,8 +17,6 @@
 #include <vector>
 
 
-using ShortestPathsTree = std::unordered_map<std::string, std::string>;
-
 namespace hipop {
 
 
@@ -160,12 +158,37 @@ namespace hipop {
     }
 
 
-    ShortestPathsTree dijkstraSingleSource(
+    /**
+     * Compute the shortest paths from the given origin to all the nodes reachable from it,
+     * using the Dijkstra algorithm.
+     *
+     * The shortest paths are returned as a map associating each node N reachable from the origin
+     * to the last link of the path from the origin to that node N.
+     * Still, one exception: the origin node, although always reachable from itself, is NOT a key in this map,
+     * as the shortest path from the origin to itself has no link.
+     *
+     * The full path from the origin to a reachable node N can be recovered by walking the map backward:
+     * start from a destination node N, look up the last link L of its path, move to the upstream node of L,
+     * and repeat until the origin is reached. This walk always terminates on the origin (no cycle in the map).
+     *
+     * @warning In the presence of excluded movements, the paths built this way do honor the movement
+     *          restrictions, but they may be sub-optimal (in terms of cost) for some destination nodes.
+     *          Some reachable destinations may even be missing.
+     *
+     * @param costMetric Cost metric to consider.
+     * @param labelToCostFamily Cost family to use for each link label.
+     * @param accessibleLinkLabels If non-empty, only the links whose label is in this set
+     *                             are considered for the path search.
+     * @return Map "reachable destination node" -> "last link of path origin to destination".
+     *         No null pointers in this map (neither as keys nor as values).
+     */
+    std::unordered_map<const Node *, const Link *> dijkstraSingleSource(
         const OrientedGraph &G,
         const std::string &origin,
         const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily,
         const setstring &accessibleLinkLabels);
+
     std::pair<std::vector<std::vector<int>>, std::unordered_map<int, std::string>> floydWarshall(
         const OrientedGraph &G,
         const std::string &costMetric,
@@ -196,7 +219,7 @@ namespace hipop {
         int threadNumber,
         const std::vector<setstring> &accessibleLinkLabels = {});
 
-    std::vector<ShortestPathsTree> parallelDijkstraSingleSource(
+    std::vector<std::unordered_map<const Node *, const Link *>> parallelDijkstraSingleSource(
         const OrientedGraph &G,
         const std::vector<std::string> &origins,
         const std::vector<std::unordered_map<std::string, std::string>> &labelToCostFamily,

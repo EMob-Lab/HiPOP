@@ -27,20 +27,27 @@ int testDijkstraSingleSource(int, char**) {
     testCase("Simple graph (car layer only)", []() { return simple_graph(false); }, [](const OrientedGraph &G) {
         {
             auto tree = dijkstraSingleSource(G, "A", "time", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", "A"}, {"C", "B"}, {"D", "A"}, {"E", "D"}, {"F", "C"}, {"I", ""}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("A_B")},
+                {G.node("C"), G.link("B_C")},
+                {G.node("D"), G.link("A_D")},
+                {G.node("E"), G.link("D_E")},
+                {G.node("F"), G.link("C_F")}
             }, "Origin A");
         }
         {
             auto tree = dijkstraSingleSource(G, "B", "time", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", ""}, {"C", "B"}, {"D", ""}, {"E", "B"}, {"F", "C"}, {"I", ""}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("C"), G.link("B_C")},
+                {G.node("E"), G.link("B_E")},
+                {G.node("F"), G.link("C_F")}
             }, "Origin B");
         }
         {
             auto tree = dijkstraSingleSource(G, "D", "time", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", ""}, {"C", ""}, {"D", ""}, {"E", "D"}, {"F", "E"}, {"I", ""}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("E"), G.link("D_E")},
+                {G.node("F"), G.link("E_F")}
             }, "Origin D");
         }
     });
@@ -50,36 +57,48 @@ int testDijkstraSingleSource(int, char**) {
         // Both layers accessible
         {
             auto tree = dijkstraSingleSource(G, "A", "time", {{"CarLayer", "CAR"}, {"BusLayer", "BUS"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", "A"}, {"C", "B"}, {"D", "A"}, {"E", "A"}, {"F", "E"}, {"I", "E"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("A_B")},
+                {G.node("C"), G.link("B_C")},
+                {G.node("D"), G.link("A_D")},
+                {G.node("E"), G.link("A_E")},
+                {G.node("F"), G.link("E_F")},
+                {G.node("I"), G.link("E_I")}
             }, "Origin A");
         }
         {
             auto tree = dijkstraSingleSource(G, "D", "time", {{"CarLayer", "CAR"}, {"BusLayer", "BUS"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", ""}, {"C", ""}, {"D", ""}, {"E", "D"}, {"F", "E"}, {"I", "E"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("E"), G.link("D_E")},
+                {G.node("F"), G.link("E_F")},
+                {G.node("I"), G.link("E_I")}
             }, "Origin D");
         }
 
         // Only the car layer accessible (equivalent to test case "Simple graph (car layer only)")
         {
             auto tree = dijkstraSingleSource(G, "A", "time", {{"CarLayer", "CAR"}}, {"CarLayer"});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", "A"}, {"C", "B"}, {"D", "A"}, {"E", "D"}, {"F", "C"}, {"I", ""}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("A_B")},
+                {G.node("C"), G.link("B_C")},
+                {G.node("D"), G.link("A_D")},
+                {G.node("E"), G.link("D_E")},
+                {G.node("F"), G.link("C_F")}
             }, "Origin A with car layer only");
         }
 
         // Only the bus layer accessible
         {
             auto tree = dijkstraSingleSource(G, "A", "time", {{"BusLayer", "BUS"}}, {"BusLayer"});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", ""}, {"C", ""}, {"D", ""}, {"E", "A"}, {"F", ""}, {"I", "E"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("E"), G.link("A_E")},
+                {G.node("I"), G.link("E_I")}
             }, "Origin A with bus layer only");
         }
         {
             auto tree = dijkstraSingleSource(G, "D", "time", {{"BusLayer", "BUS"}}, {"BusLayer"});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", ""}, {"C", ""}, {"D", ""}, {"E", ""}, {"F", ""}, {"I", "D"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("I"), G.link("D_I")}
             }, "Origin D with bus layer only");
         }
     });
@@ -89,28 +108,34 @@ int testDijkstraSingleSource(int, char**) {
         // Cases with a zero cost on a link
         {
             auto tree = dijkstraSingleSource(G, "A", "time", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", "A"}, {"C", "B"}, {"D", "C"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("A_B")},
+                {G.node("C"), G.link("B_C")},
+                {G.node("D"), G.link("C_D")}
             }, "Origin A with time");
         }
         {
             auto tree = dijkstraSingleSource(G, "B", "time", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", ""}, {"C", "B"}, {"D", "C"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("C"), G.link("B_C")},
+                {G.node("D"), G.link("C_D")}
             }, "Origin B with time");
         }
 
         // Cases with a +infinity cost on a link
         {
             auto tree = dijkstraSingleSource(G, "A", "generalized_cost", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", "A"}, {"C", "A"}, {"D", "B"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("A_B")},
+                {G.node("C"), G.link("A_C")},
+                {G.node("D"), G.link("B_D")}
             }, "Origin A with generalized cost");
         }
         {
             auto tree = dijkstraSingleSource(G, "B", "generalized_cost", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", ""}, {"C", ""} /* C not reachable since +inf links are impassable */, {"D", "B"}
+            assertEqualShortestPathTrees(tree, {
+                // C not reachable since +inf links are impassable.
+                {G.node("D"), G.link("B_D")}
             }, "Origin B with generalized cost");
         }
     });
@@ -120,16 +145,26 @@ int testDijkstraSingleSource(int, char**) {
         // Non-zero cycle cost.
         {
             auto tree = dijkstraSingleSource(G, "A", "time", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", "L1"}, {"C", "L2"}, {"L1", "A"}, {"L2", "L1"}, {"X", "L1"}, {"Y", "L2"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("L1_B")},
+                {G.node("C"), G.link("L2_C")},
+                {G.node("L1"), G.link("A_L1")},
+                {G.node("L2"), G.link("L1_L2")},
+                {G.node("X"), G.link("L1_X")},
+                {G.node("Y"), G.link("L2_Y")}
             }, "Origin A with non-zero cycle cost");
         }
 
         // Zero cycle cost.
         {
             auto tree = dijkstraSingleSource(G, "A", "generalized_cost", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", "L1"}, {"C", "L2"}, {"L1", "A"}, {"L2", "L1"}, {"X", "L1"}, {"Y", "L2"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("L1_B")},
+                {G.node("C"), G.link("L2_C")},
+                {G.node("L1"), G.link("A_L1")},
+                {G.node("L2"), G.link("L1_L2")},
+                {G.node("X"), G.link("L1_X")},
+                {G.node("Y"), G.link("L2_Y")}
             }, "Origin A with zero cycle cost");
         }
     });
@@ -139,16 +174,20 @@ int testDijkstraSingleSource(int, char**) {
         // Non-zero self-link cost.
         {
             auto tree = dijkstraSingleSource(G, "A", "time", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", "L"}, {"L", "A"}, {"X", "L"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("L_B")},
+                {G.node("L"), G.link("A_L")},
+                {G.node("X"), G.link("L_X")}
             }, "Origin A with non-zero self-link cost");
         }
 
         // Zero self-link cost.
         {
             auto tree = dijkstraSingleSource(G, "A", "generalized_cost", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B", "L"}, {"L", "A"}, {"X", "L"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("L_B")},
+                {G.node("L"), G.link("A_L")},
+                {G.node("X"), G.link("L_X")}
             }, "Origin A with zero self-link cost");
         }
     });
@@ -156,14 +195,16 @@ int testDijkstraSingleSource(int, char**) {
     testCase("Forbidden transitions", graph_with_exclude_movements, [](const OrientedGraph &G) {
         {
             auto tree = dijkstraSingleSource(G, "A", "time", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B1", "A"}, {"B2", "A"}, {"C", "B1"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B1"), G.link("A_B1")},
+                {G.node("B2"), G.link("A_B2")},
+                {G.node("C"), G.link("B1_C")}
             }, "Origin A (cannot transit from A to C via B2)");
         }
         {
             auto tree = dijkstraSingleSource(G, "B2", "time", {{"CarLayer", "CAR"}}, {});
-            assertEqualShortestPathsTrees(tree, ShortestPathsTree{
-                {"A", ""}, {"B1", ""}, {"B2", ""}, {"C", "B2"}
+            assertEqualShortestPathTrees(tree, {
+                {G.node("C"), G.link("B2_C")}
             }, "Origin B2");
         }
     });

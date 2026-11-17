@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 
@@ -100,17 +101,21 @@ inline void assertEqualPaths(
 }
 
 
-inline void assertEqualShortestPathsTrees(const ShortestPathsTree &actual, const ShortestPathsTree &expected,
-    std::string_view message) {
-
+inline void assertEqualShortestPathTrees(
+    const std::unordered_map<const hipop::Node *, const hipop::Link *> &actual,
+    const std::unordered_map<const hipop::Node *, const hipop::Link *> &expected,
+    std::string_view message
+) {
     if (actual != expected) {
         std::cerr << "[ERROR] " << message << '\n';
 
-        auto print = [](const ShortestPathsTree &tree) {
-            std::vector<std::pair<std::string, std::string>> sorted(tree.begin(), tree.end());
-            std::sort(sorted.begin(), sorted.end());
+        auto print = [](const std::unordered_map<const hipop::Node *, const hipop::Link *> &tree) {
+            std::vector<std::pair<const hipop::Node *, const hipop::Link *>> sorted(tree.begin(), tree.end());
+            std::sort(sorted.begin(), sorted.end(), [](const auto &lhs, const auto &rhs) {
+                return lhs.first->id() < rhs.first->id();
+            });
             for (const auto &it : sorted) {
-                std::cerr << "    " << it.first << " -> " << (it.second.empty() ? "<no predecessor>" : it.second) << '\n';
+                std::cerr << "    " << it.first->id() << " -> " << it.second->id() << '\n';
             }
         };
 
