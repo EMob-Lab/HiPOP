@@ -17,10 +17,10 @@ def _make_graph() -> OrientedGraph:
 
     G = OrientedGraph()
 
-    G.add_node("A", 0, 0, "")
-    G.add_node("B", 1, 0, "")
-    G.add_node("C", 2, 0, "")
-    G.add_node("D", 3, 3, "")
+    G.add_node("A", 0, 0)
+    G.add_node("B", 1, 0)
+    G.add_node("C", 2, 0)
+    G.add_node("D", 3, 3)
 
     G.add_link("A_B", "A", "B", 10, {"CAR": {"time": 1}}, "CarLayer")
     G.add_link("B_C", "B", "C", 20, {"BUS": {"time": 2}}, "BusLayer")
@@ -302,7 +302,7 @@ def test_delete_node() -> None:
     )
 
     # A node with the same ID can be added again, and linked.
-    G.add_node("B", 5, 5, "")
+    G.add_node("B", 5, 5)
     G.add_link("A_B", "A", "B", 60, {"CAR": {"time": 6}}, "CarLayer")
     assert G.nodes["B"].position == [5, 5] and G.nodes["B"].radj["A"] is G.links["A_B"], (
         "Deleted node should be re-insertable"
@@ -348,14 +348,14 @@ def test_get_links_without_cost() -> None:
 def test_exits() -> None:
 
     G = OrientedGraph()
-    G.add_node("A", 0, 0, "")
+    G.add_node("A", 0, 0)
 
     exclude_movements = {"A": {"C"}}
-    G.add_node("B", 2, 5, "", exclude_movements)
+    G.add_node("B", 2, 5, exclude_movements=exclude_movements)
 
-    G.add_node("C", 12.0, 43.0, "")
+    G.add_node("C", 12.0, 43.0)
 
-    G.add_node("D", 435, 345, "")
+    G.add_node("D", 435, 345)
     G.add_link("A_B", "A", "B", 12, {"CAR": {"time": 12}}, "CarLayer")
     G.add_link("B_C", "B", "C", 12, {"CAR": {"time": 12}}, "CarLayer")
     G.add_link("B_D", "B", "D", 12, {"CAR": {"time": 12}}, "CarLayer")
