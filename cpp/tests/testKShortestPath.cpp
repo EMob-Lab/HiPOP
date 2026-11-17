@@ -1,5 +1,6 @@
 #include "helpers.h"
 
+#include <hipop/create.h>
 #include <hipop/graph.h>
 #include <hipop/shortest_path.h>
 
@@ -27,9 +28,9 @@ int testKShortestPath(int, char**)
     auto paths = KShortestPath(G, "0", "3", "time", {}, {{"CAR", "PersonalVehicle"}}, 5, 100, 2.2, 10, 3, false);
 
     assertTrue(paths.size() == 3, "Did not found 3 paths");
-    assertEqualPaths(paths[0], pathCost{{"0", "3"}, 12}, "Wrong path #0");
-    assertEqualPaths(paths[1], pathCost{{"0", "2", "3"}, 24}, "Wrong path #1");
-    assertEqualPaths(paths[2], pathCost{{"0", "1", "3"}, 26}, "Wrong path #2");
+    assertEqualPaths(paths[0], PathCost{makePath(G, {"0_3"}), 12}, "Wrong path #0");
+    assertEqualPaths(paths[1], PathCost{makePath(G, {"0_2", "2_3"}), 24}, "Wrong path #1");
+    assertEqualPaths(paths[2], PathCost{makePath(G, {"0_1", "1_3"}), 26}, "Wrong path #2");
 
     return 0;
 }
