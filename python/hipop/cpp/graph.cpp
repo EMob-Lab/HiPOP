@@ -1,5 +1,6 @@
 #include <hipop/create.h>
 #include <hipop/graph.h>
+#include <hipop/graph_path.h>
 
 #include <nanobind/make_iterator.h>
 #include <nanobind/nanobind.h>
@@ -14,7 +15,9 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <sstream>
 #include <utility>
+#include <vector>
 
 namespace nb = nanobind;
 using namespace nb::literals;
@@ -196,6 +199,94 @@ static void bind_graph_element_mapping(nb::module_ &m, const char *name) {
 }
 
 
+/**
+ * Adapter class, to make an OrientedGraphPath class look like a sequence of `Node` objects.
+ */
+struct PathNodeSequence {
+
+    static constexpr const char *doc =
+        "Read-only, list-like view of the nodes visited by an OrientedGraphPath, from origin to destination.\n"
+        "Its length is the number of links in the path + 1 (in particular, it is never empty).\n"
+        "\n"
+        "WARNINGS:\n"
+        "- The view reflects the current state of the path. Modifying the path while iterating\n"
+        "  over the view results in undefined behavior (likely a crash).\n"
+        "- The Node objects returned by the view are non-owning references to data stored\n"
+        "  in the OrientedGraph. The graph must be kept alive for as long as they are used, and they\n"
+        "  must not be removed from it. Otherwise, accessing them results in undefined behavior\n"
+        "  (likely a crash).";
+
+    const hipop::OrientedGraphPath *path; // never null
+
+    [[nodiscard]] static std::size_t count(const hipop::OrientedGraphPath &path) { return path.size() + 1; }
+    [[nodiscard]] static const hipop::Node *at(const hipop::OrientedGraphPath &path, std::size_t index) { return path.node(index); }
+    [[nodiscard]] static hipop::OrientedGraphPath::NodeRange range(const hipop::OrientedGraphPath &path) { return path.nodes(); }
+    [[nodiscard]] static std::vector<std::string> ids(const hipop::OrientedGraphPath &path) { return path.nodeIds(); }
+};
+
+
+/**
+ * Adapter class, to make an OrientedGraphPath class look like a sequence of `Link` objects.
+ */
+struct PathLinkSequence {
+
+    static constexpr const char *doc =
+        "Read-only, list-like view of the links visited by an OrientedGraphPath, from origin to destination.\n"
+        "\n"
+        "WARNINGS:\n"
+        "- The view reflects the current state of the path. Modifying the path while iterating\n"
+        "  over the view results in undefined behavior (likely a crash).\n"
+        "- The Link objects returned by the view are non-owning references to data stored\n"
+        "  in the OrientedGraph. The graph must be kept alive for as long as they are used, and they\n"
+        "  must not be removed from it. Otherwise, accessing them results in undefined behavior\n"
+        "  (likely a crash).";
+
+    const hipop::OrientedGraphPath *path; // never null
+
+    [[nodiscard]] static std::size_t count(const hipop::OrientedGraphPath &path) { return path.size(); }
+    [[nodiscard]] static const hipop::Link *at(const hipop::OrientedGraphPath &path, std::size_t index) { return path.link(index); }
+    [[nodiscard]] static const std::vector<const hipop::Link *> &range(const hipop::OrientedGraphPath &path) { return path.links(); }
+    [[nodiscard]] static std::vector<std::string> ids(const hipop::OrientedGraphPath &path) { return path.linkIds(); }
+};
+
+
+/**
+ * Register the Python class `name` corresponding to `Sequence` (`PathNodeSequence` or `PathLinkSequence`).
+ *
+ * Remark: the API exposed to the Python world for the `Sequence` class is list-like.
+ * Still, it is not fully compliant with the `collections.abc.Sequence` contract:
+ *  - slicing is not supported,
+ *  - `index()` and `count()` are not implemented,
+ *  - `__contains__` is not implemented (the `in` operator falls back to iterating over the sequence),
+ *  - `__eq__` is not implemented (equality is identity).
+ */
+template<typename Sequence>
+static void bind_path_element_sequence(nb::module_ &m, const char *name) {
+
+    nb::class_<Sequence>(m, name, Sequence::doc)
+        .def("__len__", [](const Sequence &s) { return Sequence::count(*s.path); })
+        .def("__getitem__", [](const Sequence &s, std::ptrdiff_t index) {
+            const auto count = static_cast<std::ptrdiff_t>(Sequence::count(*s.path));
+            if (index < 0) {
+                index += count; // Python-style negative indexing.
+            }
+            if (index < 0 || index >= count) {
+                throw nb::index_error();
+            }
+            return Sequence::at(*s.path, static_cast<std::size_t>(index));
+        }, "index"_a, nb::rv_policy::reference)
+        .def("__iter__", [](const Sequence &s) {
+            decltype(auto) range = Sequence::range(*s.path);
+            return nb::make_iterator<nb::rv_policy::reference>(nb::type<Sequence>(), "Iterator", range.begin(), range.end());
+        }, nb::keep_alive<0, 1>())
+        .def("__reversed__", [](const Sequence &s) {
+            decltype(auto) range = Sequence::range(*s.path);
+            return nb::make_iterator<nb::rv_policy::reference>(nb::type<Sequence>(), "ReverseIterator", range.rbegin(), range.rend());
+        }, nb::keep_alive<0, 1>())
+        .def("ids", [](const Sequence &s) { return Sequence::ids(*s.path); }); // Return a plain Python list.
+}
+
+
 void graph(nb::module_ &m) {
 
     nb::class_<hipop::Link>(m, "Link",
@@ -232,6 +323,8 @@ void graph(nb::module_ &m) {
 
     bind_graph_element_mapping<NodeMapping>(m, "NodeMap");
     bind_graph_element_mapping<LinkMapping>(m, "LinkMap");
+    bind_path_element_sequence<PathNodeSequence>(m, "PathNodeSequence");
+    bind_path_element_sequence<PathLinkSequence>(m, "PathLinkSequence");
 
     nb::class_<hipop::OrientedGraph>(m, "OrientedGraph")
         .def(nb::init<>())
@@ -273,7 +366,69 @@ void graph(nb::module_ &m) {
         .def("get_links_without_cost", &hipop::OrientedGraph::GetLinksWithoutCost,
             "cost_metric"_a, "label_to_cost_family"_a);
 
+    nb::class_<hipop::OrientedGraphPath>(m, "OrientedGraphPath",
+        "A path within an OrientedGraph, i.e. a sequence of consecutive links\n"
+        "from an origin node to a destination node.\n"
+        "\n"
+        "WARNING: a path holds references to the nodes and links of its graph.\n"
+        "The graph must be kept alive as long as the path is, and the nodes\n"
+        "and links visited by the path must not be removed from it. Otherwise,\n"
+        "using the path results in undefined behavior (likely a crash).")
+        .def(nb::init<const hipop::Node *>(), "origin"_a)
+        .def(nb::init<const hipop::Node *, std::vector<const hipop::Link *>>(), "origin"_a, "links"_a)
+
+        // Node/link accessors
+        // Remark: on the Python side, nodes and links are accessed only through the read-only sequence views
+        // returned by `nodes` and `links`, the other C++ accessors (`node()`, `link()`, etc.) are not exposed.
+        .def_prop_ro("origin", &hipop::OrientedGraphPath::origin, nb::rv_policy::reference)
+        .def_prop_ro("destination", &hipop::OrientedGraphPath::destination, nb::rv_policy::reference)
+        .def_prop_ro("nodes", [](const hipop::OrientedGraphPath &path) {
+            return PathNodeSequence{ &path };
+        }, nb::keep_alive<0, 1>())
+        .def_prop_ro("links", [](const hipop::OrientedGraphPath &path) {
+            return PathLinkSequence{ &path };
+        }, nb::keep_alive<0, 1>())
+
+        // Copy
+        .def("copy", [](const hipop::OrientedGraphPath &path) {
+            return hipop::OrientedGraphPath(path);
+        })
+        .def("__copy__", [](const hipop::OrientedGraphPath &path) {
+            return hipop::OrientedGraphPath(path);
+        })
+        .def("__deepcopy__", [](const hipop::OrientedGraphPath &path, const nb::typed<nb::dict, int, nb::any> &) {
+            // Nodes and links belong to the graph, not to the path: they must not be copied, even for a deep copy.
+            // Thus, same behavior for __copy__ and __deepcopy__ in case of OrientedGraphPath.
+            return hipop::OrientedGraphPath(path);
+        }, "memo"_a)
+
+        // Other operations
+        .def("has_loop", &hipop::OrientedGraphPath::hasLoop)
+        .def("add", nb::overload_cast<const hipop::Link *>(&hipop::OrientedGraphPath::add), "link"_a)
+        .def("add", nb::overload_cast<const hipop::OrientedGraphPath &>(&hipop::OrientedGraphPath::add), "path"_a)
+        .def("sub_path", [](const hipop::OrientedGraphPath &path, std::size_t pos, std::optional<std::size_t> linkCount) {
+            return linkCount.has_value() ? path.subPath(pos, *linkCount) : path.subPath(pos);
+        }, "pos"_a, "link_count"_a = nb::none())
+        .def("starts_with", &hipop::OrientedGraphPath::startsWith, "prefix"_a)
+        .def("ends_with", &hipop::OrientedGraphPath::endsWith, "suffix"_a)
+
+        // Operators and special methods.
+        .def("__repr__", [](const hipop::OrientedGraphPath &path) {
+            std::ostringstream stream;
+            stream << "OrientedGraphPath(" << path << ")";
+            return stream.str();
+        })
+        .def("__eq__", [](const hipop::OrientedGraphPath &path, nb::handle other) {
+            return nb::isinstance<hipop::OrientedGraphPath>(other) && path == nb::cast<const hipop::OrientedGraphPath &>(other);
+        }, "other"_a.none())
+        // Remark: operator != is not bound, as Python deduces it from operator ==.
+        .attr("__hash__") = nb::none(); // Make obj unhashable, as it is mutable.
+
     m.def("generate_manhattan", &hipop::makeManhattan, "n"_a, "link_length"_a);
+
+    m.def("make_empty_path", &hipop::makeEmptyPath, "graph"_a, "origin_node_id"_a);
+
+    m.def("make_path", &hipop::makePath, "graph"_a, "link_ids"_a);
 
     m.def("merge_oriented_graph", &hipop::mergeOrientedGraph, "graphs"_a);
 }

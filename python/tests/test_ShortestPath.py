@@ -1,7 +1,6 @@
-import math
 import multiprocessing
 
-from hipop.graph import OrientedGraph
+from hipop.graph import OrientedGraph, make_empty_path, make_path
 from hipop.shortest_path import dijkstra, parallel_dijkstra
 
 
@@ -52,21 +51,21 @@ def test_dijkstra() -> None:
 
     # Standard cases
     path = dijkstra(G, "A", "E", "time", {"CarLayer": "CAR"})
-    assert path == (["A", "D", "E"], 8), "A -> E"
+    assert path == (make_path(G, ["A_D", "D_E"]), 8), "A -> E"
     path = dijkstra(G, "B", "F", "time", {"CarLayer": "CAR"})
-    assert path == (["B", "C", "F"], 5.5), "B -> F"
+    assert path == (make_path(G, ["B_C", "C_F"]), 5.5), "B -> F"
     path = dijkstra(G, "A", "F", "time", {"CarLayer": "CAR"})
-    assert path == (["A", "B", "C", "F"], 10.5), "A -> F"
+    assert path == (make_path(G, ["A_B", "B_C", "C_F"]), 10.5), "A -> F"
 
     # Edge cases
     path = dijkstra(G, "A", "A", "time", {"CarLayer": "CAR"})
-    assert path == ([], 0), "Empty path A -> A"
+    assert path == (make_empty_path(G, "A"), 0), "Empty path A -> A"
     path = dijkstra(G, "B", "B", "time", {"CarLayer": "CAR"})
-    assert path == ([], 0), "Empty path B -> B"
+    assert path == (make_empty_path(G, "B"), 0), "Empty path B -> B"
     path = dijkstra(G, "A", "I", "time", {"CarLayer": "CAR"})
-    assert path == ([], math.inf), "Non-feasible path A -> I"
+    assert path is None, "Non-feasible path A -> I"
     path = dijkstra(G, "D", "A", "time", {"CarLayer": "CAR"})
-    assert path == ([], math.inf), "Non-feasible path D -> A"
+    assert path is None, "Non-feasible path D -> A"
 
 
 # Test the shortest_path bindings (parallel case, involving OpenMP).
@@ -80,12 +79,12 @@ def test_parallel_dijkstra() -> None:
 
     assert paths == [
         # Standard cases
-        (["A", "D", "E"], 8),
-        (["B", "C", "F"], 5.5),
-        (["A", "B", "C", "F"], 10.5),
+        (make_path(G, ["A_D", "D_E"]), 8),
+        (make_path(G, ["B_C", "C_F"]), 5.5),
+        (make_path(G, ["A_B", "B_C", "C_F"]), 10.5),
         # Edge cases
-        ([], 0),
-        ([], 0),
-        ([], math.inf),
-        ([], math.inf),
+        (make_empty_path(G, "A"), 0),
+        (make_empty_path(G, "B"), 0),
+        None,
+        None,
     ]
