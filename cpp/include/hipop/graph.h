@@ -610,9 +610,10 @@ namespace hipop
          */
         void DeleteLink(const std::string &linkId);
 
-        void UpdateLinkCosts(const std::string &linkId, mapcosts costs);
-        void UpdateCosts(const std::unordered_map<std::string, mapcosts> &linkIdToCosts);
-        double getLength(const std::string &up, const std::string &down);
+        /**
+         * Update the costs of the links whose IDs correspond to the map keys.
+         */
+        void UpdateCosts(std::unordered_map<std::string, mapcosts> linkIdToCosts);
 
         /**
          * Return the IDs of the links for which the considered cost has not been set.

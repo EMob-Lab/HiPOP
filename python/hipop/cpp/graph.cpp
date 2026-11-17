@@ -360,9 +360,7 @@ void graph(nb::module_ &m) {
             "link_id"_a, "up"_a, "down"_a, "length"_a, "costs"_a, "label"_a = "_def")
         .def("delete_node", &hipop::OrientedGraph::DeleteNode, "node_id"_a)
         .def("delete_link", &hipop::OrientedGraph::DeleteLink, "link_id"_a)
-        .def("update_link_costs", &hipop::OrientedGraph::UpdateLinkCosts, "link_id"_a, "costs"_a)
         .def("update_costs", &hipop::OrientedGraph::UpdateCosts, "link_id_to_costs"_a)
-        .def("get_length", &hipop::OrientedGraph::getLength, "up"_a, "down"_a)
         .def("get_links_without_cost", &hipop::OrientedGraph::GetLinksWithoutCost,
             "cost_metric"_a, "label_to_cost_family"_a);
 

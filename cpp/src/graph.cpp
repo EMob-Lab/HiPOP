@@ -130,25 +130,9 @@ namespace hipop {
     }
 
 
-    /**
-     * @brief Update a Link costs
-     *
-     * @param linkId The id of the Link to update
-     * @param costs The new costs
-     */
-    void OrientedGraph::UpdateLinkCosts(const std::string &linkId, mapcosts costs) {
-        link(linkId)->setCosts(std::move(costs));
-    }
-
-    /**
-     * @brief Update a list of link costs
-     *
-     * @param linkIdToCosts The map of the links/costs to update
-     */
-    void OrientedGraph::UpdateCosts(const std::unordered_map<std::string, mapcosts> &linkIdToCosts)
-    {
-        for (const auto &it : linkIdToCosts) {
-            UpdateLinkCosts(it.first, it.second);
+    void OrientedGraph::UpdateCosts(std::unordered_map<std::string, mapcosts> linkIdToCosts) {
+        for (auto &it : linkIdToCosts) {
+            link(it.first)->setCosts(std::move(it.second));
         }
     }
 
@@ -164,19 +148,6 @@ namespace hipop {
         for (const Link *link : links()) {
             std::cout << "Link(" << link->id() << ", " << link->up()->id() << ", " << link->down()->id() << ")\n";
         }
-    }
-
-
-    /**
-     * @brief Get the length of a link
-     *
-     * @param up the upstream node of the link
-     * @param down the downstream node of the link
-     * @return double the length of the link
-     */
-    double OrientedGraph::getLength(const std::string &up, const std::string &down)
-    {
-        return node(up)->adj().at(down)->length();
     }
 
 
