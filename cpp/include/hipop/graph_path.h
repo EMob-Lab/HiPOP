@@ -33,7 +33,7 @@ namespace hipop {
      * The data-structure guarantees that, for all link index i:
      * - `link[i]->up() == node[i]`
      * - `link[i]->down() == node[i + 1]`
-     * However, the data-structure does not guarantees that "exclude-movement" rules
+     * However, the data-structure does not guarantee that "exclude-movement" rules
      * are honored along the path (it's up to the caller in charge of OrientedGraphPath to check that).
      *
      * The size of the path is the number of links, and the number of nodes is size() + 1.
@@ -43,7 +43,7 @@ namespace hipop {
      *
      * The OrientedGraph instance from which a path is built must NOT be released
      * before the OrientedGraphPath instance is. Node and Link visited along the path
-     * must NOT be removed form the parent graph either. Otherwise, this would result
+     * must NOT be removed from the parent graph either. Otherwise, this would result
      * in dangling pointers being held by the OrientedGraphPath instance,
      * and likely segmentation fault on any method invoked on this instance.
      */
@@ -124,7 +124,7 @@ namespace hipop {
         }
 
         /**
-         * Maximum number of links that can be accomodated in the underlying container
+         * Maximum number of links that can be accommodated in the underlying container
          * without memory re-allocation.
          *
          * This method is provided for optimization purpose only.
@@ -134,7 +134,7 @@ namespace hipop {
         }
 
         /**
-         * Increase the capacity of the underlying container so that it can accomodates
+         * Increase the capacity of the underlying container so that it can accommodate
          * at least `newCapacity` links without memory re-allocation.
          *
          * This method is provided for optimization purpose only.
