@@ -1,8 +1,6 @@
 #pragma once
 
 #include <hipop/graph.h>
-
-#include <hipop/graph.h>
 #include <hipop/graph_path.h>
 #include <hipop/string_util.h>
 
