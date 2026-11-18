@@ -1,6 +1,7 @@
 #include <hipop/create.h>
 #include <hipop/graph.h>
 #include <hipop/graph_path.h>
+#include <hipop/iterator_util.h>
 
 #include <nanobind/make_iterator.h>
 #include <nanobind/nanobind.h>
@@ -31,7 +32,7 @@ namespace hipop_wrappers {
 struct NodeMapping {
 
     using Element = hipop::Node;
-    using Iterator = hipop::OrientedGraph::NodeIterator;
+    using Range = hipop::OrientedGraph::NodeRange;
 
     static constexpr const char *doc =
         "Read-only, dictionary-like view of the nodes of an OrientedGraph, indexed by node ID.\n"
@@ -63,7 +64,7 @@ struct NodeMapping {
 struct LinkMapping {
 
     using Element = hipop::Link;
-    using Iterator = hipop::OrientedGraph::LinkIterator;
+    using Range = hipop::OrientedGraph::LinkRange;
 
     static constexpr const char *doc =
         "Read-only, dictionary-like view of the links of an OrientedGraph, indexed by link ID.\n"
@@ -87,37 +88,6 @@ struct LinkMapping {
     [[nodiscard]] static hipop::Link *find(hipop::OrientedGraph &graph, const std::string &id) { return graph.findLink(id); }
     [[nodiscard]] static hipop::OrientedGraph::LinkRange range(hipop::OrientedGraph &graph) { return graph.links(); }
 };
-
-
-/**
- * Python iterator over the given projection of the elements of the graph.
- */
-template<typename Mapping, typename Projection, nb::rv_policy::value RVPolicy = nb::rv_policy::automatic_reference_v>
-static auto make_projecting_iterator(hipop::OrientedGraph &graph, const char *name) {
-
-    class ProjectingIterator {
-
-        typename Mapping::Iterator it_;
-
-    public:
-
-        explicit ProjectingIterator(typename Mapping::Iterator it) : it_(it) {}
-
-        [[nodiscard]] decltype(auto) operator*() const { return Projection{}(*it_); }
-
-        ProjectingIterator &operator++() {
-            ++it_;
-            return *this;
-        }
-
-        [[nodiscard]] bool operator==(const ProjectingIterator &other) const { return it_ == other.it_; }
-        [[nodiscard]] bool operator!=(const ProjectingIterator &other) const { return it_ != other.it_; }
-    };
-
-    auto range = Mapping::range(graph);
-    return nb::make_iterator<RVPolicy>(
-        nb::type<Mapping>(), name, ProjectingIterator(range.begin()), ProjectingIterator(range.end()));
-}
 
 
 /**
@@ -149,6 +119,8 @@ static void bind_graph_element_mapping(nb::module_ &m, const char *name) {
             return { element->id(), element };
         }
     };
+    using KeyIterator = hipop::ProjectingIterator<typename Mapping::Range::iterator, KeyProjection>;
+    using ItemIterator = hipop::ProjectingIterator<typename Mapping::Range::iterator, ItemProjection>;
 
     nb::class_<Mapping> mappingClass(m, name, Mapping::doc);
 
@@ -158,20 +130,25 @@ static void bind_graph_element_mapping(nb::module_ &m, const char *name) {
             return Mapping::find(*v.graph, id) != nullptr;
         })
         .def("__iter__", [](const KeyView &v) {
-            return make_projecting_iterator<Mapping, KeyProjection>(*v.graph, "KeyIterator");
+            auto range = Mapping::range(*v.graph);
+            return nb::make_iterator(nb::type<Mapping>(), "KeyIterator",
+                KeyIterator(range.begin()), KeyIterator(range.end()));
         }, nb::keep_alive<0, 1>());
 
     nb::class_<ValueView>(mappingClass, "ValueView")
         .def("__len__", [](const ValueView &v) { return Mapping::count(*v.graph); })
         .def("__iter__", [](const ValueView &v) {
             auto range = Mapping::range(*v.graph);
-            return nb::make_iterator<nb::rv_policy::reference>(nb::type<Mapping>(), "ValueIterator", range.begin(), range.end());
+            return nb::make_iterator<nb::rv_policy::reference>(nb::type<Mapping>(), "ValueIterator",
+                range.begin(), range.end());
         }, nb::keep_alive<0, 1>());
 
     nb::class_<ItemView>(mappingClass, "ItemView")
         .def("__len__", [](const ItemView &v) { return Mapping::count(*v.graph); })
         .def("__iter__", [](const ItemView &v) {
-            return make_projecting_iterator<Mapping, ItemProjection, nb::rv_policy::reference>(*v.graph, "ItemIterator");
+            auto range = Mapping::range(*v.graph);
+            return nb::make_iterator<nb::rv_policy::reference>(nb::type<Mapping>(), "ItemIterator",
+                ItemIterator(range.begin()), ItemIterator(range.end()));
         }, nb::keep_alive<0, 1>());
 
     mappingClass
@@ -191,7 +168,9 @@ static void bind_graph_element_mapping(nb::module_ &m, const char *name) {
             return element == nullptr ? std::nullopt : std::make_optional(element);
         }, "id"_a, nb::rv_policy::reference)
         .def("__iter__", [](const Mapping &v) {
-            return make_projecting_iterator<Mapping, KeyProjection>(*v.graph, "KeyIterator");
+            auto range = Mapping::range(*v.graph);
+            return nb::make_iterator(nb::type<Mapping>(), "KeyIterator",
+                KeyIterator(range.begin()), KeyIterator(range.end()));
         }, nb::keep_alive<0, 1>())
         .def("keys", [](const Mapping &v) { return KeyView{ v.graph }; }, nb::keep_alive<0, 1>())
         .def("values", [](const Mapping &v) { return ValueView{ v.graph }; }, nb::keep_alive<0, 1>())

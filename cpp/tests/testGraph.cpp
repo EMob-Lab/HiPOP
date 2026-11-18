@@ -183,8 +183,8 @@ static void test_NodeRanges() {
 
     static_assert(std::is_same_v<decltype(cG.nodes()), OrientedGraph::ConstNodeRange>);
     static_assert(std::is_same_v<decltype(G.nodes()), OrientedGraph::NodeRange>);
-    static_assert(std::is_same_v<decltype(*cG.nodes().begin()), const Node *>);
-    static_assert(std::is_same_v<decltype(*G.nodes().begin()), Node *>);
+    static_assert(std::is_same_v<OrientedGraph::ConstNodeRange::iterator::value_type, const Node *>);
+    static_assert(std::is_same_v<OrientedGraph::NodeRange::iterator::value_type, Node *>);
     static_assert(std::is_convertible_v<OrientedGraph::NodeRange, OrientedGraph::ConstNodeRange>);
     static_assert(!std::is_convertible_v<OrientedGraph::ConstNodeRange, OrientedGraph::NodeRange>);
 
@@ -199,25 +199,6 @@ static void test_NodeRanges() {
     for (Node *node : G.nodes()) {
         assertTrue(node == cG.node(node->id()), "[NodeRanges] Read-write range should enumerate the nodes of the graph");
     }
-
-    // Conversion from read-write to read-only, and mixed comparisons.
-    OrientedGraph::ConstNodeRange converted = G.nodes();
-    assertTrue(collectIds(converted) == expected, "[NodeRanges] Converted range should enumerate each node once");
-    OrientedGraph::ConstNodeIterator cit = G.nodes().begin();
-    OrientedGraph::NodeIterator it = G.nodes().begin();
-    assertTrue(cit == it && it == cit && !(cit != it) && !(it != cit), "[NodeRanges] Mixed comparisons should work");
-    assertTrue(
-        G.nodes().end() == cG.nodes().end(),
-        "[NodeRanges] Read-only and read-write ranges should have the same end"
-    );
-
-    // Post-increment.
-    OrientedGraph::ConstNodeIterator first = cG.nodes().begin();
-    OrientedGraph::ConstNodeIterator previous = first++;
-    assertTrue(
-        previous == cG.nodes().begin() && previous != first,
-        "[NodeRanges] Post-increment should return the previous position"
-    );
 }
 
 
@@ -228,11 +209,10 @@ static void test_LinkRanges() {
 
     static_assert(std::is_same_v<decltype(cG.links()), OrientedGraph::ConstLinkRange>);
     static_assert(std::is_same_v<decltype(G.links()), OrientedGraph::LinkRange>);
-    static_assert(std::is_same_v<decltype(*cG.links().begin()), const Link *>);
-    static_assert(std::is_same_v<decltype(*G.links().begin()), Link *>);
+    static_assert(std::is_same_v<OrientedGraph::ConstLinkRange::iterator::value_type, const Link *>);
+    static_assert(std::is_same_v<OrientedGraph::LinkRange::iterator::value_type, Link *>);
     static_assert(std::is_convertible_v<OrientedGraph::LinkRange, OrientedGraph::ConstLinkRange>);
     static_assert(!std::is_convertible_v<OrientedGraph::ConstLinkRange, OrientedGraph::LinkRange>);
-    static_assert(!std::is_convertible_v<OrientedGraph::LinkIterator, OrientedGraph::ConstNodeIterator>);
 
     const std::multiset<std::string> expected{"A_B", "B_C"};
     assertTrue(collectIds(cG.links()) == expected, "[LinkRanges] Read-only range should enumerate each link once");
@@ -252,17 +232,6 @@ static void test_LinkRanges() {
             "[LinkRanges] Modification through the read-write range should be visible"
         );
     }
-
-    // Conversion from read-write to read-only, and mixed comparisons.
-    OrientedGraph::ConstLinkRange converted = G.links();
-    assertTrue(collectIds(converted) == expected, "[LinkRanges] Converted range should enumerate each link once");
-    OrientedGraph::ConstLinkIterator cit = G.links().begin();
-    OrientedGraph::LinkIterator it = G.links().begin();
-    assertTrue(cit == it && it == cit && !(cit != it) && !(it != cit), "[LinkRanges] Mixed comparisons should work");
-    assertTrue(
-        G.links().end() == cG.links().end(),
-        "[LinkRanges] Read-only and read-write ranges should have the same end"
-    );
 }
 
 

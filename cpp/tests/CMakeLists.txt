@@ -3,6 +3,7 @@ set(Tests
     testGraph.cpp
     testGraphPath.cpp
     testGraphMerge.cpp
+    testProjectionRange.cpp
     testDijkstra.cpp
     testDijkstraSingleSource.cpp
     testKShortestPath.cpp

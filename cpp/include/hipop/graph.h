@@ -1,10 +1,10 @@
 #pragma once
 
+#include <hipop/iterator_util.h>
 #include <hipop/string_util.h>
 
 #include <array>
 #include <cstddef>
-#include <iterator>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -279,113 +279,28 @@ namespace hipop
         std::unordered_map<std::string, Node> nodes_;
         std::unordered_map<std::string, Link> links_;
 
-        template<typename Element>
-        class ElementRange;
-
         template<typename Element> // Element is `Node`, `const Node`, `Link` or `const Link`.
-        class ElementIterator {
+        struct MapValueAddress {
 
-            using Container = std::unordered_map<std::string, std::remove_const_t<Element>>;
-            using ContainerIterator = std::conditional_t<
+            using Entry = std::conditional_t<
                 std::is_const_v<Element>,
-                typename Container::const_iterator,
-                typename Container::iterator
+                const std::pair<const std::string, std::remove_const_t<Element>>,
+                std::pair<const std::string, Element>
             >;
 
-            ContainerIterator it_;
-
-            explicit ElementIterator(ContainerIterator it) : it_(it) {}
-
-            friend class ElementRange<Element>;
-            template<typename> friend class ElementIterator;
-
-        public:
-
-            using iterator_category = std::forward_iterator_tag;
-            using difference_type = std::ptrdiff_t;
-            using value_type = Element *;
-            using pointer = void;
-            using reference = value_type;
-
-            ElementIterator() = default;
-
-            /**
-             * Implicit conversion from the read-write iterator to the read-only one.
-             */
-            template<
-                typename Other,
-                typename = std::enable_if_t<std::is_same_v<const Other, Element> && !std::is_same_v<Other, Element>>
-            >
-            ElementIterator(const ElementIterator<Other> &other) : it_(other.it_) {}
-
-            [[nodiscard]] reference operator*() const { return &it_->second; }
-
-            ElementIterator &operator++() {
-                ++it_;
-                return *this;
-            }
-
-            ElementIterator operator++(int) {
-                ElementIterator result = *this;
-                ++it_;
-                return result;
-            }
-
-            [[nodiscard]] friend bool operator==(const ElementIterator &lhs, const ElementIterator &rhs) {
-                return lhs.it_ == rhs.it_;
-            }
-
-            [[nodiscard]] friend bool operator!=(const ElementIterator &lhs, const ElementIterator &rhs) {
-                return lhs.it_ != rhs.it_;
-            }
-        };
-
-        template<typename Element> // Element is `Node`, `const Node`, `Link` or `const Link`.
-        class ElementRange {
-
-            using Container = std::conditional_t<
-                std::is_const_v<Element>,
-                const std::unordered_map<std::string, std::remove_const_t<Element>>,
-                std::unordered_map<std::string, Element>
-            >;
-
-            Container *container_;
-
-            explicit ElementRange(Container &container) : container_(&container) {}
-
-            friend class OrientedGraph;
-            template<typename> friend class ElementRange;
-
-        public:
-
-            /**
-             * Implicit conversion from the read-write range to the read-only one.
-             */
-            template<
-                typename Other,
-                typename = std::enable_if_t<std::is_same_v<const Other, Element> && !std::is_same_v<Other, Element>>
-            >
-            ElementRange(const ElementRange<Other> &other) : container_(other.container_) {}
-
-            [[nodiscard]] ElementIterator<Element> begin() const {
-                return ElementIterator<Element>(container_->begin());
-            }
-
-            [[nodiscard]] ElementIterator<Element> end() const {
-                return ElementIterator<Element>(container_->end());
+            Element *operator()(Entry &entry) const {
+                return &entry.second;
             }
         };
 
     public:
 
-        using ConstNodeIterator = ElementIterator<const Node>;
-        using ConstNodeRange = ElementRange<const Node>;
-        using NodeIterator = ElementIterator<Node>;
-        using NodeRange = ElementRange<Node>;
-        using ConstLinkIterator = ElementIterator<const Link>;
-        using ConstLinkRange = ElementRange<const Link>;
-        using LinkIterator = ElementIterator<Link>;
-        using LinkRange = ElementRange<Link>;
+        using NodeRange = ProjectingRange<std::unordered_map<std::string, Node>, MapValueAddress<Node>>;
+        using LinkRange = ProjectingRange<std::unordered_map<std::string, Link>, MapValueAddress<Link>>;
+        using ConstNodeRange =
+            ProjectingRange<const std::unordered_map<std::string, Node>, MapValueAddress<const Node>>;
+        using ConstLinkRange =
+            ProjectingRange<const std::unordered_map<std::string, Link>, MapValueAddress<const Link>>;
 
         OrientedGraph() = default;
         OrientedGraph(OrientedGraph &&other) noexcept = default;
