@@ -135,7 +135,7 @@ manylinux-aarch64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
 before-all = "brew install libomp"
-environment = { OpenMP_ROOT = "$(brew --prefix libomp)", MACOSX_DEPLOYMENT_TARGET = "14" }
+environment = { OpenMP_ROOT = "$(brew --prefix libomp)", MACOSX_DEPLOYMENT_TARGET = "15" }
 #
 # MACOSX_DEPLOYMENT_TARGET = Oldest MacOS version supported by the generated wheels.
 # The version of the MacOS runner must be chosen accordingly.
