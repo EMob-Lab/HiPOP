@@ -6,11 +6,14 @@
 
 #include <hipop/graph.h>
 
+#include <cstddef>
+#include <iterator>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -18,21 +21,32 @@ using namespace hipop;
 
 
 /**
- * Graph used by the accessor and range tests:
+ * Graph used by the tests (figures correspond to link lengths):
  *
  * ```
- *        10          20
- *   A --------> B --------> C      D (isolated)
+ *        10        30, 40, 99 (3 parallel links)
+ *   A --------> B ============> E
+ *               | <------------
+ *            20 |       25            x D (isolated)
+ *               v
+ *               C (*) Self-loop on C
  * ```
  */
 static OrientedGraph makeGraph() {
     OrientedGraph G;
     G.AddNode("A", 0, 0);
     G.AddNode("B", 1, 0);
-    G.AddNode("C", 2, 0);
-    G.AddNode("D", 3, 3);
+    G.AddNode("C", 1, 2);
+    G.AddNode("D", 8, 1);
+    G.AddNode("E", 3, 0);
     G.AddLink("A_B", "A", "B", 10, {{"CAR", {{"time", 1}}}}, "CarLayer");
     G.AddLink("B_C", "B", "C", 20, {{"BUS", {{"time", 2}}}}, "BusLayer");
+    G.AddLink("C_C", "C", "C", 0, {{"WALK", {{"time", 0.1}}}}, "TransitLayer");
+    G.AddLink("B_E_1", "B", "E", 30, {{"CAR", {{"time", 3}}}}, "CarLayer");
+    G.AddLink("B_E_2", "B", "E", 40, {{"BUS", {{"time", 4}}}}, "BusLayer");
+    G.AddLink("B_E_3", "B", "E", 99, {{"WALK", {{"time", 9}}}}, "TransitLayer");
+    G.AddLink("E_B", "E", "B", 25, {{"CAR", {{"time", 2.5}}}}, "CarLayer");
+    G.checkInternalConsistency();
     return G;
 }
 
@@ -50,10 +64,21 @@ static std::multiset<std::string> collectIds(const Range &range) {
 }
 
 
+/**
+ * Elements enumerated by the given range (a multiset, so that duplicates would be detected).
+ */
+template<typename Range>
+static auto collectElements(const Range &range) {
+    using Element = std::remove_pointer_t<typename std::iterator_traits<typename Range::iterator>::value_type>;
+    return std::multiset<const Element *>(range.begin(), range.end());
+}
+
+
 static void test_EmptyGraph() {
 
     OrientedGraph G;
     const OrientedGraph &cG = G;
+    G.checkInternalConsistency();
 
     assertTrue(cG.nodeCount() == 0, "[EmptyGraph] nodeCount() should be 0");
     assertTrue(cG.linkCount() == 0, "[EmptyGraph] linkCount() should be 0");
@@ -80,7 +105,7 @@ static void test_NodeAccessors() {
     OrientedGraph G = makeGraph();
     const OrientedGraph &cG = G;
 
-    assertTrue(cG.nodeCount() == 4, "[NodeAccessors] nodeCount() should be 4");
+    assertTrue(cG.nodeCount() == 5, "[NodeAccessors] nodeCount() should be 5");
     assertTrue(cG.hasNode("A") && cG.hasNode("D"), "[NodeAccessors] hasNode() should be true for existing nodes");
     assertTrue(!cG.hasNode("Z"), "[NodeAccessors] hasNode() should be false for unknown nodes");
 
@@ -106,14 +131,15 @@ static void test_NodeAccessors() {
 
     // Accessors must stay consistent after a deletion.
     G.DeleteNode("B");
-    assertTrue(cG.nodeCount() == 3, "[NodeAccessors] nodeCount() should be 3 after deletion");
+    G.checkInternalConsistency();
+    assertTrue(cG.nodeCount() == 4, "[NodeAccessors] nodeCount() should be 4 after deletion");
     assertTrue(!cG.hasNode("B"), "[NodeAccessors] hasNode() should be false after deletion");
     assertTrue(cG.findNode("B") == nullptr, "[NodeAccessors] findNode() should return nullptr after deletion");
     assertThrows<std::invalid_argument>([&]() {
         [[maybe_unused]] const Node *node = cG.node("B");
     }, "[NodeAccessors] node() should throw after deletion");
     assertTrue(
-        collectIds(cG.nodes()) == std::multiset<std::string>{"A", "C", "D"},
+        collectIds(cG.nodes()) == std::multiset<std::string>{"A", "C", "D", "E"},
         "[NodeAccessors] Range should not contain deleted node"
     );
 }
@@ -124,7 +150,7 @@ static void test_LinkAccessors() {
     OrientedGraph G = makeGraph();
     const OrientedGraph &cG = G;
 
-    assertTrue(cG.linkCount() == 2, "[LinkAccessors] linkCount() should be 2");
+    assertTrue(cG.linkCount() == 7, "[LinkAccessors] linkCount() should be 7");
     assertTrue(cG.hasLink("A_B") && cG.hasLink("B_C"), "[LinkAccessors] hasLink() should be true for existing links");
     assertTrue(!cG.hasLink("Z"), "[LinkAccessors] hasLink() should be false for unknown links");
 
@@ -163,14 +189,15 @@ static void test_LinkAccessors() {
 
     // Accessors must stay consistent after a deletion.
     G.DeleteLink("A_B");
-    assertTrue(cG.linkCount() == 1, "[LinkAccessors] linkCount() should be 1 after deletion");
+    G.checkInternalConsistency();
+    assertTrue(cG.linkCount() == 6, "[LinkAccessors] linkCount() should be 6 after deletion");
     assertTrue(!cG.hasLink("A_B"), "[LinkAccessors] hasLink() should be false after deletion");
     assertTrue(cG.findLink("A_B") == nullptr, "[LinkAccessors] findLink() should return nullptr after deletion");
     assertThrows<std::invalid_argument>([&]() {
         [[maybe_unused]] const Link *link = cG.link("A_B");
     }, "[LinkAccessors] link() should throw after deletion");
     assertTrue(
-        collectIds(cG.links()) == std::multiset<std::string>{"B_C"},
+        collectIds(cG.links()) == std::multiset<std::string>{"B_C", "B_E_1", "B_E_2", "B_E_3", "C_C", "E_B"},
         "[LinkAccessors] Range should not contain deleted link"
     );
 }
@@ -183,12 +210,12 @@ static void test_NodeRanges() {
 
     static_assert(std::is_same_v<decltype(cG.nodes()), OrientedGraph::ConstNodeRange>);
     static_assert(std::is_same_v<decltype(G.nodes()), OrientedGraph::NodeRange>);
-    static_assert(std::is_same_v<decltype(*cG.nodes().begin()), const Node *>);
-    static_assert(std::is_same_v<decltype(*G.nodes().begin()), Node *>);
+    static_assert(std::is_same_v<OrientedGraph::ConstNodeRange::iterator::value_type, const Node *>);
+    static_assert(std::is_same_v<OrientedGraph::NodeRange::iterator::value_type, Node *>);
     static_assert(std::is_convertible_v<OrientedGraph::NodeRange, OrientedGraph::ConstNodeRange>);
     static_assert(!std::is_convertible_v<OrientedGraph::ConstNodeRange, OrientedGraph::NodeRange>);
 
-    const std::multiset<std::string> expected{"A", "B", "C", "D"};
+    const std::multiset<std::string> expected{"A", "B", "C", "D", "E"};
     assertTrue(collectIds(cG.nodes()) == expected, "[NodeRanges] Read-only range should enumerate each node once");
     assertTrue(collectIds(G.nodes()) == expected, "[NodeRanges] Read-write range should enumerate each node once");
 
@@ -199,25 +226,6 @@ static void test_NodeRanges() {
     for (Node *node : G.nodes()) {
         assertTrue(node == cG.node(node->id()), "[NodeRanges] Read-write range should enumerate the nodes of the graph");
     }
-
-    // Conversion from read-write to read-only, and mixed comparisons.
-    OrientedGraph::ConstNodeRange converted = G.nodes();
-    assertTrue(collectIds(converted) == expected, "[NodeRanges] Converted range should enumerate each node once");
-    OrientedGraph::ConstNodeIterator cit = G.nodes().begin();
-    OrientedGraph::NodeIterator it = G.nodes().begin();
-    assertTrue(cit == it && it == cit && !(cit != it) && !(it != cit), "[NodeRanges] Mixed comparisons should work");
-    assertTrue(
-        G.nodes().end() == cG.nodes().end(),
-        "[NodeRanges] Read-only and read-write ranges should have the same end"
-    );
-
-    // Post-increment.
-    OrientedGraph::ConstNodeIterator first = cG.nodes().begin();
-    OrientedGraph::ConstNodeIterator previous = first++;
-    assertTrue(
-        previous == cG.nodes().begin() && previous != first,
-        "[NodeRanges] Post-increment should return the previous position"
-    );
 }
 
 
@@ -228,13 +236,12 @@ static void test_LinkRanges() {
 
     static_assert(std::is_same_v<decltype(cG.links()), OrientedGraph::ConstLinkRange>);
     static_assert(std::is_same_v<decltype(G.links()), OrientedGraph::LinkRange>);
-    static_assert(std::is_same_v<decltype(*cG.links().begin()), const Link *>);
-    static_assert(std::is_same_v<decltype(*G.links().begin()), Link *>);
+    static_assert(std::is_same_v<OrientedGraph::ConstLinkRange::iterator::value_type, const Link *>);
+    static_assert(std::is_same_v<OrientedGraph::LinkRange::iterator::value_type, Link *>);
     static_assert(std::is_convertible_v<OrientedGraph::LinkRange, OrientedGraph::ConstLinkRange>);
     static_assert(!std::is_convertible_v<OrientedGraph::ConstLinkRange, OrientedGraph::LinkRange>);
-    static_assert(!std::is_convertible_v<OrientedGraph::LinkIterator, OrientedGraph::ConstNodeIterator>);
 
-    const std::multiset<std::string> expected{"A_B", "B_C"};
+    const std::multiset<std::string> expected{"A_B", "B_C", "B_E_1", "B_E_2", "B_E_3", "C_C", "E_B"};
     assertTrue(collectIds(cG.links()) == expected, "[LinkRanges] Read-only range should enumerate each link once");
     assertTrue(collectIds(G.links()) == expected, "[LinkRanges] Read-write range should enumerate each link once");
 
@@ -252,17 +259,137 @@ static void test_LinkRanges() {
             "[LinkRanges] Modification through the read-write range should be visible"
         );
     }
+}
 
-    // Conversion from read-write to read-only, and mixed comparisons.
-    OrientedGraph::ConstLinkRange converted = G.links();
-    assertTrue(collectIds(converted) == expected, "[LinkRanges] Converted range should enumerate each link once");
-    OrientedGraph::ConstLinkIterator cit = G.links().begin();
-    OrientedGraph::LinkIterator it = G.links().begin();
-    assertTrue(cit == it && it == cit && !(cit != it) && !(it != cit), "[LinkRanges] Mixed comparisons should work");
+
+static void test_AdjacentLinks() {
+
+    OrientedGraph G = makeGraph();
+    const Node *a = G.node("A");
+    const Node *b = G.node("B");
+    const Node *c = G.node("C");
+    const Node *d = G.node("D");
+    const Node *e = G.node("E");
+
+    static_assert(std::is_same_v<decltype(b->inLinks()), Node::AdjacentLinkRange>);
+    static_assert(std::is_same_v<decltype(b->outLinks()), Node::AdjacentLinkRange>);
+    static_assert(std::is_same_v<Node::AdjacentLinkRange::iterator::value_type, const Link *>);
+
     assertTrue(
-        G.links().end() == cG.links().end(),
-        "[LinkRanges] Read-only and read-write ranges should have the same end"
+        a->outLinkCount() == 1 && collectIds(a->outLinks()) == std::multiset<std::string>{"A_B"},
+        "[AdjacentLinks] outLinks() should enumerate the outgoing links"
     );
+    assertTrue(
+        b->inLinkCount() == 2 && collectIds(b->inLinks()) == std::multiset<std::string>{"A_B", "E_B"},
+        "[AdjacentLinks] inLinks() should enumerate the incoming links"
+    );
+    assertTrue(
+        b->outLinkCount() == 4
+            && collectIds(b->outLinks()) == std::multiset<std::string>{"B_C", "B_E_1", "B_E_2", "B_E_3"},
+        "[AdjacentLinks] outLinks() should enumerate the parallel outgoing links"
+    );
+    assertTrue(
+        e->inLinkCount() == 3 && collectIds(e->inLinks()) == std::multiset<std::string>{"B_E_1", "B_E_2", "B_E_3"},
+        "[AdjacentLinks] inLinks() should enumerate the parallel incoming links"
+    );
+    assertTrue(
+        d->inLinkCount() == 0 && d->inLinks().empty() && d->outLinkCount() == 0 && d->outLinks().empty(),
+        "[AdjacentLinks] Isolated node should have no adjacent link"
+    );
+
+    // A self-loop is both an incoming and an outgoing link.
+    assertTrue(
+        collectIds(c->inLinks()) == std::multiset<std::string>{"B_C", "C_C"}
+            && collectIds(c->outLinks()) == std::multiset<std::string>{"C_C"},
+        "[AdjacentLinks] Self-loop should be both an incoming and an outgoing link"
+    );
+}
+
+
+static void test_ConnectingLinks() {
+
+    OrientedGraph G = makeGraph();
+    const OrientedGraph &cG = G;
+    const Node *a = cG.node("A");
+    const Node *b = cG.node("B");
+    const Node *d = cG.node("D");
+    const Node *e = cG.node("E");
+
+    static_assert(std::is_same_v<decltype(cG.findConnectingLinks("B", "E")), OrientedGraph::ConnectingLinkRange>);
+    static_assert(
+        std::is_same_v<decltype(OrientedGraph::findConnectingLinks(b, e)), OrientedGraph::ConnectingLinkRange>
+    );
+    static_assert(std::is_same_v<OrientedGraph::ConnectingLinkRange::iterator::value_type, const Link *>);
+
+    // Overloads with node IDs.
+    assertTrue(
+        cG.hasConnectingLink("B", "E") && cG.connectingLinkCount("B", "E") == 3
+            && collectIds(cG.findConnectingLinks("B", "E")) == std::multiset<std::string>{"B_E_1", "B_E_2", "B_E_3"},
+        "[ConnectingLinks] Parallel links from 'B' to 'E' should be found"
+    );
+    assertTrue(
+        cG.hasConnectingLink("A", "B") && cG.connectingLinkCount("A", "B") == 1
+            && collectIds(cG.findConnectingLinks("A", "B")) == std::multiset<std::string>{"A_B"},
+        "[ConnectingLinks] Link from 'A' to 'B' should be found"
+    );
+    assertTrue(
+        !cG.hasConnectingLink("B", "A") && cG.connectingLinkCount("B", "A") == 0
+            && cG.findConnectingLinks("B", "A").begin() == cG.findConnectingLinks("B", "A").end(),
+        "[ConnectingLinks] No link should be found from 'B' to 'A' (direction matters)"
+    );
+    assertTrue(
+        cG.hasConnectingLink("E", "B") && cG.connectingLinkCount("E", "B") == 1
+            && collectIds(cG.findConnectingLinks("E", "B")) == std::multiset<std::string>{"E_B"},
+        "[ConnectingLinks] Link from 'E' to 'B' should be found (direction matters)"
+    );
+    assertTrue(
+        cG.hasConnectingLink("C", "C") && cG.connectingLinkCount("C", "C") == 1
+            && collectIds(cG.findConnectingLinks("C", "C")) == std::multiset<std::string>{"C_C"},
+        "[ConnectingLinks] Self-loop on 'C' should be found"
+    );
+    assertTrue(
+        !cG.hasConnectingLink("A", "C") && cG.connectingLinkCount("A", "C") == 0
+            && cG.findConnectingLinks("A", "C").begin() == cG.findConnectingLinks("A", "C").end(),
+        "[ConnectingLinks] No link should be found between non-adjacent nodes"
+    );
+    assertTrue(
+        !cG.hasConnectingLink("A", "A") && cG.connectingLinkCount("A", "A") == 0
+            && cG.findConnectingLinks("A", "A").begin() == cG.findConnectingLinks("A", "A").end(),
+        "[ConnectingLinks] No link should be found from 'A' to 'A'"
+    );
+
+    // Overloads with nodes.
+    assertTrue(
+        OrientedGraph::hasConnectingLink(b, e) && OrientedGraph::connectingLinkCount(b, e) == 3
+            && collectIds(OrientedGraph::findConnectingLinks(b, e))
+                == std::multiset<std::string>{"B_E_1", "B_E_2", "B_E_3"},
+        "[ConnectingLinks] Parallel links from 'B' to 'E' should be found (overloads with nodes)"
+    );
+    assertTrue(
+        !OrientedGraph::hasConnectingLink(a, d) && OrientedGraph::connectingLinkCount(a, d) == 0
+            && OrientedGraph::findConnectingLinks(a, d).begin() == OrientedGraph::findConnectingLinks(a, d).end(),
+        "[ConnectingLinks] No link should be found from 'A' to isolated node 'D' (overloads with nodes)"
+    );
+
+    // Unknown node IDs.
+    assertThrows<std::invalid_argument>([&]() {
+        [[maybe_unused]] bool result = cG.hasConnectingLink("Z", "A");
+    }, "[ConnectingLinks] hasConnectingLink() should throw for an unknown upstream node");
+    assertThrows<std::invalid_argument>([&]() {
+        [[maybe_unused]] bool result = cG.hasConnectingLink("A", "Z");
+    }, "[ConnectingLinks] hasConnectingLink() should throw for an unknown downstream node");
+    assertThrows<std::invalid_argument>([&]() {
+        [[maybe_unused]] std::size_t result = cG.connectingLinkCount("Z", "A");
+    }, "[ConnectingLinks] connectingLinkCount() should throw for an unknown upstream node");
+    assertThrows<std::invalid_argument>([&]() {
+        [[maybe_unused]] std::size_t result = cG.connectingLinkCount("A", "Z");
+    }, "[ConnectingLinks] connectingLinkCount() should throw for an unknown downstream node");
+    assertThrows<std::invalid_argument>([&]() {
+        [[maybe_unused]] auto result = cG.findConnectingLinks("Z", "A");
+    }, "[ConnectingLinks] findConnectingLinks() should throw for an unknown upstream node");
+    assertThrows<std::invalid_argument>([&]() {
+        [[maybe_unused]] auto result = cG.findConnectingLinks("A", "Z");
+    }, "[ConnectingLinks] findConnectingLinks() should throw for an unknown downstream node");
 }
 
 
@@ -271,11 +398,12 @@ static void test_AddNode() {
     OrientedGraph G = makeGraph();
     const Node *a = G.node("A");
 
-    G.AddNode("E", 4, 4, "NewNode");
-    const Node *e = G.node("E");
-    assertTrue(G.nodeCount() == 5, "[AddNode] nodeCount() should be 5 after insertion");
+    G.AddNode("Z", 4, 4, "NewNode");
+    G.checkInternalConsistency();
+    const Node *z = G.node("Z");
+    assertTrue(G.nodeCount() == 6, "[AddNode] nodeCount() should be 6 after insertion");
     assertTrue(
-        e->id() == "E" && e->x() == 4 && e->y() == 4 && e->label() == "NewNode",
+        z->id() == "Z" && z->x() == 4 && z->y() == 4 && z->label() == "NewNode",
         "[AddNode] node() should return the inserted node"
     );
 
@@ -283,14 +411,15 @@ static void test_AddNode() {
     assertThrows<std::invalid_argument>([&]() {
         G.AddNode("A", 5, 5, "Duplicate");
     }, "[AddNode] AddNode() should throw for a duplicated node ID");
-    assertTrue(G.nodeCount() == 5, "[AddNode] nodeCount() should be unchanged after a failed insertion");
+    G.checkInternalConsistency();
+    assertTrue(G.nodeCount() == 6, "[AddNode] nodeCount() should be unchanged after a failed insertion");
     assertTrue(G.node("A") == a, "[AddNode] Existing node should not be replaced by a failed insertion");
     assertTrue(
         a->x() == 0 && a->y() == 0 && a->label().empty(),
         "[AddNode] Existing node should not be modified by a failed insertion"
     );
     assertTrue(
-        a->adj().size() == 1 && a->adj().at("B") == G.link("A_B"),
+        collectElements(a->outLinks()) == std::multiset<const Link *>{G.link("A_B")} && a->inLinks().empty(),
         "[AddNode] Links of the existing node should not be modified by a failed insertion"
     );
 }
@@ -300,32 +429,45 @@ static void test_AddLink() {
 
     OrientedGraph G = makeGraph();
     const Link *ab = G.link("A_B");
+    const Link *cc = G.link("C_C");
 
     G.AddLink("C_D", "C", "D", 30, {{"CAR", {{"time", 3}}}}, "CarLayer");
+    G.checkInternalConsistency();
     const Link *cd = G.link("C_D");
-    assertTrue(G.linkCount() == 3, "[AddLink] linkCount() should be 3 after insertion");
+    assertTrue(G.linkCount() == 8, "[AddLink] linkCount() should be 8 after insertion");
     assertTrue(
         cd->id() == "C_D" && cd->up() == G.node("C") && cd->down() == G.node("D") && cd->length() == 30,
         "[AddLink] link() should return the inserted link"
     );
     assertTrue(
-        G.node("C")->adj().at("D") == cd && G.node("D")->radj().at("C") == cd,
+        collectElements(G.node("C")->outLinks()) == std::multiset<const Link *>{cc, cd}
+            && collectElements(G.node("D")->inLinks()) == std::multiset<const Link *>{cd},
         "[AddLink] Inserted link should be registered in the adjacency of its nodes"
+    );
+    assertTrue(
+        collectElements(G.findConnectingLinks("C", "D")) == std::multiset<const Link *>{cd},
+        "[AddLink] Inserted link should be found as a connecting link between its nodes"
     );
 
     // Duplicated ID.
     assertThrows<std::invalid_argument>([&]() {
         G.AddLink("A_B", "D", "A", 40, {{"CAR", {{"time", 4}}}}, "Duplicate");
     }, "[AddLink] AddLink() should throw for a duplicated link ID");
-    assertTrue(G.linkCount() == 3, "[AddLink] linkCount() should be unchanged after a failed insertion");
+    G.checkInternalConsistency();
+    assertTrue(G.linkCount() == 8, "[AddLink] linkCount() should be unchanged after a failed insertion");
     assertTrue(G.link("A_B") == ab, "[AddLink] Existing link should not be replaced by a failed insertion");
     assertTrue(
         ab->up() == G.node("A") && ab->down() == G.node("B") && ab->length() == 10 && ab->label() == "CarLayer",
         "[AddLink] Existing link should not be modified by a failed insertion"
     );
     assertTrue(
-        G.node("D")->adj().empty() && G.node("A")->radj().empty(),
+        G.node("D")->outLinks().empty() && G.node("A")->inLinks().empty(),
         "[AddLink] Failed insertion should not modify the adjacency of the nodes"
+    );
+    assertTrue(
+        !G.hasConnectingLink("D", "A")
+            && collectElements(G.findConnectingLinks("A", "B")) == std::multiset<const Link *>{ab},
+        "[AddLink] Failed insertion should not modify the connecting links"
     );
 
     // Unknown upstream/downstream node.
@@ -335,11 +477,12 @@ static void test_AddLink() {
     assertThrows<std::invalid_argument>([&]() {
         G.AddLink("A_Z", "A", "Z", 50, {{"CAR", {{"time", 5}}}}, "CarLayer");
     }, "[AddLink] AddLink() should throw for an unknown downstream node");
-    assertTrue(G.linkCount() == 3, "[AddLink] linkCount() should be unchanged after a failed insertion");
+    G.checkInternalConsistency();
+    assertTrue(G.linkCount() == 8, "[AddLink] linkCount() should be unchanged after a failed insertion");
     assertTrue(!G.hasLink("Z_A") && !G.hasLink("A_Z"), "[AddLink] Failed insertion should not add any link");
     assertTrue(!G.hasNode("Z"), "[AddLink] Failed insertion should not add any node");
     assertTrue(
-        G.node("A")->adj().size() == 1 && G.node("A")->radj().empty(),
+        G.node("A")->outLinkCount() == 1 && G.node("A")->inLinks().empty(),
         "[AddLink] Failed insertion should not modify the adjacency of the nodes"
     );
 }
@@ -351,91 +494,156 @@ static void test_DeleteLink() {
     const Node *a = G.node("A");
     const Node *b = G.node("B");
     const Link *bc = G.link("B_C");
+    const Link *cc = G.link("C_C");
+    const Link *be1 = G.link("B_E_1");
+    const Link *be2 = G.link("B_E_2");
+    const Link *be3 = G.link("B_E_3");
+    const Link *eb = G.link("E_B");
 
     G.DeleteLink("A_B");
-    assertTrue(G.linkCount() == 1 && !G.hasLink("A_B"), "[DeleteLink] Link 'A_B' should be removed");
-    assertTrue(G.nodeCount() == 4, "[DeleteLink] Nodes should not be removed");
+    G.checkInternalConsistency();
+    assertTrue(G.linkCount() == 6 && !G.hasLink("A_B"), "[DeleteLink] Link 'A_B' should be removed");
+    assertTrue(G.nodeCount() == 5, "[DeleteLink] Nodes should not be removed");
     assertTrue(
         G.node("A") == a && G.node("B") == b && G.link("B_C") == bc,
         "[DeleteLink] Remaining elements should not be relocated"
     );
     assertTrue(
-        a->adj().empty() && b->radj().empty(),
+        a->outLinks().empty() && collectElements(b->inLinks()) == std::multiset<const Link *>{eb},
         "[DeleteLink] Deleted link should be unregistered from the adjacency of its nodes"
     );
     assertTrue(
-        b->adj().size() == 1 && b->adj().at("C") == bc && G.node("C")->radj().at("B") == bc,
+        collectElements(b->outLinks()) == std::multiset<const Link *>{bc, be1, be2, be3}
+            && collectElements(G.node("C")->inLinks()) == std::multiset<const Link *>{bc, cc},
         "[DeleteLink] Adjacency of the other links should not be modified"
+    );
+    assertTrue(
+        collectElements(G.findConnectingLinks("A", "B")).empty()
+            && collectElements(G.findConnectingLinks("B", "E")) == std::multiset<const Link *>{be1, be2, be3},
+        "[DeleteLink] Deleted link should not be found as a connecting link anymore, unlike the other links"
     );
 
     // Unknown ID, or link already deleted: no-op.
     G.DeleteLink("Z");
     G.DeleteLink("A_B");
+    G.checkInternalConsistency();
     assertTrue(
-        G.linkCount() == 1 && G.nodeCount() == 4,
+        G.linkCount() == 6 && G.nodeCount() == 5,
         "[DeleteLink] Deleting an unknown link should not modify the graph"
     );
 
     // A link with the same ID and endpoints can be added again.
     G.AddLink("A_B", "A", "B", 15, {{"CAR", {{"time", 5}}}}, "CarLayer");
+    G.checkInternalConsistency();
     assertTrue(
-        G.link("A_B")->length() == 15 && a->adj().at("B") == G.link("A_B") && b->radj().at("A") == G.link("A_B"),
+        G.link("A_B")->length() == 15 && collectElements(a->outLinks()) == std::multiset<const Link *>{G.link("A_B")}
+            && collectElements(b->inLinks()) == std::multiset<const Link *>{G.link("A_B"), eb}
+            && collectElements(G.findConnectingLinks("A", "B")) == std::multiset<const Link *>{G.link("A_B")},
         "[DeleteLink] Deleted link should be re-insertable"
+    );
+}
+
+
+static void test_DeleteParallelLink() {
+
+    OrientedGraph G = makeGraph();
+    const Node *b = G.node("B");
+    const Node *e = G.node("E");
+    const Link *bc = G.link("B_C");
+    const Link *be1 = G.link("B_E_1");
+    const Link *be3 = G.link("B_E_3");
+    const Link *eb = G.link("E_B");
+
+    // Removal of one of the parallel links from B to E (the one in the middle of the insertion order).
+    G.DeleteLink("B_E_2");
+    G.checkInternalConsistency();
+    assertTrue(G.linkCount() == 6 && !G.hasLink("B_E_2"), "[DeleteParallelLink] Link 'B_E_2' should be removed");
+    assertTrue(
+        G.link("B_E_1") == be1 && G.link("B_E_3") == be3,
+        "[DeleteParallelLink] Other parallel links should not be relocated"
+    );
+    assertTrue(
+        collectElements(b->outLinks()) == std::multiset<const Link *>{bc, be1, be3}
+            && collectElements(e->inLinks()) == std::multiset<const Link *>{be1, be3},
+        "[DeleteParallelLink] Other parallel links should remain in the adjacency of their nodes"
+    );
+    assertTrue(
+        G.connectingLinkCount("B", "E") == 2
+            && collectElements(G.findConnectingLinks("B", "E")) == std::multiset<const Link *>{be1, be3},
+        "[DeleteParallelLink] Other parallel links should still be found as connecting links"
+    );
+    assertTrue(
+        collectElements(G.findConnectingLinks("E", "B")) == std::multiset<const Link *>{eb},
+        "[DeleteParallelLink] Link in the opposite direction should not be affected"
     );
 }
 
 
 static void test_DeleteNode() {
 
-    // Additional links so that node 'B' has several entrance and exit links, plus a self-loop
-    // (which appears both in its entrance and exit links):
-    //
-    //           Self-link
-    //             on B
-    //        10    (*)    20
-    //   A --------> B <-------> C
-    //               |
-    //               +---------> D
     OrientedGraph G = makeGraph();
-    G.AddLink("C_B", "C", "B", 30, {{"CAR", {{"time", 3}}}}, "CarLayer");
-    G.AddLink("B_D", "B", "D", 40, {{"CAR", {{"time", 4}}}}, "CarLayer");
-    G.AddLink("B_B", "B", "B", 5, {{"CAR", {{"time", 1}}}}, "CarLayer"); // Self-link
     const Node *a = G.node("A");
+    const Node *b = G.node("B");
     const Node *c = G.node("C");
     const Node *d = G.node("D");
+    const Link *ab = G.link("A_B");
+    const Link *bc = G.link("B_C");
+    const Link *cc = G.link("C_C");
 
-    G.DeleteNode("B");
-    assertTrue(G.nodeCount() == 3 && !G.hasNode("B"), "[DeleteNode] Node 'B' should be removed");
-    assertTrue(G.linkCount() == 0, "[DeleteNode] All the links from or to node 'B' should be removed");
+    G.DeleteNode("E");
+    G.checkInternalConsistency();
+    assertTrue(G.nodeCount() == 4 && !G.hasNode("E"), "[DeleteNode] Node 'E' should be removed");
     assertTrue(
-        G.node("A") == a && G.node("C") == c && G.node("D") == d,
-        "[DeleteNode] Remaining nodes should not be relocated"
+        G.linkCount() == 3 && !G.hasLink("B_E_1") && !G.hasLink("B_E_2") && !G.hasLink("B_E_3") && !G.hasLink("E_B"),
+        "[DeleteNode] All the links from or to node 'E' should be removed"
     );
     assertTrue(
-        a->adj().empty() && a->radj().empty() && c->adj().empty() && c->radj().empty()
-            && d->adj().empty() && d->radj().empty(),
+        G.node("A") == a && G.node("B") == b && G.node("C") == c && G.node("D") == d
+            && G.link("A_B") == ab && G.link("B_C") == bc && G.link("C_C") == cc,
+        "[DeleteNode] Remaining elements should not be relocated"
+    );
+    assertTrue(
+        collectElements(b->inLinks()) == std::multiset<const Link *>{ab}
+            && collectElements(b->outLinks()) == std::multiset<const Link *>{bc},
         "[DeleteNode] Deleted links should be unregistered from the adjacency of the remaining nodes"
+    );
+    assertTrue(
+        collectElements(a->outLinks()) == std::multiset<const Link *>{ab}
+            && collectElements(c->inLinks()) == std::multiset<const Link *>{bc, cc}
+            && collectElements(c->outLinks()) == std::multiset<const Link *>{cc},
+        "[DeleteNode] Adjacency of the nodes not adjacent to the deleted node should not be modified"
+    );
+    assertTrue(
+        collectElements(G.findConnectingLinks("A", "B")) == std::multiset<const Link *>{ab}
+            && collectElements(G.findConnectingLinks("B", "C")) == std::multiset<const Link *>{bc}
+            && collectElements(G.findConnectingLinks("C", "C")) == std::multiset<const Link *>{cc},
+        "[DeleteNode] Connecting links between the remaining nodes should not be modified"
     );
 
     // Unknown ID, or node already deleted: no-op.
     G.DeleteNode("Z");
-    G.DeleteNode("B");
-    assertTrue(G.nodeCount() == 3, "[DeleteNode] Deleting an unknown node should not modify the graph");
-
-    // Isolated node.
-    G.AddLink("A_C", "A", "C", 50, {{"CAR", {{"time", 5}}}}, "CarLayer");
-    G.DeleteNode("D");
-    assertTrue(G.nodeCount() == 2 && !G.hasNode("D"), "[DeleteNode] Isolated node 'D' should be removed");
+    G.DeleteNode("E");
+    G.checkInternalConsistency();
     assertTrue(
-        G.linkCount() == 1 && a->adj().at("C") == G.link("A_C"),
-        "[DeleteNode] Links not adjacent to the deleted node should not be modified"
+        G.nodeCount() == 4 && G.linkCount() == 3,
+        "[DeleteNode] Deleting an unknown node should not modify the graph"
     );
 
+    // Isolated node (i.e. without any adjacent link to remove).
+    G.DeleteNode("D");
+    G.checkInternalConsistency();
+    assertTrue(G.nodeCount() == 3 && !G.hasNode("D"), "[DeleteNode] Isolated node 'D' should be removed");
+    assertTrue(G.linkCount() == 3, "[DeleteNode] Deleting an isolated node should not remove any link");
+
     // A node with the same ID can be added again, and linked.
-    G.AddNode("B", 5, 5);
-    G.AddLink("A_B", "A", "B", 60, {{"CAR", {{"time", 6}}}}, "CarLayer");
+    G.AddNode("E", 5, 5);
+    G.AddLink("B_E_1", "B", "E", 60, {{"CAR", {{"time", 6}}}}, "CarLayer");
+    G.checkInternalConsistency();
     assertTrue(
-        G.node("B")->x() == 5 && G.node("B")->radj().at("A") == G.link("A_B"),
+        G.node("E")->x() == 5
+            && collectElements(G.node("E")->inLinks()) == std::multiset<const Link *>{G.link("B_E_1")}
+            && collectElements(b->outLinks()) == std::multiset<const Link *>{bc, G.link("B_E_1")}
+            && collectElements(G.findConnectingLinks("B", "E")) == std::multiset<const Link *>{G.link("B_E_1")},
         "[DeleteNode] Deleted node should be re-insertable"
     );
 }
@@ -453,14 +661,20 @@ static void test_PointerStability() {
         G.AddNode("N" + std::to_string(i), i, i);
         G.AddLink("L" + std::to_string(i), "A", "N" + std::to_string(i), 1, {});
     }
+    G.checkInternalConsistency();
     assertTrue(G.node("A") == a && G.link("A_B") == ab, "[PointerStability] Insertions should not relocate elements");
-    assertTrue(ab->up() == a && a->adj().at("B") == ab, "[PointerStability] Relationships should survive insertions");
+    assertTrue(
+        ab->up() == a && collectElements(G.findConnectingLinks("A", "B")) == std::multiset<const Link *>{ab},
+        "[PointerStability] Relationships should survive insertions"
+    );
 
     // Move construction/assignment transfer the elements without relocating them.
     OrientedGraph moved(std::move(G));
+    moved.checkInternalConsistency();
     assertTrue(moved.node("A") == a && moved.link("A_B") == ab, "[PointerStability] Move should not relocate elements");
     OrientedGraph assigned;
     assigned = std::move(moved);
+    assigned.checkInternalConsistency();
     assertTrue(
         assigned.node("A") == a && assigned.link("A_B") == ab,
         "[PointerStability] Move-assignment should not relocate elements"
@@ -468,15 +682,18 @@ static void test_PointerStability() {
 
     // Copies are deep, with relationships pointing to the elements of the copy.
     OrientedGraph copy(assigned);
+    copy.checkInternalConsistency();
     const Node *copyA = copy.node("A");
     const Link *copyAB = copy.link("A_B");
     assertTrue(copyA != a && copyAB != ab, "[PointerStability] Copy should create new elements");
     assertTrue(
-        copyAB->up() == copyA && copyAB->down() == copy.node("B") && copyA->adj().at("B") == copyAB,
+        copyAB->up() == copyA && copyAB->down() == copy.node("B")
+            && collectElements(copy.findConnectingLinks("A", "B")) == std::multiset<const Link *>{copyAB},
         "[PointerStability] Relationships in the copy should point to the elements of the copy"
     );
     OrientedGraph copyAssigned = makeGraph();
     copyAssigned = assigned;
+    copyAssigned.checkInternalConsistency();
     assertTrue(
         copyAssigned.nodeCount() == assigned.nodeCount() && copyAssigned.linkCount() == assigned.linkCount(),
         "[PointerStability] Copy-assignment should replace the content"
@@ -494,6 +711,7 @@ static void test_CopyConstructor() {
 
     // Copy is deep, thus both instances are expected to be independent.
     OrientedGraph copyG(G);
+    copyG.checkInternalConsistency();
     G.link("A_B")->setCosts({{"CAR", {{"time", 42}}}});
 
     assertTrue(
@@ -519,6 +737,7 @@ static void test_CopyAssignmentOperator() {
     // Assignment operator is expected to perform a deep copy as well,
     // and also to erase the pre-existing content of the target instance.
     copyG = G;
+    copyG.checkInternalConsistency();
     G.link("A_B")->setCosts({{"CAR", {{"time", 42}}}});
 
     assertTrue(!copyG.hasNode("Z"), "[CopyAssignmentOperator] Pre-existing node 'Z' should be erased by the copy");
@@ -537,21 +756,23 @@ static void test_CopyAssignmentOperator() {
 static void test_GetLinksWithoutCost() {
 
     const OrientedGraph G = makeGraph();
-    const std::unordered_map<std::string, std::string> labelToCostFamily{{"CarLayer", "CAR"}, {"BusLayer", "BUS"}};
+    const std::unordered_map<std::string, std::string> labelToCostFamily{
+        {"CarLayer", "CAR"}, {"BusLayer", "BUS"}, {"TransitLayer", "WALK"}
+    };
 
-    std::vector<std::string> result = G.GetLinksWithoutCost("time", labelToCostFamily);
+    std::unordered_set<std::string> result = G.GetLinksWithoutCost("time", labelToCostFamily);
     assertTrue(result.empty(), "[GetLinksWithoutCost] All links should have a cost for the given metric");
 
     result = G.GetLinksWithoutCost("distance", labelToCostFamily);
     assertTrue(
-        std::multiset<std::string>(result.begin(), result.end()) == std::multiset<std::string>{"A_B", "B_C"},
+        result == std::unordered_set<std::string>{"A_B", "B_C", "B_E_1", "B_E_2", "B_E_3", "C_C", "E_B"},
         "[GetLinksWithoutCost] No link should have a cost for an unknown metric"
     );
 
-    // Cost family defined on B_C only.
-    result = G.GetLinksWithoutCost("time", {{"CarLayer", "BUS"}, {"BusLayer", "BUS"}});
+    // Cost family defined on the bus links only.
+    result = G.GetLinksWithoutCost("time", {{"CarLayer", "BUS"}, {"BusLayer", "BUS"}, {"TransitLayer", "BUS"}});
     assertTrue(
-        result == std::vector<std::string>{"A_B"},
+        result == std::unordered_set<std::string>{"A_B", "B_E_1", "B_E_3", "C_C", "E_B"},
         "[GetLinksWithoutCost] Links without the given cost family should be returned"
     );
 }
@@ -577,6 +798,16 @@ static void test_Exits() {
 
     assertTrue(exits.size() == 1, "[Exits] getExits() should return one link");
     assertTrue(exits[0]->down()->id() == "D", "[Exits] Exit link should go to 'D'");
+
+    // Movement restrictions apply alike to all the parallel links going to the same downstream node.
+    G.AddLink("B_C_2", "B", "C", 12, {{"CAR", {{"time", 12}}}}, "CarLayer");
+    G.AddLink("B_D_2", "B", "D", 12, {{"CAR", {{"time", 12}}}}, "CarLayer");
+    G.checkInternalConsistency();
+    exits = G.node("B")->getExits("A");
+    assertTrue(
+        collectIds(exits) == std::multiset<std::string>{"B_D", "B_D_2"},
+        "[Exits] getExits() should return all the parallel links to 'D', and none of those to 'C'"
+    );
 }
 
 
@@ -586,9 +817,12 @@ int testGraph(int, char**) {
     test_LinkAccessors();
     test_NodeRanges();
     test_LinkRanges();
+    test_AdjacentLinks();
+    test_ConnectingLinks();
     test_AddNode();
     test_AddLink();
     test_DeleteLink();
+    test_DeleteParallelLink();
     test_DeleteNode();
     test_PointerStability();
     test_CopyConstructor();

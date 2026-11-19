@@ -12,7 +12,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <limits>
 #include <optional>
 #include <queue>
 #include <set>
@@ -196,9 +195,8 @@ namespace hipop
         }
 
         // Initialize dist and prev tables
-        double inf = std::numeric_limits<double>::infinity();
         int null = V+1;
-        std::vector<std::vector<double>> dist(V, std::vector<double>(V, inf));
+        std::vector<std::vector<double>> dist(V, std::vector<double>(V, INFINITY));
         std::vector<std::vector<int>> prev(V, std::vector<int>(V, null));
         for (const Link *link : G.links())
         {
@@ -206,8 +204,14 @@ namespace hipop
             {
                 const std::string &u = link->up()->id();
                 const std::string &v = link->down()->id();
-                dist[nodevMap.at(u)][nodevMap.at(v)] = link->cost(labelToCostFamily.at(link->label()), costMetric);
-                prev[nodevMap.at(u)][nodevMap.at(v)] = nodevMap.at(u);
+                double costOnLink = link->cost(labelToCostFamily.at(link->label()), costMetric);
+
+                // With parallel links, there are possibly several links from u to v,
+                // thus keep the one that minimizes the cost.
+                if (costOnLink < dist[nodevMap.at(u)][nodevMap.at(v)]) {
+                    dist[nodevMap.at(u)][nodevMap.at(v)] = costOnLink;
+                    prev[nodevMap.at(u)][nodevMap.at(v)] = nodevMap.at(u);
+                }
             }
         }
         for (int v = 0; v < V; ++v)
@@ -223,7 +227,7 @@ namespace hipop
             {
                 for (int j = 0; j < V; ++j)
                 {
-                    if (dist[i][k] != inf && dist[k][j] != inf && dist[i][j] > dist[i][k] + dist[k][j])
+                    if (dist[i][k] != INFINITY && dist[k][j] != INFINITY && dist[i][j] > dist[i][k] + dist[k][j])
                     {
                         dist[i][j] = dist[i][k] + dist[k][j];
                         prev[i][j] = prev[k][j];

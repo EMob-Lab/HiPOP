@@ -1,6 +1,7 @@
 #include <hipop/create.h>
 #include <hipop/graph.h>
 #include <hipop/graph_path.h>
+#include <hipop/iterator_util.h>
 
 #include <nanobind/make_iterator.h>
 #include <nanobind/nanobind.h>
@@ -10,12 +11,14 @@
 #include <nanobind/stl/set.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/unordered_map.h>
+#include <nanobind/stl/unordered_set.h>
 #include <nanobind/stl/vector.h>
 
 #include <cstddef>
 #include <optional>
 #include <string>
 #include <sstream>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -31,7 +34,7 @@ namespace hipop_wrappers {
 struct NodeMapping {
 
     using Element = hipop::Node;
-    using Iterator = hipop::OrientedGraph::NodeIterator;
+    using Range = hipop::OrientedGraph::NodeRange;
 
     static constexpr const char *doc =
         "Read-only, dictionary-like view of the nodes of an OrientedGraph, indexed by node ID.\n"
@@ -63,7 +66,7 @@ struct NodeMapping {
 struct LinkMapping {
 
     using Element = hipop::Link;
-    using Iterator = hipop::OrientedGraph::LinkIterator;
+    using Range = hipop::OrientedGraph::LinkRange;
 
     static constexpr const char *doc =
         "Read-only, dictionary-like view of the links of an OrientedGraph, indexed by link ID.\n"
@@ -87,37 +90,6 @@ struct LinkMapping {
     [[nodiscard]] static hipop::Link *find(hipop::OrientedGraph &graph, const std::string &id) { return graph.findLink(id); }
     [[nodiscard]] static hipop::OrientedGraph::LinkRange range(hipop::OrientedGraph &graph) { return graph.links(); }
 };
-
-
-/**
- * Python iterator over the given projection of the elements of the graph.
- */
-template<typename Mapping, typename Projection, nb::rv_policy::value RVPolicy = nb::rv_policy::automatic_reference_v>
-static auto make_projecting_iterator(hipop::OrientedGraph &graph, const char *name) {
-
-    class ProjectingIterator {
-
-        typename Mapping::Iterator it_;
-
-    public:
-
-        explicit ProjectingIterator(typename Mapping::Iterator it) : it_(it) {}
-
-        [[nodiscard]] decltype(auto) operator*() const { return Projection{}(*it_); }
-
-        ProjectingIterator &operator++() {
-            ++it_;
-            return *this;
-        }
-
-        [[nodiscard]] bool operator==(const ProjectingIterator &other) const { return it_ == other.it_; }
-        [[nodiscard]] bool operator!=(const ProjectingIterator &other) const { return it_ != other.it_; }
-    };
-
-    auto range = Mapping::range(graph);
-    return nb::make_iterator<RVPolicy>(
-        nb::type<Mapping>(), name, ProjectingIterator(range.begin()), ProjectingIterator(range.end()));
-}
 
 
 /**
@@ -149,6 +121,8 @@ static void bind_graph_element_mapping(nb::module_ &m, const char *name) {
             return { element->id(), element };
         }
     };
+    using KeyIterator = hipop::ProjectingIterator<typename Mapping::Range::iterator, KeyProjection>;
+    using ItemIterator = hipop::ProjectingIterator<typename Mapping::Range::iterator, ItemProjection>;
 
     nb::class_<Mapping> mappingClass(m, name, Mapping::doc);
 
@@ -158,20 +132,25 @@ static void bind_graph_element_mapping(nb::module_ &m, const char *name) {
             return Mapping::find(*v.graph, id) != nullptr;
         })
         .def("__iter__", [](const KeyView &v) {
-            return make_projecting_iterator<Mapping, KeyProjection>(*v.graph, "KeyIterator");
+            auto range = Mapping::range(*v.graph);
+            return nb::make_iterator(nb::type<Mapping>(), "KeyIterator",
+                KeyIterator(range.begin()), KeyIterator(range.end()));
         }, nb::keep_alive<0, 1>());
 
     nb::class_<ValueView>(mappingClass, "ValueView")
         .def("__len__", [](const ValueView &v) { return Mapping::count(*v.graph); })
         .def("__iter__", [](const ValueView &v) {
             auto range = Mapping::range(*v.graph);
-            return nb::make_iterator<nb::rv_policy::reference>(nb::type<Mapping>(), "ValueIterator", range.begin(), range.end());
+            return nb::make_iterator<nb::rv_policy::reference>(nb::type<Mapping>(), "ValueIterator",
+                range.begin(), range.end());
         }, nb::keep_alive<0, 1>());
 
     nb::class_<ItemView>(mappingClass, "ItemView")
         .def("__len__", [](const ItemView &v) { return Mapping::count(*v.graph); })
         .def("__iter__", [](const ItemView &v) {
-            return make_projecting_iterator<Mapping, ItemProjection, nb::rv_policy::reference>(*v.graph, "ItemIterator");
+            auto range = Mapping::range(*v.graph);
+            return nb::make_iterator<nb::rv_policy::reference>(nb::type<Mapping>(), "ItemIterator",
+                ItemIterator(range.begin()), ItemIterator(range.end()));
         }, nb::keep_alive<0, 1>());
 
     mappingClass
@@ -191,11 +170,60 @@ static void bind_graph_element_mapping(nb::module_ &m, const char *name) {
             return element == nullptr ? std::nullopt : std::make_optional(element);
         }, "id"_a, nb::rv_policy::reference)
         .def("__iter__", [](const Mapping &v) {
-            return make_projecting_iterator<Mapping, KeyProjection>(*v.graph, "KeyIterator");
+            auto range = Mapping::range(*v.graph);
+            return nb::make_iterator(nb::type<Mapping>(), "KeyIterator",
+                KeyIterator(range.begin()), KeyIterator(range.end()));
         }, nb::keep_alive<0, 1>())
         .def("keys", [](const Mapping &v) { return KeyView{ v.graph }; }, nb::keep_alive<0, 1>())
         .def("values", [](const Mapping &v) { return ValueView{ v.graph }; }, nb::keep_alive<0, 1>())
         .def("items", [](const Mapping &v) { return ItemView{ v.graph }; }, nb::keep_alive<0, 1>());
+}
+
+
+/**
+ * Lightweight view of the incoming or outgoing links of a node.
+ */
+struct AdjacentLinkCollection {
+
+    static constexpr const char *doc =
+        "Read-only, iterable view of the incoming or outgoing links of a Node, enumerated in no particular order.\n"
+        "\n"
+        "WARNINGS:\n"
+        "- The view reflects the current state of the graph. Adding or removing links (or nodes)\n"
+        "  while iterating over the view results in undefined behavior (likely a crash).\n"
+        "- The Link objects returned by the view are non-owning references to data stored\n"
+        "  in the OrientedGraph. The graph must be kept alive for as long as they are used, and they\n"
+        "  must not be removed from it. Otherwise, accessing them results in undefined behavior\n"
+        "  (likely a crash).";
+
+    hipop::Node::AdjacentLinkRange range;
+};
+
+
+/**
+ * Register the Python class `name` corresponding to `AdjacentLinkCollection`.
+ *
+ * Remark: the API exposed to the Python world for the `AdjacentLinkCollection` class is collection-like.
+ * Indexing is not supported, as the order in which the links are enumerated is implementation-defined.
+ * Still, it is not fully compliant with the `collections.abc.Collection` contract:
+ *  - `__contains__` is not implemented (the `in` operator falls back to iterating over the collection),
+ *  - `__eq__` is not implemented (equality is identity).
+ */
+static void bind_adjacent_link_collection(nb::module_ &m, const char *name) {
+    nb::class_<AdjacentLinkCollection>(m, name, AdjacentLinkCollection::doc)
+        .def("__len__", [](const AdjacentLinkCollection &v) { return v.range.size(); })
+        .def("__iter__", [](const AdjacentLinkCollection &v) {
+            return nb::make_iterator<nb::rv_policy::reference>(nb::type<AdjacentLinkCollection>(), "Iterator",
+                v.range.begin(), v.range.end());
+        }, nb::keep_alive<0, 1>())
+        .def("ids", [](const AdjacentLinkCollection &v) { // Return a plain Python set (the order is arbitrary).
+            std::unordered_set<std::string> result;
+            result.reserve(v.range.size());
+            for (const hipop::Link *link : v.range) {
+                result.emplace(link->id());
+            }
+            return result;
+        });
 }
 
 
@@ -315,16 +343,19 @@ void graph(nb::module_ &m) {
         "(likely a crash).")
         .def_prop_ro("id", &hipop::Node::id)
         .def_prop_ro("position", &hipop::Node::position)
-        .def_prop_ro("adj", &hipop::Node::adj)
-        .def_prop_ro("radj", &hipop::Node::radj)
+        .def_prop_ro("in_links", [](const hipop::Node &node) {
+            return AdjacentLinkCollection{ node.inLinks() };
+        }, nb::keep_alive<0, 1>())
+        .def_prop_ro("out_links", [](const hipop::Node &node) {
+            return AdjacentLinkCollection{ node.outLinks() };
+        }, nb::keep_alive<0, 1>())
         .def_prop_ro("label", &hipop::Node::label)
         .def_prop_ro("exclude_movements", &hipop::Node::excludeMovements)
         .def("get_exits", &hipop::Node::getExits, "predecessor"_a, nb::rv_policy::reference);
 
-    bind_graph_element_mapping<NodeMapping>(m, "NodeMap");
-    bind_graph_element_mapping<LinkMapping>(m, "LinkMap");
-    bind_path_element_sequence<PathNodeSequence>(m, "PathNodeSequence");
-    bind_path_element_sequence<PathLinkSequence>(m, "PathLinkSequence");
+    bind_graph_element_mapping<NodeMapping>(m, "NodeMapping");
+    bind_graph_element_mapping<LinkMapping>(m, "LinkMapping");
+    bind_adjacent_link_collection(m, "AdjacentLinkCollection");
 
     nb::class_<hipop::OrientedGraph>(m, "OrientedGraph")
         .def(nb::init<>())
@@ -338,6 +369,16 @@ void graph(nb::module_ &m) {
         .def_prop_ro("links", [](hipop::OrientedGraph &graph) {
             return LinkMapping{ &graph };
         }, nb::keep_alive<0, 1>())
+
+        // Connecting link queries
+        .def("has_connecting_link", nb::overload_cast<const std::string &, const std::string &>(
+            &hipop::OrientedGraph::hasConnectingLink, nb::const_), "up"_a, "down"_a)
+        .def("count_connecting_links", nb::overload_cast<const std::string &, const std::string &>(
+            &hipop::OrientedGraph::connectingLinkCount, nb::const_), "up"_a, "down"_a)
+        .def("find_connecting_links", [](const hipop::OrientedGraph &graph, const std::string &up, const std::string &down) {
+            auto range = graph.findConnectingLinks(up, down);
+            return std::vector<const hipop::Link *>(range.begin(), range.end()); // Return a plain Python list.
+        }, "up"_a, "down"_a, nb::rv_policy::reference)
 
         // Copy
         .def("copy", [](const hipop::OrientedGraph &graph) {
@@ -360,11 +401,12 @@ void graph(nb::module_ &m) {
             "link_id"_a, "up"_a, "down"_a, "length"_a, "costs"_a, "label"_a = "_def")
         .def("delete_node", &hipop::OrientedGraph::DeleteNode, "node_id"_a)
         .def("delete_link", &hipop::OrientedGraph::DeleteLink, "link_id"_a)
-        .def("update_link_costs", &hipop::OrientedGraph::UpdateLinkCosts, "link_id"_a, "costs"_a)
         .def("update_costs", &hipop::OrientedGraph::UpdateCosts, "link_id_to_costs"_a)
-        .def("get_length", &hipop::OrientedGraph::getLength, "up"_a, "down"_a)
         .def("get_links_without_cost", &hipop::OrientedGraph::GetLinksWithoutCost,
             "cost_metric"_a, "label_to_cost_family"_a);
+
+    bind_path_element_sequence<PathNodeSequence>(m, "PathNodeSequence");
+    bind_path_element_sequence<PathLinkSequence>(m, "PathLinkSequence");
 
     nb::class_<hipop::OrientedGraphPath>(m, "OrientedGraphPath",
         "A path within an OrientedGraph, i.e. a sequence of consecutive links\n"

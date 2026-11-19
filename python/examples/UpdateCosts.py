@@ -25,7 +25,7 @@ print('1_2     ', G.links['1_2'])
 
 #print(G.nodes['1'].get_exits('0')[0].id,' ',G.nodes['1'].get_exits('0'))
 #print(G.nodes['1'].get_exits('0')[0].id,' ',G.nodes['1'].get_exits('0'))
-print(G.nodes['1'].adj['2'].id)
+print([link.id for link in G.find_connecting_links('1', '2')])
 #print(G.links['1_2_bis'].id)
 #print(graph_to_dict(G))
 

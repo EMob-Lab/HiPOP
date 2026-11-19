@@ -6,7 +6,9 @@
 
 #include <functional>
 #include <iostream>
+#include <string>
 #include <string_view>
+#include <unordered_map>
 
 using namespace hipop;
 
@@ -137,6 +139,38 @@ int testDijkstraSingleSource(int, char**) {
                 // C not reachable since +inf links are impassable.
                 {G.node("D"), G.link("B_D")}
             }, "Origin B with generalized cost");
+        }
+    });
+
+    testCase("Parallel links", graph_with_parallel_links, [](const OrientedGraph &G) {
+
+        const std::unordered_map<std::string, std::string> labelToCostFamily{
+            {"TransitLayer", "WALK"}, {"BusLayer", "BUS"}, {"CarLayer", "CAR"}
+        };
+
+        {
+            auto tree = dijkstraSingleSource(G, "A", "time", labelToCostFamily, {});
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("A_B")},
+                {G.node("C"), G.link("B_C_Bus")},
+                {G.node("D"), G.link("C_D")}
+            }, "Origin A");
+        }
+        {
+            auto tree = dijkstraSingleSource(G, "A", "time", labelToCostFamily, {"TransitLayer", "CarLayer"});
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("A_B")},
+                {G.node("C"), G.link("B_C_Car")},
+                {G.node("D"), G.link("C_D")}
+            }, "Origin A with transit & car layers only");
+        }
+        {
+            auto tree = dijkstraSingleSource(G, "A", "time", labelToCostFamily, {"TransitLayer"});
+            assertEqualShortestPathTrees(tree, {
+                {G.node("B"), G.link("A_B")},
+                {G.node("C"), G.link("B_C_Transit")},
+                {G.node("D"), G.link("C_D")}
+            }, "Origin A with transit layer only");
         }
     });
 

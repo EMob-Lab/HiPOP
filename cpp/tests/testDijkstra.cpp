@@ -8,7 +8,9 @@
 #include <functional>
 #include <iostream>
 #include <optional>
+#include <string>
 #include <string_view>
+#include <unordered_map>
 
 using namespace hipop;
 
@@ -134,6 +136,28 @@ int testDijkstra(int, char**) {
         {
             auto path = dijkstra(G, "B", "C", "generalized_cost", {{"CarLayer", "CAR"}});
             assertEqualPaths(path, std::nullopt, "B -> C with generalized cost (considered as non-feasible)");
+        }
+    });
+
+    testCase("Parallel links", graph_with_parallel_links, [](const OrientedGraph &G) {
+
+        const std::unordered_map<std::string, std::string> labelToCostFamily{
+            {"TransitLayer", "WALK"}, {"BusLayer", "BUS"}, {"CarLayer", "CAR"}
+        };
+
+        {
+            auto path = dijkstra(G, "A", "D", "time", labelToCostFamily);
+            assertEqualPaths(path, PathCost{makePath(G, {"A_B", "B_C_Bus", "C_D"}), 20}, "A -> D");
+        }
+        {
+            auto path = dijkstra(G, "A", "D", "time", labelToCostFamily, {"TransitLayer", "CarLayer"});
+            assertEqualPaths(path, PathCost{makePath(G, {"A_B", "B_C_Car", "C_D"}), 30},
+                "A -> D with transit & car layers only");
+        }
+        {
+            auto path = dijkstra(G, "A", "D", "time", labelToCostFamily, {"TransitLayer"});
+            assertEqualPaths(path, PathCost{makePath(G, {"A_B", "B_C_Transit", "C_D"}), 90},
+                "A -> D with transit layer only");
         }
     });
 
