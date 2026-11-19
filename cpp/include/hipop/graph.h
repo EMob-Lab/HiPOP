@@ -5,17 +5,16 @@
 #include <array>
 #include <cstddef>
 #include <iterator>
-#include <set>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
-using setstring = std::set<std::string>;
-using vecstring = std::vector<std::string>;
-using mapsets = std::unordered_map<std::string, std::set<std::string>>;
+using setstring = std::unordered_set<std::string>;
+using mapsets = std::unordered_map<std::string, std::unordered_set<std::string>>;
 using mapcosts = std::unordered_map<std::string, std::unordered_map<std::string, double>>;
 
 
