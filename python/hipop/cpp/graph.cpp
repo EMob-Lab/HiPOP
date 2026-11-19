@@ -301,10 +301,8 @@ void graph(nb::module_ &m) {
         .def_prop_ro("exclude_movements", &hipop::Node::excludeMovements)
         .def("get_exits", &hipop::Node::getExits, "predecessor"_a, nb::rv_policy::reference);
 
-    bind_graph_element_mapping<NodeMapping>(m, "NodeMap");
-    bind_graph_element_mapping<LinkMapping>(m, "LinkMap");
-    bind_path_element_sequence<PathNodeSequence>(m, "PathNodeSequence");
-    bind_path_element_sequence<PathLinkSequence>(m, "PathLinkSequence");
+    bind_graph_element_mapping<NodeMapping>(m, "NodeMapping");
+    bind_graph_element_mapping<LinkMapping>(m, "LinkMapping");
 
     nb::class_<hipop::OrientedGraph>(m, "OrientedGraph")
         .def(nb::init<>())
@@ -343,6 +341,9 @@ void graph(nb::module_ &m) {
         .def("update_costs", &hipop::OrientedGraph::UpdateCosts, "link_id_to_costs"_a)
         .def("get_links_without_cost", &hipop::OrientedGraph::GetLinksWithoutCost,
             "cost_metric"_a, "label_to_cost_family"_a);
+
+    bind_path_element_sequence<PathNodeSequence>(m, "PathNodeSequence");
+    bind_path_element_sequence<PathLinkSequence>(m, "PathLinkSequence");
 
     nb::class_<hipop::OrientedGraphPath>(m, "OrientedGraphPath",
         "A path within an OrientedGraph, i.e. a sequence of consecutive links\n"
