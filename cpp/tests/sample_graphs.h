@@ -100,6 +100,41 @@ inline hipop::OrientedGraph graph_with_special_cost_values() {
 
 
 /**
+ * Graph with parallel links:
+ *
+ * ```
+ *          5         100
+ *    A --------> B -------
+ *     \         |||       \          (*) 3 parallel links there:
+ *      \        |||(*)     \             - "_Transit" with cost 80
+ *       \       |||         \            - "_Bus" with cost 10
+ *        \       v           v           - "_Car" with cost 20
+ *         -----> C --------> D
+ *          100         5
+ * ```
+ */
+inline hipop::OrientedGraph graph_with_parallel_links() {
+
+    hipop::OrientedGraph G;
+
+    G.AddNode("A", 0, 0);
+    G.AddNode("B", 1, 0);
+    G.AddNode("C", 1, 1);
+    G.AddNode("D", 2, 1);
+
+    G.AddLink("A_B", "A", "B", 1, {{"WALK", {{"time", 5}}}}, "TransitLayer");
+    G.AddLink("A_C", "A", "C", 1, {{"WALK", {{"time", 100}}}}, "TransitLayer");
+    G.AddLink("B_C_Transit", "B", "C", 1, {{"WALK", {{"time", 80}}}}, "TransitLayer");
+    G.AddLink("B_C_Bus", "B", "C", 1, {{"BUS", {{"time", 10}}}}, "BusLayer");
+    G.AddLink("B_C_Car", "B", "C", 1, {{"CAR", {{"time", 20}}}}, "CarLayer");
+    G.AddLink("C_D", "C", "D", 1, {{"WALK", {{"time", 5}}}}, "TransitLayer");
+    G.AddLink("B_D", "B", "D", 1, {{"WALK", {{"time", 100}}}}, "TransitLayer");
+
+    return G;
+}
+
+
+/**
  * Graph with a cycle. Cumulated cost on the cycle is non-zero for "time", and 0 for "generalized_cost".
  *
  * ```

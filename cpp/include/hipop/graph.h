@@ -30,6 +30,8 @@ namespace hipop
         std::string id_;
         Node *up_;
         Node *down_;
+        std::size_t upContainerIdx_ = 0;   // Index of the current link in up_->outLinks_
+        std::size_t downContainerIdx_ = 0; // Index of the current link in down_->inLinks_
         double length_;
         mapcosts costs_; // costs_[cost-family][cost-metric] -> cost-value
         std::string label_;
@@ -145,14 +147,23 @@ namespace hipop
 
         std::string id_;
         std::array<double, 2> position_;
-        std::unordered_map<std::string, const Link *> adj_;
-        std::unordered_map<std::string, const Link *> radj_;
+        std::vector<Link *> inLinks_;
+        std::vector<Link *> outLinks_;
+        std::unordered_multimap<const Node *, const Link *> outLinksPerDownNode_;
         std::string label_;
         mapsets excludeMovements_;
 
         friend class OrientedGraph; // Access to private fields is needed to add/remove node/link in the graph.
 
+        struct CastToConstLink {
+            const Link *operator()(Link *link) const {
+                return link;
+            }
+        };
+
     public:
+
+        using AdjacentLinkRange = ProjectingRange<const std::vector<Link *>, CastToConstLink>;
 
         Node(std::string id, double x, double y, std::string label, mapsets excludeMovements) :
             id_(std::move(id)),
@@ -198,21 +209,37 @@ namespace hipop
         }
 
         /**
-         * Outgoing links from the current node.
-         *
-         * @return `adj()[adjacent-node-ID]` -> link from the current node to the adjacent node
+         * Number of incoming links to the current node.
          */
-        [[nodiscard]] const std::unordered_map<std::string, const Link *> &adj() const {
-            return adj_;
+        [[nodiscard]] std::size_t inLinkCount() const {
+            return inLinks_.size();
         }
 
         /**
          * Incoming links to the current node.
          *
-         * @return `radj()[adjacent-node-ID]` -> link from the adjacent node to the current node
+         * @warning The order in which the links are returned in the underlying range is implementation-defined
+         *          (in particular, it may NOT be the order in which the links are created).
          */
-        [[nodiscard]] const std::unordered_map<std::string, const Link *> &radj() const {
-            return radj_;
+        [[nodiscard]] AdjacentLinkRange inLinks() const {
+            return AdjacentLinkRange(inLinks_);
+        }
+
+        /**
+         * Number of outgoing links from the current node.
+         */
+        [[nodiscard]] std::size_t outLinkCount() const {
+            return outLinks_.size();
+        }
+
+        /**
+         * Outgoing links from the current node.
+         *
+         * @warning The order in which the links are returned in the underlying range is implementation-defined
+         *          (in particular, it may NOT be the order in which the links are created).
+         */
+        [[nodiscard]] AdjacentLinkRange outLinks() const {
+            return AdjacentLinkRange(outLinks_);
         }
 
         /**
@@ -225,8 +252,9 @@ namespace hipop
         /**
          * Movement restrictions (i.e. forbidden turns) at the current node.
          *
-         * @return `excludeMovements()[predecessor-node-ID]` -> IDs of the downstream nodes (i.e. those in `adj()`)
-         *         that cannot be reached from the current node when arriving from the given predecessor node
+         * @return `excludeMovements()[predecessor-node-ID]` -> IDs of the downstream nodes (i.e. those reachable
+         *         through the links in `outLinks()`) that are not allowed to be reached from the current node
+         *         when arriving from the given predecessor node
          */
         [[nodiscard]] const mapsets &excludeMovements() const {
             return excludeMovements_;
@@ -246,10 +274,14 @@ namespace hipop
          */
         template<typename Callback>
         void forEachExit(const std::string &predecessor, Callback &&callback) const {
-            for (const auto &l : adj_) {
-                auto it = excludeMovements_.find(predecessor);
-                if (it == excludeMovements_.end() || it->second.find(l.second->down()->id()) == it->second.end()) {
-                    callback(l.second);
+            static_assert(
+                std::is_invocable_v<Callback, const Link *>,
+                "Callback must have signature: void(const Link *link)"
+            );
+            auto it = excludeMovements_.find(predecessor);
+            for (const Link *link : outLinks_) {
+                if (it == excludeMovements_.end() || it->second.find(link->down()->id()) == it->second.end()) {
+                    callback(link);
                 }
             }
         }
@@ -274,6 +306,13 @@ namespace hipop
     };
 
 
+    /**
+     * Oriented graph data-structure.
+     *
+     * Supported features:
+     * - parallel links (i.e. several links from the same upstream node to the same downstream node),
+     * - self-loops (i.e. links whose upstream and downstream nodes are the same).
+     */
     class OrientedGraph {
 
         // Must be node-based containers (no flat hash map): Node/Link addresses must remain stable.
@@ -488,6 +527,92 @@ namespace hipop
         }
 
         /**
+         * Whether there is at least 1 link from up to down.
+         */
+        [[nodiscard]] static bool hasConnectingLink(const Node *up, const Node *down) {
+            return up->outLinksPerDownNode_.find(down) != up->outLinksPerDownNode_.end();
+        }
+
+        /**
+         * Whether there is at least 1 link from up to down (nodes identified by their IDs).
+         *
+         * @throw std::invalid_argument if either up or down does not correspond to an existing node.
+         */
+        [[nodiscard]] bool hasConnectingLink(const std::string &up, const std::string &down) const {
+            return hasConnectingLink(node(up), node(down));
+        }
+
+        /**
+         * Number of links (possibly 0) from up to down.
+         */
+        [[nodiscard]] static std::size_t connectingLinkCount(const Node *up, const Node *down) {
+            return up->outLinksPerDownNode_.count(down);
+        }
+
+        /**
+         * Number of links (possibly 0) from up to down (nodes identified by their IDs).
+         *
+         * @throw std::invalid_argument if either up or down does not correspond to an existing node.
+         */
+        [[nodiscard]] std::size_t connectingLinkCount(const std::string &up, const std::string &down) const {
+            return connectingLinkCount(node(up), node(down));
+        }
+
+        /**
+         * Lightweight view of the links from a given node to another given node.
+         */
+        class ConnectingLinkRange {
+
+            using BaseIterator = std::unordered_multimap<const Node *, const Link *>::const_iterator;
+
+            struct Projection {
+                const Link *operator()(const BaseIterator::value_type &entry) const {
+                    return entry.second;
+                }
+            };
+
+            BaseIterator begin_;
+            BaseIterator end_;
+
+            ConnectingLinkRange(BaseIterator begin, BaseIterator end) : begin_(begin), end_(end) {}
+
+            friend class OrientedGraph;
+
+        public:
+
+            using iterator = ProjectingIterator<BaseIterator, Projection>;
+
+            [[nodiscard]] iterator begin() const {
+                return iterator(begin_);
+            }
+
+            [[nodiscard]] iterator end() const {
+                return iterator(end_);
+            }
+        };
+
+        /**
+         * Links (possibly none) from up to down, enumerated in no particular order.
+         *
+         * Do not add or remove links on the graph while iterating on the range.
+         */
+        [[nodiscard]] static ConnectingLinkRange findConnectingLinks(const Node *up, const Node *down) {
+            auto [begin, end] = up->outLinksPerDownNode_.equal_range(down);
+            return { begin, end };
+        }
+
+        /**
+         * Links (possibly none) from up to down (nodes identified by their IDs), enumerated in no particular order.
+         *
+         * Do not add or remove links on the graph while iterating on the range.
+         *
+         * @throw std::invalid_argument if either up or down does not correspond to an existing node.
+         */
+        [[nodiscard]] ConnectingLinkRange findConnectingLinks(const std::string &up, const std::string &down) const {
+            return findConnectingLinks(node(up), node(down));
+        }
+
+        /**
          * Add all the nodes and links from `graph` to the current OrientedGraph.
          *
          * The pre-existing nodes and links of the current OrientedGraph are preserved.
@@ -503,6 +628,8 @@ namespace hipop
 
         /**
          * Create and add a new Link to the graph.
+         *
+         * Other links may already exist from up to down: the new link is then parallel to them.
          *
          * @param up ID of the upstream node of the link.
          * @param down ID of the downstream node of the link.
@@ -539,6 +666,16 @@ namespace hipop
 
         void ShowNodes() const;
         void ShowLinks() const;
+
+        /**
+         * Ensure that the relationships between Node/Link instances and internal containers maintained
+         * by the current OrientedGraph are consistent.
+         *
+         * This method is meant for debugging and testing purposes. There is no reason to use it in production.
+         *
+         * @throw std::logic_error if an inconsistency is detected.
+         */
+        void checkInternalConsistency() const;
 
     };
 

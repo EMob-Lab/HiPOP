@@ -3,6 +3,7 @@ from typing import TypedDict
 # Re-export symbols from the C++ bindings
 # ruff: disable[PLC0414] The useless-import-alias rule is explicitly described as raising false positives
 # in case of re-exporting symbols from a module, which is exactly what we are doing here.
+from hipop.cpp.graph import AdjacentLinkCollection as AdjacentLinkCollection
 from hipop.cpp.graph import Link as Link
 from hipop.cpp.graph import LinkMapping as LinkMapping
 from hipop.cpp.graph import Node as Node
