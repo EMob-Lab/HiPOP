@@ -17,6 +17,7 @@
 #include <optional>
 #include <string>
 #include <sstream>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -179,6 +180,53 @@ static void bind_graph_element_mapping(nb::module_ &m, const char *name) {
 
 
 /**
+ * Lightweight view of the incoming or outgoing links of a node.
+ */
+struct AdjacentLinkCollection {
+
+    static constexpr const char *doc =
+        "Read-only, iterable view of the incoming or outgoing links of a Node, enumerated in no particular order.\n"
+        "\n"
+        "WARNINGS:\n"
+        "- The view reflects the current state of the graph. Adding or removing links (or nodes)\n"
+        "  while iterating over the view results in undefined behavior (likely a crash).\n"
+        "- The Link objects returned by the view are non-owning references to data stored\n"
+        "  in the OrientedGraph. The graph must be kept alive for as long as they are used, and they\n"
+        "  must not be removed from it. Otherwise, accessing them results in undefined behavior\n"
+        "  (likely a crash).";
+
+    hipop::Node::AdjacentLinkRange range;
+};
+
+
+/**
+ * Register the Python class `name` corresponding to `AdjacentLinkCollection`.
+ *
+ * Remark: the API exposed to the Python world for the `AdjacentLinkCollection` class is collection-like.
+ * Indexing is not supported, as the order in which the links are enumerated is implementation-defined.
+ * Still, it is not fully compliant with the `collections.abc.Collection` contract:
+ *  - `__contains__` is not implemented (the `in` operator falls back to iterating over the collection),
+ *  - `__eq__` is not implemented (equality is identity).
+ */
+static void bind_adjacent_link_collection(nb::module_ &m, const char *name) {
+    nb::class_<AdjacentLinkCollection>(m, name, AdjacentLinkCollection::doc)
+        .def("__len__", [](const AdjacentLinkCollection &v) { return v.range.size(); })
+        .def("__iter__", [](const AdjacentLinkCollection &v) {
+            return nb::make_iterator<nb::rv_policy::reference>(nb::type<AdjacentLinkCollection>(), "Iterator",
+                v.range.begin(), v.range.end());
+        }, nb::keep_alive<0, 1>())
+        .def("ids", [](const AdjacentLinkCollection &v) { // Return a plain Python set (the order is arbitrary).
+            std::unordered_set<std::string> result;
+            result.reserve(v.range.size());
+            for (const hipop::Link *link : v.range) {
+                result.emplace(link->id());
+            }
+            return result;
+        });
+}
+
+
+/**
  * Adapter class, to make an OrientedGraphPath class look like a sequence of `Node` objects.
  */
 struct PathNodeSequence {
@@ -294,14 +342,19 @@ void graph(nb::module_ &m) {
         "(likely a crash).")
         .def_prop_ro("id", &hipop::Node::id)
         .def_prop_ro("position", &hipop::Node::position)
-        .def_prop_ro("adj", &hipop::Node::adj)
-        .def_prop_ro("radj", &hipop::Node::radj)
+        .def_prop_ro("in_links", [](const hipop::Node &node) {
+            return AdjacentLinkCollection{ node.inLinks() };
+        }, nb::keep_alive<0, 1>())
+        .def_prop_ro("out_links", [](const hipop::Node &node) {
+            return AdjacentLinkCollection{ node.outLinks() };
+        }, nb::keep_alive<0, 1>())
         .def_prop_ro("label", &hipop::Node::label)
         .def_prop_ro("exclude_movements", &hipop::Node::excludeMovements)
         .def("get_exits", &hipop::Node::getExits, "predecessor"_a, nb::rv_policy::reference);
 
     bind_graph_element_mapping<NodeMapping>(m, "NodeMapping");
     bind_graph_element_mapping<LinkMapping>(m, "LinkMapping");
+    bind_adjacent_link_collection(m, "AdjacentLinkCollection");
 
     nb::class_<hipop::OrientedGraph>(m, "OrientedGraph")
         .def(nb::init<>())
@@ -315,6 +368,23 @@ void graph(nb::module_ &m) {
         .def_prop_ro("links", [](hipop::OrientedGraph &graph) {
             return LinkMapping{ &graph };
         }, nb::keep_alive<0, 1>())
+
+        // Connecting link queries
+        .def("has_connecting_link", nb::overload_cast<const std::string &, const std::string &>(
+            &hipop::OrientedGraph::hasConnectingLink, nb::const_), "up"_a, "down"_a)
+        .def("count_connecting_links", nb::overload_cast<const std::string &, const std::string &>(
+            &hipop::OrientedGraph::connectingLinkCount, nb::const_), "up"_a, "down"_a)
+        .def("find_connecting_links", [](const hipop::OrientedGraph &graph, const std::string &up, const std::string &down) {
+            auto range = graph.findConnectingLinks(up, down);
+            return std::unordered_set<const hipop::Link *>(range.begin(), range.end()); // Return a plain Python set (the order is arbitrary).
+        }, "up"_a, "down"_a, nb::rv_policy::reference)
+        .def("find_connecting_link_ids", [](const hipop::OrientedGraph &graph, const std::string &up, const std::string &down) {
+            std::unordered_set<std::string> result; // Return a plain Python set (the order is arbitrary).
+            for (const hipop::Link *link : graph.findConnectingLinks(up, down)) {
+                result.emplace(link->id());
+            }
+            return result;
+        }, "up"_a, "down"_a)
 
         // Copy
         .def("copy", [](const hipop::OrientedGraph &graph) {
