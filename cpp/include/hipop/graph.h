@@ -244,8 +244,15 @@ namespace hipop
          */
         template<typename Callback>
         void forEachExit(const std::string &predecessor, Callback &&callback) const {
+            static_assert(
+                std::is_invocable_v<Callback, const Link *>,
+                "Callback must have signature: void(const Link *link)"
+            );
+            if (adj_.empty()) {
+                return;
+            }
+            auto it = excludeMovements_.find(predecessor);
             for (const auto &l : adj_) {
-                auto it = excludeMovements_.find(predecessor);
                 if (it == excludeMovements_.end() || it->second.find(l.second->down()->id()) == it->second.end()) {
                     callback(l.second);
                 }
