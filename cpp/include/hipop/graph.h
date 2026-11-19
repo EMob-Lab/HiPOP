@@ -10,6 +10,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -533,7 +534,7 @@ namespace hipop
         /**
          * Return the IDs of the links for which the considered cost has not been set.
          */
-        [[nodiscard]] std::vector<std::string> GetLinksWithoutCost(const std::string &costMetric,
+        [[nodiscard]] std::unordered_set<std::string> GetLinksWithoutCost(const std::string &costMetric,
             const std::unordered_map<std::string, std::string> &labelToCostFamily) const;
 
         void ShowNodes() const;

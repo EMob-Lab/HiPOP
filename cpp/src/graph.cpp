@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -166,13 +167,13 @@ namespace hipop {
     }
 
 
-    std::vector<std::string> OrientedGraph::GetLinksWithoutCost(const std::string &costMetric,
+    std::unordered_set<std::string> OrientedGraph::GetLinksWithoutCost(const std::string &costMetric,
         const std::unordered_map<std::string, std::string> &labelToCostFamily) const {
 
-        std::vector<std::string> result;
+        std::unordered_set<std::string> result;
         for (const Link *link : links()) {
             if (!link->hasCost(labelToCostFamily.at(link->label()), costMetric)) {
-                result.emplace_back(link->id());
+                result.emplace(link->id());
             }
         }
         return result;

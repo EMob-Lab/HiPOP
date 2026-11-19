@@ -335,14 +335,14 @@ def test_get_links_without_cost() -> None:
     label_to_cost_family = {"CarLayer": "CAR", "BusLayer": "BUS"}
 
     result = G.get_links_without_cost("time", label_to_cost_family)
-    assert result == [], "All links should have a cost for the given metric"
+    assert result == set(), "All links should have a cost for the given metric"
 
     result = G.get_links_without_cost("distance", label_to_cost_family)
-    assert sorted(result) == ["A_B", "B_C"], "No link should have a cost for an unknown metric"
+    assert result == {"A_B", "B_C"}, "No link should have a cost for an unknown metric"
 
     # Cost family defined on B_C only.
     result = G.get_links_without_cost("time", {"CarLayer": "BUS", "BusLayer": "BUS"})
-    assert result == ["A_B"], "Links without the given cost family should be returned"
+    assert result == {"A_B"}, "Links without the given cost family should be returned"
 
 
 def test_exits() -> None:
