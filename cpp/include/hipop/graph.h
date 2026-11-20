@@ -5,17 +5,16 @@
 #include <array>
 #include <cstddef>
 #include <iterator>
-#include <set>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
-using setstring = std::set<std::string>;
-using vecstring = std::vector<std::string>;
-using mapsets = std::unordered_map<std::string, std::set<std::string>>;
+using setstring = std::unordered_set<std::string>;
+using mapsets = std::unordered_map<std::string, std::unordered_set<std::string>>;
 using mapcosts = std::unordered_map<std::string, std::unordered_map<std::string, double>>;
 
 
@@ -245,8 +244,15 @@ namespace hipop
          */
         template<typename Callback>
         void forEachExit(const std::string &predecessor, Callback &&callback) const {
+            static_assert(
+                std::is_invocable_v<Callback, const Link *>,
+                "Callback must have signature: void(const Link *link)"
+            );
+            if (adj_.empty()) {
+                return;
+            }
+            auto it = excludeMovements_.find(predecessor);
             for (const auto &l : adj_) {
-                auto it = excludeMovements_.find(predecessor);
                 if (it == excludeMovements_.end() || it->second.find(l.second->down()->id()) == it->second.end()) {
                     callback(l.second);
                 }
