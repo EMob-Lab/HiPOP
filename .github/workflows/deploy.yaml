@@ -36,7 +36,7 @@ jobs:
         os: # See https://docs.github.com/en/actions/reference/runners/github-hosted-runners
           - ubuntu-latest     # Arch: x64
           - ubuntu-24.04-arm  # Arch: arm64
-          - windows-latest    # Arch: x64
+          - windows-2022      # Arch: x64 FIXME Rollback to windows-latest once the fix for https://github.com/actions/runner-images/issues/15368 is available.
           - macos-15          # Arch: arm64
           # Do not use the latest macOS runner to ensure backward compatibility.
           # See comment on MACOSX_DEPLOYMENT_TARGET in pyproject.toml for more details.
