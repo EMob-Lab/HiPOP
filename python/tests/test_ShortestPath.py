@@ -23,13 +23,13 @@ def _make_simple_graph() -> OrientedGraph:
 
     G = OrientedGraph()
 
-    G.add_node("A", 0, 0, "")
-    G.add_node("B", 1, 0, "")
-    G.add_node("C", 2, 0, "")
-    G.add_node("D", 0, 1, "")
-    G.add_node("E", 1, 1, "")
-    G.add_node("F", 2, 1, "")
-    G.add_node("I", 2, 2, "")
+    G.add_node("A", 0, 0)
+    G.add_node("B", 1, 0)
+    G.add_node("C", 2, 0)
+    G.add_node("D", 0, 1)
+    G.add_node("E", 1, 1)
+    G.add_node("F", 2, 1)
+    G.add_node("I", 2, 2)
 
     G.add_link("A_B", "A", "B", 1, {"CAR": {"time": 5}}, "CarLayer")
     G.add_link("B_C", "B", "C", 1, {"CAR": {"time": 1.5}}, "CarLayer")

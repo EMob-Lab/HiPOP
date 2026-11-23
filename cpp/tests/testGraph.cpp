@@ -532,7 +532,7 @@ static void test_Exits() {
     OrientedGraph G;
     G.AddNode("A", 0, 0);
 
-    std::unordered_map<std::string, std::set<std::string> > excludeMovements;
+    std::unordered_map<std::string, std::unordered_set<std::string>> excludeMovements;
     excludeMovements["A"] = {"C"};
     G.AddNode("B", 2, 5, "", excludeMovements);
 

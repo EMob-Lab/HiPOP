@@ -8,7 +8,6 @@
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/pair.h>
-#include <nanobind/stl/set.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/unordered_map.h>
 #include <nanobind/stl/unordered_set.h>
@@ -333,9 +332,9 @@ void graph(nb::module_ &m) {
         // Other operations
         .def("add_all_nodes_and_links", &hipop::OrientedGraph::AddAllNodesAndLinks, "graph"_a)
         .def("add_node", &hipop::OrientedGraph::AddNode,
-            "node_id"_a, "x"_a, "y"_a, "label"_a, "exclude_movements"_a = mapsets())
+            "node_id"_a, "x"_a, "y"_a, "label"_a = "", "exclude_movements"_a = mapsets())
         .def("add_link", &hipop::OrientedGraph::AddLink,
-            "link_id"_a, "up"_a, "down"_a, "length"_a, "costs"_a, "label"_a = "_def")
+            "link_id"_a, "up"_a, "down"_a, "length"_a, "costs"_a, "label"_a = "")
         .def("delete_node", &hipop::OrientedGraph::DeleteNode, "node_id"_a)
         .def("delete_link", &hipop::OrientedGraph::DeleteLink, "link_id"_a)
         .def("update_costs", &hipop::OrientedGraph::UpdateCosts, "link_id_to_costs"_a)
