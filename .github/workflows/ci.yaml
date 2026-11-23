@@ -41,7 +41,7 @@ jobs:
         os: # See https://docs.github.com/en/actions/reference/runners/github-hosted-runners
           - ubuntu-latest     # Arch: x64
           - ubuntu-24.04-arm  # Arch: arm64
-          - windows-latest    # Arch: x64
+          - windows-2022      # Arch: x64 FIXME Rollback to windows-latest once the fix for https://github.com/actions/runner-images/issues/15368 is available.
           - macos-latest      # Arch: arm64
         python-version:
           - '3.10' # Oldest supported version (must be kept consistent with the classifiers in `pyproject.toml`).
