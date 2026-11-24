@@ -10,6 +10,9 @@ set(Tests
     testparallelKShortestPath.cpp
     testStringUtil.cpp
     testYenKShortestPath.cpp
+    testODPairDedup_issue_1_accessibleLinkLabel.cpp
+    testODPairDedup_issue_2_nodeIDConcatenation.cpp
+    testODPairDedup_issue_3_kPaths.cpp
 )
 
 # Create a single executable (aka. the driver) capable of running each registered test.
