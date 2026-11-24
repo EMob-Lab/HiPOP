@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hipop/iterator_util.h>
 #include <hipop/string_util.h>
 
 #include <array>
@@ -28,6 +29,8 @@ namespace hipop
         std::string id_;
         Node *up_;
         Node *down_;
+        std::size_t upContainerIdx_ = 0;   // Index of the current link in up_->outLinks_
+        std::size_t downContainerIdx_ = 0; // Index of the current link in down_->inLinks_
         double length_;
         mapcosts costs_; // costs_[cost-family][cost-metric] -> cost-value
         std::string label_;
@@ -143,14 +146,23 @@ namespace hipop
 
         std::string id_;
         std::array<double, 2> position_;
-        std::unordered_map<std::string, const Link *> adj_;
-        std::unordered_map<std::string, const Link *> radj_;
+        std::vector<Link *> inLinks_;
+        std::vector<Link *> outLinks_;
+        std::unordered_multimap<const Node *, const Link *> outLinksPerDownNode_;
         std::string label_;
         mapsets excludeMovements_;
 
         friend class OrientedGraph; // Access to private fields is needed to add/remove node/link in the graph.
 
+        struct CastToConstLink {
+            const Link *operator()(Link *link) const {
+                return link;
+            }
+        };
+
     public:
+
+        using AdjacentLinkRange = ProjectingRange<const std::vector<Link *>, CastToConstLink>;
 
         Node(std::string id, double x, double y, std::string label, mapsets excludeMovements) :
             id_(std::move(id)),
@@ -196,21 +208,37 @@ namespace hipop
         }
 
         /**
-         * Outgoing links from the current node.
-         *
-         * @return `adj()[adjacent-node-ID]` -> link from the current node to the adjacent node
+         * Number of incoming links to the current node.
          */
-        [[nodiscard]] const std::unordered_map<std::string, const Link *> &adj() const {
-            return adj_;
+        [[nodiscard]] std::size_t inLinkCount() const {
+            return inLinks_.size();
         }
 
         /**
          * Incoming links to the current node.
          *
-         * @return `radj()[adjacent-node-ID]` -> link from the adjacent node to the current node
+         * @warning The order in which the links are returned in the underlying range is implementation-defined
+         *          (in particular, it may NOT be the order in which the links are created).
          */
-        [[nodiscard]] const std::unordered_map<std::string, const Link *> &radj() const {
-            return radj_;
+        [[nodiscard]] AdjacentLinkRange inLinks() const {
+            return AdjacentLinkRange(inLinks_);
+        }
+
+        /**
+         * Number of outgoing links from the current node.
+         */
+        [[nodiscard]] std::size_t outLinkCount() const {
+            return outLinks_.size();
+        }
+
+        /**
+         * Outgoing links from the current node.
+         *
+         * @warning The order in which the links are returned in the underlying range is implementation-defined
+         *          (in particular, it may NOT be the order in which the links are created).
+         */
+        [[nodiscard]] AdjacentLinkRange outLinks() const {
+            return AdjacentLinkRange(outLinks_);
         }
 
         /**
@@ -223,8 +251,9 @@ namespace hipop
         /**
          * Movement restrictions (i.e. forbidden turns) at the current node.
          *
-         * @return `excludeMovements()[predecessor-node-ID]` -> IDs of the downstream nodes (i.e. those in `adj()`)
-         *         that cannot be reached from the current node when arriving from the given predecessor node
+         * @return `excludeMovements()[predecessor-node-ID]` -> IDs of the downstream nodes (i.e. those reachable
+         *         through the links in `outLinks()`) that are not allowed to be reached from the current node
+         *         when arriving from the given predecessor node
          */
         [[nodiscard]] const mapsets &excludeMovements() const {
             return excludeMovements_;
@@ -248,13 +277,13 @@ namespace hipop
                 std::is_invocable_v<Callback, const Link *>,
                 "Callback must have signature: void(const Link *link)"
             );
-            if (adj_.empty()) {
+            if (outLinks_.empty()) {
                 return;
             }
             auto it = excludeMovements_.find(predecessor);
-            for (const auto &l : adj_) {
-                if (it == excludeMovements_.end() || it->second.find(l.second->down()->id()) == it->second.end()) {
-                    callback(l.second);
+            for (const Link *link : outLinks_) {
+                if (it == excludeMovements_.end() || it->second.find(link->down()->id()) == it->second.end()) {
+                    callback(link);
                 }
             }
         }
@@ -279,119 +308,41 @@ namespace hipop
     };
 
 
+    /**
+     * Oriented graph data-structure.
+     *
+     * Supported features:
+     * - parallel links (i.e. several links from the same upstream node to the same downstream node),
+     * - self-loops (i.e. links whose upstream and downstream nodes are the same).
+     */
     class OrientedGraph {
 
         // Must be node-based containers (no flat hash map): Node/Link addresses must remain stable.
         std::unordered_map<std::string, Node> nodes_;
         std::unordered_map<std::string, Link> links_;
 
-        template<typename Element>
-        class ElementRange;
-
         template<typename Element> // Element is `Node`, `const Node`, `Link` or `const Link`.
-        class ElementIterator {
+        struct MapValueAddress {
 
-            using Container = std::unordered_map<std::string, std::remove_const_t<Element>>;
-            using ContainerIterator = std::conditional_t<
+            using Entry = std::conditional_t<
                 std::is_const_v<Element>,
-                typename Container::const_iterator,
-                typename Container::iterator
+                const std::pair<const std::string, std::remove_const_t<Element>>,
+                std::pair<const std::string, Element>
             >;
 
-            ContainerIterator it_;
-
-            explicit ElementIterator(ContainerIterator it) : it_(it) {}
-
-            friend class ElementRange<Element>;
-            template<typename> friend class ElementIterator;
-
-        public:
-
-            using iterator_category = std::forward_iterator_tag;
-            using difference_type = std::ptrdiff_t;
-            using value_type = Element *;
-            using pointer = void;
-            using reference = value_type;
-
-            ElementIterator() = default;
-
-            /**
-             * Implicit conversion from the read-write iterator to the read-only one.
-             */
-            template<
-                typename Other,
-                typename = std::enable_if_t<std::is_same_v<const Other, Element> && !std::is_same_v<Other, Element>>
-            >
-            ElementIterator(const ElementIterator<Other> &other) : it_(other.it_) {}
-
-            [[nodiscard]] reference operator*() const { return &it_->second; }
-
-            ElementIterator &operator++() {
-                ++it_;
-                return *this;
-            }
-
-            ElementIterator operator++(int) {
-                ElementIterator result = *this;
-                ++it_;
-                return result;
-            }
-
-            [[nodiscard]] friend bool operator==(const ElementIterator &lhs, const ElementIterator &rhs) {
-                return lhs.it_ == rhs.it_;
-            }
-
-            [[nodiscard]] friend bool operator!=(const ElementIterator &lhs, const ElementIterator &rhs) {
-                return lhs.it_ != rhs.it_;
-            }
-        };
-
-        template<typename Element> // Element is `Node`, `const Node`, `Link` or `const Link`.
-        class ElementRange {
-
-            using Container = std::conditional_t<
-                std::is_const_v<Element>,
-                const std::unordered_map<std::string, std::remove_const_t<Element>>,
-                std::unordered_map<std::string, Element>
-            >;
-
-            Container *container_;
-
-            explicit ElementRange(Container &container) : container_(&container) {}
-
-            friend class OrientedGraph;
-            template<typename> friend class ElementRange;
-
-        public:
-
-            /**
-             * Implicit conversion from the read-write range to the read-only one.
-             */
-            template<
-                typename Other,
-                typename = std::enable_if_t<std::is_same_v<const Other, Element> && !std::is_same_v<Other, Element>>
-            >
-            ElementRange(const ElementRange<Other> &other) : container_(other.container_) {}
-
-            [[nodiscard]] ElementIterator<Element> begin() const {
-                return ElementIterator<Element>(container_->begin());
-            }
-
-            [[nodiscard]] ElementIterator<Element> end() const {
-                return ElementIterator<Element>(container_->end());
+            Element *operator()(Entry &entry) const {
+                return &entry.second;
             }
         };
 
     public:
 
-        using ConstNodeIterator = ElementIterator<const Node>;
-        using ConstNodeRange = ElementRange<const Node>;
-        using NodeIterator = ElementIterator<Node>;
-        using NodeRange = ElementRange<Node>;
-        using ConstLinkIterator = ElementIterator<const Link>;
-        using ConstLinkRange = ElementRange<const Link>;
-        using LinkIterator = ElementIterator<Link>;
-        using LinkRange = ElementRange<Link>;
+        using NodeRange = ProjectingRange<std::unordered_map<std::string, Node>, MapValueAddress<Node>>;
+        using LinkRange = ProjectingRange<std::unordered_map<std::string, Link>, MapValueAddress<Link>>;
+        using ConstNodeRange =
+            ProjectingRange<const std::unordered_map<std::string, Node>, MapValueAddress<const Node>>;
+        using ConstLinkRange =
+            ProjectingRange<const std::unordered_map<std::string, Link>, MapValueAddress<const Link>>;
 
         OrientedGraph() = default;
         OrientedGraph(OrientedGraph &&other) noexcept = default;
@@ -578,6 +529,92 @@ namespace hipop
         }
 
         /**
+         * Whether there is at least 1 link from up to down.
+         */
+        [[nodiscard]] static bool hasConnectingLink(const Node *up, const Node *down) {
+            return up->outLinksPerDownNode_.find(down) != up->outLinksPerDownNode_.end();
+        }
+
+        /**
+         * Whether there is at least 1 link from up to down (nodes identified by their IDs).
+         *
+         * @throw std::invalid_argument if either up or down does not correspond to an existing node.
+         */
+        [[nodiscard]] bool hasConnectingLink(const std::string &up, const std::string &down) const {
+            return hasConnectingLink(node(up), node(down));
+        }
+
+        /**
+         * Number of links (possibly 0) from up to down.
+         */
+        [[nodiscard]] static std::size_t connectingLinkCount(const Node *up, const Node *down) {
+            return up->outLinksPerDownNode_.count(down);
+        }
+
+        /**
+         * Number of links (possibly 0) from up to down (nodes identified by their IDs).
+         *
+         * @throw std::invalid_argument if either up or down does not correspond to an existing node.
+         */
+        [[nodiscard]] std::size_t connectingLinkCount(const std::string &up, const std::string &down) const {
+            return connectingLinkCount(node(up), node(down));
+        }
+
+        /**
+         * Lightweight view of the links from a given node to another given node.
+         */
+        class ConnectingLinkRange {
+
+            using BaseIterator = std::unordered_multimap<const Node *, const Link *>::const_iterator;
+
+            struct Projection {
+                const Link *operator()(const BaseIterator::value_type &entry) const {
+                    return entry.second;
+                }
+            };
+
+            BaseIterator begin_;
+            BaseIterator end_;
+
+            ConnectingLinkRange(BaseIterator begin, BaseIterator end) : begin_(begin), end_(end) {}
+
+            friend class OrientedGraph;
+
+        public:
+
+            using iterator = ProjectingIterator<BaseIterator, Projection>;
+
+            [[nodiscard]] iterator begin() const {
+                return iterator(begin_);
+            }
+
+            [[nodiscard]] iterator end() const {
+                return iterator(end_);
+            }
+        };
+
+        /**
+         * Links (possibly none) from up to down, enumerated in no particular order.
+         *
+         * Do not add or remove links on the graph while iterating on the range.
+         */
+        [[nodiscard]] static ConnectingLinkRange findConnectingLinks(const Node *up, const Node *down) {
+            auto [begin, end] = up->outLinksPerDownNode_.equal_range(down);
+            return { begin, end };
+        }
+
+        /**
+         * Links (possibly none) from up to down (nodes identified by their IDs), enumerated in no particular order.
+         *
+         * Do not add or remove links on the graph while iterating on the range.
+         *
+         * @throw std::invalid_argument if either up or down does not correspond to an existing node.
+         */
+        [[nodiscard]] ConnectingLinkRange findConnectingLinks(const std::string &up, const std::string &down) const {
+            return findConnectingLinks(node(up), node(down));
+        }
+
+        /**
          * Add all the nodes and links from `graph` to the current OrientedGraph.
          *
          * The pre-existing nodes and links of the current OrientedGraph are preserved.
@@ -593,6 +630,8 @@ namespace hipop
 
         /**
          * Create and add a new Link to the graph.
+         *
+         * Other links may already exist from up to down: the new link is then parallel to them.
          *
          * @param up ID of the upstream node of the link.
          * @param down ID of the downstream node of the link.
@@ -616,18 +655,29 @@ namespace hipop
          */
         void DeleteLink(const std::string &linkId);
 
-        void UpdateLinkCosts(const std::string &linkId, mapcosts costs);
-        void UpdateCosts(const std::unordered_map<std::string, mapcosts> &linkIdToCosts);
-        double getLength(const std::string &up, const std::string &down);
+        /**
+         * Update the costs of the links whose IDs correspond to the map keys.
+         */
+        void UpdateCosts(std::unordered_map<std::string, mapcosts> linkIdToCosts);
 
         /**
          * Return the IDs of the links for which the considered cost has not been set.
          */
-        [[nodiscard]] std::vector<std::string> GetLinksWithoutCost(const std::string &costMetric,
+        [[nodiscard]] std::unordered_set<std::string> GetLinksWithoutCost(const std::string &costMetric,
             const std::unordered_map<std::string, std::string> &labelToCostFamily) const;
 
         void ShowNodes() const;
         void ShowLinks() const;
+
+        /**
+         * Ensure that the relationships between Node/Link instances and internal containers maintained
+         * by the current OrientedGraph are consistent.
+         *
+         * This method is meant for debugging and testing purposes. There is no reason to use it in production.
+         *
+         * @throw std::logic_error if an inconsistency is detected.
+         */
+        void checkInternalConsistency() const;
 
     };
 
